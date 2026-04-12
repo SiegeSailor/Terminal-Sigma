@@ -11,7 +11,7 @@ Your goal is to generate a conventional commit message using the provided XML st
 
 - A user asks to create a commit message for the current changes
 - You finish the current task and need a fresh start for the next one
-- Keywords: `commit`, `commit message`, `commit changes`
+- Keywords: `commit`, `commit message`, `commit changes`, `make a commit`
 
 ## Workflow
 
@@ -21,7 +21,7 @@ Follow these steps:
 2. Run `git diff` or `git diff --cached` to inspect changes
 3. Stage the changes that are relevant to a single commit with `git add <file>`
 4. Construct your commit message using the XML structure provided below
-5. After generating the commit message, Copilot will automatically run the `git commit` command in your integrated terminal with the generated message. No confirmation is needed:
+5. After generating the commit message, Copilot will automatically run the `git commit` command in your integrated terminal with the generated message (no confirmation needed):
 
 ```bash
 git commit -m "type(scope): description"
