@@ -1,0 +1,11 @@
+{
+  "repositoryUrl": "https://github.com/SiegeSailor/Terminal-Sigma.git",
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/github",
+    ["@semantic-release/commit-analyzer", { "preset": "conventionalcommits" }],
+    ["@semantic-release/npm", { "npmPublish": true }],
+    ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }]
+  ],
+  "tagFormat": "${version}"
+}
