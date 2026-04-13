@@ -1,8 +1,8 @@
 # CONTRIBUTING
 
-[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
+[![semantic-release: conventional commits](https://img.shields.io/badge/semantic--release-conventional--commits-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
 
-Thank you for contributing to Terminal-Sigma. Please read through the following guideline before making any contributions. You can find more details on the project structure, coding standards, architecture decisions, and compliance requirements in [.github/copilot-instructions.md](./.github/copilot-instructions.md) and [.github/instructions/](./.github/instructions/).
+Please read through the following guideline before making any contributions. You can find more details on the project structure, coding standards, architecture decisions, and compliance requirements in [.github/copilot-instructions.md](./.github/copilot-instructions.md) and [.github/instructions/](./.github/instructions/).
 
 This repository has enabled GitHub Copilot and any other compatible A.I. code assistants to help contributors. Please see [.github/](./.github/) for agents and skills.
 
@@ -34,12 +34,12 @@ This repository follows a simple [GitHub Flow](https://docs.github.com/en/get-st
 GitHub Actions workflows for testing and releasing:
 
 ```mermaid
-flowchart TB
-  A[Push event] --> J{File changed?}
-  J --> |Yes| B[Test workflow]
-  B --> D[/Test reports/]
-  B --> E{In main branch?}
-  E --> |Yes| F[Release workflow]
-  F --> H[/NPM package/]
-  F --> I[/Git tag and release record/]
+flowchart LR
+  A[Push event] --> J{Source files changed?}
+  J --> |Yes| B[[test.yml]]
+  B --> E{In the main branch?}
+  E --> |Yes| F[[release.yml]]
+  F --> H[/NPM Package/]
+  F --> I[/Git tag/]
+  F --> G[/Release notes/]
 ```
