@@ -1,36 +1,63 @@
 {
-  "name": "",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type": "module",
-  "license": "MIT",
-  "private": false,
-  "engines": {
-    "node": ">= 14.0.0",
-    "npm": ">= 6.0.0"
-  },
-  "homepage": "",
-  "repository": {
-    "type": "git",
-    "url": ""
-  },
-  "bugs": "",
-  "keywords": [],
-  "author": {
-    "name": "",
-    "email": "",
-    "url": ""
-  },
-  "contributors": [],
-  "scripts": {
-    "prepare": "husky",
-    "test": "echo TEST"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "@commitlint/cli": "20.5.0",
-    "@commitlint/config-conventional": "20.5.0",
-    "husky": "9.1.7"
-  }
+	"author": {
+		"name": "SiegeSailor",
+		"email": "siegesailor@gmail.com",
+		"url": "https://jinyu-zhang.com/"
+	},
+	"name": "@siegesailor/terminal-sigma",
+	"keywords": [
+		"command-line-tool",
+		"typescript",
+		"ink"
+	],
+	"description": "A CLI comes with self-development and assistance features. While serving as a personal assistant, it provides gaming feedback to keep users stick to this terminal session.",
+	"homepage": "https://github.com/SiegeSailor/Terminal-Sigma",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/SiegeSailor/Terminal-Sigma.git"
+	},
+	"bugs": {
+		"url": "https://github.com/SiegeSailor/Terminal-Sigma/issues"
+	},
+	"version": "0.0.0",
+	"main": "build/command-line-interface.js",
+	"files": [
+		"build/"
+	],
+	"license": "MIT",
+	"private": false,
+	"type": "module",
+	"engines": {
+		"node": ">= 25.2.1",
+		"npm": ">= 11.6.2"
+	},
+	"scripts": {
+		"prepare": "husky",
+		"build": "tsc && tsc-alias",
+		"test": "prettier --check --ignore-unknown . && xo && ava"
+	},
+	"dependencies": {
+		"ink": "7.0.0",
+		"meow": "14.1.0",
+		"react": "19.2.5"
+	},
+	"devDependencies": {
+		"@ava/typescript": "6.0.0",
+		"@commitlint/cli": "20.5.0",
+		"@commitlint/config-conventional": "20.5.0",
+		"@types/react": "19.2.14",
+		"ava": "7.0.0",
+		"husky": "9.1.7",
+		"ink-testing-library": "4.0.0",
+		"lint-staged": "16.4.0",
+		"ts-node": "10.9.2",
+		"tsc-alias": "1.8.16",
+		"typescript": "6.0.2",
+		"xo": "2.0.2"
+	},
+	"lint-staged": {
+		"*": [
+			"prettier --write --ignore-unknown"
+		]
+	}
 }
