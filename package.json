@@ -21,7 +21,7 @@
 	},
 	"version": "0.0.0",
 	"bin": {
-		"siege-sailor-terminal-sigma": "build/command-line-interface.js"
+		"siegesailor-terminal-sigma": "build/command-line-interface.js"
 	},
 	"main": "build/command-line-interface.js",
 	"files": [

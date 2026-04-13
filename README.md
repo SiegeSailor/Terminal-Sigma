@@ -8,7 +8,7 @@
 
 The package is available on NPM:
 
-```bash
+```shell
 npm install @siegesailor/terminal-sigma
 ```
 

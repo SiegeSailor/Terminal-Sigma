@@ -25,9 +25,24 @@ This repository follows a simple [GitHub Flow](https://docs.github.com/en/get-st
 
 [NPM scripts](./package.json) are organized with [ESLint Package.json Conventions](https://eslint.org/docs/latest/contribute/package-json-conventions):
 
-| Command | Purpose |
-| ------- | ------- |
-|         |         |
+| Command | Purpose                                            |
+| ------- | -------------------------------------------------- |
+| `build` | Compile TypeScript files and rewrite path aliases. |
+| `test`  | Run prettier, xo, and ava tests.                   |
+
+## Local Development
+
+After running `npm run build`, run the following to link the package:
+
+```shell
+npm link --local
+```
+
+Then you can start using the package by running:
+
+```shell
+siegesailor-terminal-sigma
+```
 
 ## Workflows
 

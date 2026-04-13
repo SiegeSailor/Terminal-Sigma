@@ -23,7 +23,7 @@ Follow these steps:
 4. Construct your commit message using the XML structure provided below
 5. After generating the commit message, Copilot will automatically run the `git commit` command in your integrated terminal with the generated message (no confirmation needed):
 
-```bash
+```shell
 git commit -m "type(scope): description"
 ```
 
