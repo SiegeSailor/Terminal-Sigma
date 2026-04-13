@@ -1,8 +1,10 @@
 import { type FlatXoConfig } from "xo";
 
 const flatXoConfig: FlatXoConfig = {
-	react: true,
 	prettier: true,
+	react: true,
+	semicolon: true,
+	space: false,
 };
 
 export default flatXoConfig;
