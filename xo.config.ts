@@ -5,6 +5,9 @@ const flatXoConfig: FlatXoConfig = {
 	react: true,
 	semicolon: true,
 	space: false,
+	rules: {
+		"import-x/no-extraneous-dependencies": "off",
+	},
 };
 
 export default flatXoConfig;
