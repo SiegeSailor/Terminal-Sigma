@@ -29,6 +29,7 @@ This repository follows a simple [GitHub Flow](https://docs.github.com/en/get-st
 | ------- | -------------------------------------------------- |
 | `build` | Compile TypeScript files and rewrite path aliases. |
 | `test`  | Run prettier, xo, and ava tests.                   |
+| `start` | Link the binary and use the package as a CLI tool. |
 
 ## Local Development
 

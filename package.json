@@ -37,7 +37,8 @@
 	"scripts": {
 		"prepare": "husky",
 		"build": "tsc && tsc-alias",
-		"test": "prettier --check --ignore-unknown . && xo && ava"
+		"test": "prettier --check --ignore-unknown . && xo && ava",
+		"start": "npm link --local && siegesailor-terminal-sigma"
 	},
 	"dependencies": {
 		"ink": "7.0.0",
