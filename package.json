@@ -8,7 +8,7 @@
 	"keywords": [
 		"command-line-tool",
 		"typescript",
-		"ink"
+		"pastel"
 	],
 	"description": "A CLI comes with self-development and assistance features. While serving as a personal assistant, it provides gaming feedback to keep users stick to this terminal session.",
 	"homepage": "https://github.com/SiegeSailor/Terminal-Sigma",
