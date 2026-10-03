@@ -42,8 +42,8 @@
 		"prepare": "husky",
 		"build": "node --input-type=module --eval \"import {rmSync} from 'node:fs'; rmSync('build', {recursive: true, force: true}); rmSync('build-cache', {force: true});\" && tsc && tsc-alias && node --input-type=module --eval \"import {chmodSync} from 'node:fs'; chmodSync('build/command-line-interface.js', 0o755);\"",
 		"prepack": "npm run build",
-		"test": "prettier --check --ignore-unknown . && xo && ava",
-		"start": "npm run build && npm link --local && siegesailor-terminal-sigma"
+		"start": "npm run build && node build/command-line-interface.js",
+		"test": "prettier --check --ignore-unknown . && xo && ava"
 	},
 	"dependencies": {
 		"@inkjs/ui": "2.0.0",
