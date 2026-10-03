@@ -25,18 +25,23 @@
 	},
 	"main": "build/command-line-interface.js",
 	"files": [
-		"build/"
+		"build/",
+		"!build/tests/"
 	],
 	"license": "MIT",
 	"private": false,
 	"type": "module",
 	"engines": {
-		"node": ">= 25.2.1",
-		"npm": ">= 11.6.2"
+		"node": ">= 22"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
 	},
 	"scripts": {
 		"prepare": "husky",
 		"build": "node --input-type=module --eval \"import {rmSync} from 'node:fs'; rmSync('build', {recursive: true, force: true}); rmSync('build-cache', {force: true});\" && tsc && tsc-alias && node --input-type=module --eval \"import {chmodSync} from 'node:fs'; chmodSync('build/command-line-interface.js', 0o755);\"",
+		"prepack": "npm run build",
 		"test": "prettier --check --ignore-unknown . && xo && ava",
 		"start": "npm run build && npm link --local && siegesailor-terminal-sigma"
 	},
@@ -52,12 +57,15 @@
 		"@ava/typescript": "6.0.0",
 		"@commitlint/cli": "20.5.0",
 		"@commitlint/config-conventional": "20.5.0",
+		"@semantic-release/git": "11.0.1",
 		"@types/react": "19.2.14",
 		"ava": "7.0.0",
+		"conventional-changelog-conventionalcommits": "10.4.0",
 		"husky": "9.1.7",
 		"ink-testing-library": "4.0.0",
 		"lint-staged": "16.4.0",
 		"prettier": "3.8.2",
+		"semantic-release": "25.0.9",
 		"ts-node": "10.9.2",
 		"tsc-alias": "1.8.16",
 		"typescript": "6.0.2",

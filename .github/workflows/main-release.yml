@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: "main: Release"
+run-name: "main: Release ${{ github.event.workflow_run.head_sha }} by @${{ github.actor }}"
+
+# Runs only after "push: Verify" passes on main, so nothing unverified is published.
+# Re-run a failed release from its run page; there is no manual trigger to skip the gate.
+on:
+  workflow_run:
+    workflows: ["push: Verify"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: main-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Version and Publish Release
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      # The verified commit, not the newest one: Semantic Release skips the run if
+      # main has moved on, and the newer commit's own verify run releases it instead.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      # semantic-release resolves the version mid-run, too late for `run-name`,
+      # so the run reports it in the summary instead.
+      - name: Release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+        run: |
+          npx semantic-release 2>&1 | tee "${RUNNER_TEMP}/release.log"
+          if grep -q "Published release" "${RUNNER_TEMP}/release.log"; then
+            echo "released v$(node -p "require('./package.json').version") from ${HEAD_SHA}" >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "no release cut from ${HEAD_SHA}" >> "${GITHUB_STEP_SUMMARY}"
+          fi
