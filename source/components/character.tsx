@@ -19,10 +19,7 @@ export type BackpackOption = "field-pack" | "cargo-rig" | "reactor-pack";
 type CharacterProps = Readonly<{
 	width: number;
 	name: string;
-	armor?: ArmorOption;
-	weapon?: WeaponOption;
-	helmet?: HelmetOption;
-	backpack?: BackpackOption;
+	level: number;
 }>;
 
 type SpriteSegment = Readonly<{
@@ -221,6 +218,50 @@ const animationFrames: readonly AnimationFrame[] = [
 	},
 ];
 
+// Weakest first. One slot upgrades per level from level 2, then every 4 levels per slot.
+const weaponTiers: readonly WeaponOption[] = [
+	"signal-staff",
+	"pulse-rifle",
+	"arc-blade",
+];
+const armorTiers: readonly ArmorOption[] = [
+	"scout-weave",
+	"carbon-shell",
+	"bulwark-plate",
+];
+const helmetTiers: readonly HelmetOption[] = [
+	"hood-shell",
+	"signal-visor",
+	"horned-guard",
+];
+const backpackTiers: readonly BackpackOption[] = [
+	"field-pack",
+	"cargo-rig",
+	"reactor-pack",
+];
+
+const tierOf = <Option,>(
+	tiers: readonly Option[],
+	level: number,
+	slot: number,
+): Option => {
+	const tier = Math.floor((level - 2 - slot) / 4) + 1;
+	const option = tiers[Math.min(Math.max(tier, 0), tiers.length - 1)];
+
+	if (option === undefined) {
+		throw new Error("Character gear tiers are required.");
+	}
+
+	return option;
+};
+
+export const loadoutOf = (level: number) => ({
+	weapon: tierOf(weaponTiers, level, 0),
+	armor: tierOf(armorTiers, level, 1),
+	helmet: tierOf(helmetTiers, level, 2),
+	backpack: tierOf(backpackTiers, level, 3),
+});
+
 const modeBadgeColor: Record<AnimationMode, BadgeColor> = {
 	walk: "blue",
 	talk: "green",
@@ -260,14 +301,7 @@ function LoadoutRow({ label, value, color }: LoadoutRowProps) {
 	);
 }
 
-export default function Character({
-	width,
-	name,
-	armor = "carbon-shell",
-	weapon = "arc-blade",
-	helmet = "signal-visor",
-	backpack = "field-pack",
-}: CharacterProps) {
+export default function Character({ width, name, level }: CharacterProps) {
 	const [frameIndex, setFrameIndex] = React.useState(0);
 
 	React.useEffect(() => {
@@ -287,6 +321,7 @@ export default function Character({
 	}
 
 	const frame = animationFrames[frameIndex] ?? fallbackFrame;
+	const { armor, weapon, helmet, backpack } = loadoutOf(level);
 	const armorView = armorOptions[armor];
 	const weaponView = weaponOptions[weapon];
 	const helmetView = helmetOptions[helmet];
@@ -306,12 +341,12 @@ export default function Character({
 			width={width}
 		>
 			<Box justifyContent="space-between">
-				<Text color="whiteBright">{name}</Text>
+				<Text color="whiteBright">{`${name}  LV ${level}`}</Text>
 				<Badge color={modeBadgeColor[frame.mode]}>
 					{modeLabel[frame.mode]}
 				</Badge>
 			</Box>
-			<Text color="gray">Animated loadout preview</Text>
+			<Text color="gray">Gear unlocks as you level</Text>
 			<Box marginTop={1}>
 				<Text color={calloutColor[frame.mode]}>{`"${frame.callout}"`}</Text>
 			</Box>

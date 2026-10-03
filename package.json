@@ -7,10 +7,14 @@
 	"name": "@siegesailor/terminal-sigma",
 	"keywords": [
 		"command-line-tool",
-		"typescript",
-		"pastel"
+		"ink",
+		"pastel",
+		"pomodoro",
+		"self-development",
+		"terminal-dashboard",
+		"typescript"
 	],
-	"description": "A CLI comes with self-development and assistance features. While serving as a personal assistant, it provides gaming feedback to keep users stick to this terminal session.",
+	"description": "A long-running terminal dashboard that turns self-development into a game: a Tomato Timer, diet and workout trackers, everyday quotes, and a character that levels up with you.",
 	"homepage": "https://github.com/SiegeSailor/Terminal-Sigma",
 	"repository": {
 		"type": "git",

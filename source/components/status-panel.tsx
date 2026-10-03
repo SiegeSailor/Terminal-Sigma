@@ -1,11 +1,12 @@
 import { Badge, ProgressBar } from "@inkjs/ui";
 import React from "react";
 import { Box, Text } from "ink";
+import type { Quote } from "../quotes.js";
 
 type InkColor = React.ComponentProps<typeof Text>["color"];
 type BadgeColor = "blue" | "green" | "yellow" | "red";
 
-type StatusMetric = Readonly<{
+export type StatusMetric = Readonly<{
 	label: string;
 	value: number;
 	detail: string;
@@ -14,55 +15,25 @@ type StatusMetric = Readonly<{
 	numberColor: InkColor;
 }>;
 
-const statusMetrics: readonly StatusMetric[] = [
-	{
-		label: "Focus Stability",
-		value: 83,
-		detail: "2h 14m of uninterrupted deep-work time.",
-		signal: "Stable",
-		badgeColor: "green",
-		numberColor: "greenBright",
-	},
-	{
-		label: "Quest Queue",
-		value: 58,
-		detail: "7 mock actions sitting in the backlog.",
-		signal: "Loaded",
-		badgeColor: "yellow",
-		numberColor: "yellowBright",
-	},
-	{
-		label: "Battery Reserve",
-		value: 71,
-		detail: "Projected runtime holds for 41 more minutes.",
-		signal: "Ready",
-		badgeColor: "blue",
-		numberColor: "cyanBright",
-	},
-	{
-		label: "Comms Noise",
-		value: 34,
-		detail: "Only 2 chatter spikes hit the shell loop.",
-		signal: "Low",
-		badgeColor: "green",
-		numberColor: "magentaBright",
-	},
-];
-
 type StatusPanelProps = Readonly<{
 	width: number;
-	operatorName: string;
+	quote: Quote;
+	metrics: readonly StatusMetric[];
 }>;
 
-export default function StatusPanel({ width, operatorName }: StatusPanelProps) {
+export default function StatusPanel({
+	width,
+	quote,
+	metrics,
+}: StatusPanelProps) {
 	const progressWidth = Math.max(width - 2, 18);
 
 	return (
 		<Box flexDirection="column" width={width}>
 			<Text color="yellowBright">STATUS BOARD</Text>
-			<Text color="gray">{`Operator ${operatorName}. Mock telemetry, quick bars, clear reads.`}</Text>
+			<Text color="gray">{`"${quote.quote}" - ${quote.author}`}</Text>
 
-			{statusMetrics.map((metric) => (
+			{metrics.map((metric) => (
 				<Box key={metric.label} flexDirection="column" marginTop={1}>
 					<Box justifyContent="space-between">
 						<Text color="whiteBright">{metric.label}</Text>
