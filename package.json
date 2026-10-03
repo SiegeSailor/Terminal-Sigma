@@ -74,6 +74,9 @@
 	"lint-staged": {
 		"*": [
 			"prettier --write --ignore-unknown"
+		],
+		"*.{js,mts,ts,tsx}": [
+			"xo"
 		]
 	}
 }
