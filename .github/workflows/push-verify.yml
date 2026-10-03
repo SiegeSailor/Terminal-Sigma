@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: "push: Verify"
+run-name: "push: Verify ${{ github.ref_name }}@${{ github.sha }} by @${{ github.actor }}"
+
+on:
+  push:
+    paths:
+      - .github/actions/**
+      - .github/workflows/push-verify.yml
+      - .npmrc
+      - .nvmrc
+      - "*.config.*"
+      - package-lock.json
+      - package.json
+      - source/**
+      - tsconfig.json
+
+concurrency:
+  group: push-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Commits, Format, Lint, and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Lint commit messages
+        uses: opensource-nepal/commitlint@v1
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-workspace
+
+      - name: Run Prettier, xo, and AVA
+        run: npm test
