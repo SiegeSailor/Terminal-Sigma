@@ -1,11 +1,8 @@
 const config = {
-	extensions: {
-		ts: "module",
-		tsx: "module",
-	},
-	nodeArguments: ["--loader=ts-node/esm"],
+	files: ["source/tests/**/*.test.ts", "source/tests/**/*.test.tsx"],
 	typescript: {
 		compile: "tsc",
+		extensions: ["ts", "tsx"],
 		rewritePaths: {
 			"source/": "build/",
 		},
