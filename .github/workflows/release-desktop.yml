@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: "release: Desktop"
+run-name: "release: Desktop ${{ inputs.tag || github.event.workflow_run.head_sha }} by @${{ github.actor }}"
+
+# Runs after "main: Release" and attaches the desktop apps to the release it cut.
+# A manual run rebuilds the apps of an existing tag, e.g. after a failed upload.
+on:
+  workflow_run:
+    workflows: ["main: Release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag, e.g. v1.1.0
+        required: true
+
+concurrency:
+  group: release-desktop
+  cancel-in-progress: false
+
+jobs:
+  desktop:
+    name: Build and Attach ${{ matrix.name }}
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            runner: macos-latest
+            target: --mac
+          - name: Windows
+            runner: windows-latest
+            target: --win
+          - name: Linux
+            runner: ubuntu-latest
+            target: --linux
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      # Semantic Release tags its own version commit, the child of the verified one.
+      - name: Find the release tag
+        id: release
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          tag="${INPUT_TAG:-$(git tag --contains "${HEAD_SHA}" --sort=v:refname | head -n 1)}"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          if [ -z "${tag}" ]; then
+            echo "no release cut from ${HEAD_SHA}" >> "${GITHUB_STEP_SUMMARY}"
+          else
+            git checkout --quiet "${tag}"
+          fi
+
+      - name: Setup workspace
+        if: steps.release.outputs.tag != ''
+        uses: ./.github/actions/setup-workspace
+
+      - name: Install desktop dependencies
+        if: steps.release.outputs.tag != ''
+        run: npm ci --prefix desktop
+
+      - name: Build the desktop app
+        if: steps.release.outputs.tag != ''
+        shell: bash
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: npm run dist --prefix desktop -- ${{ matrix.target }} "-c.extraMetadata.version=${TAG#v}"
+
+      - name: Attach the app to the release
+        if: steps.release.outputs.tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          shopt -s nullglob
+          files=(desktop/release/Terminal-Sigma-*.{dmg,exe,AppImage})
+          gh release upload "${TAG}" "${files[@]}" --clobber
+          printf -- "- %s\n" "${files[@]##*/}" >> "${GITHUB_STEP_SUMMARY}"

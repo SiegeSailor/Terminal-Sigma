@@ -10,6 +10,7 @@ on:
       - .npmrc
       - .nvmrc
       - "*.config.*"
+      - desktop/**
       - package-lock.json
       - package.json
       - source/**
@@ -21,7 +22,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Commits, Format, Lint, and Test
+    name: Commits, Format, Lint, Test, and Bundle
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -40,3 +41,9 @@ jobs:
 
       - name: Run Prettier, xo, and AVA
         run: npm test
+
+      - name: Install desktop dependencies
+        run: npm ci --prefix desktop
+
+      - name: Type-check and bundle the desktop app
+        run: npm run bundle --prefix desktop

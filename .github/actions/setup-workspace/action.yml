@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://json.schemastore.org/github-action.json
 name: Setup workspace
-description: Install the pinned Node.js and the dependencies from the lockfile.
+description: Install the pinned Node.js and the root dependencies from the lockfile.
 
 # Both workflows need this, so the setup-node inputs live here and nowhere else.
 # Checkout cannot move in with them: the runner reads this file out of the
@@ -13,7 +13,9 @@ runs:
       with:
         node-version-file: .nvmrc
         cache: npm
-        cache-dependency-path: package-lock.json
+        cache-dependency-path: |
+          package-lock.json
+          desktop/package-lock.json
 
     - name: Install dependencies
       shell: bash
