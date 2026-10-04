@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			http-equiv="Content-Security-Policy"
+			content="default-src 'self'; style-src 'self' 'unsafe-inline'"
+		/>
+		<title>Terminal Sigma</title>
+		<link rel="stylesheet" href="dist/renderer.css" />
+		<style>
+			html,
+			body {
+				height: 100%;
+				margin: 0;
+				background: #1e1e1e;
+			}
+
+			/* The fit addon measures #terminal itself, so the padding stays outside it. */
+			body {
+				box-sizing: border-box;
+				padding: 8px;
+			}
+
+			#terminal {
+				height: 100%;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="terminal"></div>
+		<script src="dist/renderer.js"></script>
+	</body>
+</html>
