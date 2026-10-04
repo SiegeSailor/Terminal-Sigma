@@ -11,15 +11,25 @@ test("keeps the input panel and adds panels as the terminal grows", (t) => {
 	t.like(layoutOf(100, 24), {
 		showCharacter: true,
 		showToday: false,
-		panelWidth: 74,
+		panelWidth: 72,
 	});
-	t.like(layoutOf(100, 40), { showToday: true, todayBeside: false });
+	t.like(layoutOf(100, 40), {
+		showToday: true,
+		isTodayCompact: true,
+		todayBeside: false,
+	});
+	t.like(layoutOf(160, 40), { isTodayCompact: false, showRecent: true });
+	t.like(layoutOf(160, 20), { isTodayCompact: true, showRecent: false });
 	t.like(layoutOf(60, 24), {
 		showCharacter: false,
 		showToday: false,
 		stacked: true,
 		panelWidth: 60,
-		menuColumns: 2,
+		menuColumns: 1,
 	});
-	t.like(layoutOf(40, 60), { showCharacter: true, menuColumns: 1 });
+	t.like(layoutOf(40, 60), {
+		showCharacter: true,
+		showToday: true,
+		menuColumns: 1,
+	});
 });

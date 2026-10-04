@@ -19,6 +19,7 @@ type TodayPanelProps = Readonly<{
 	title: string;
 	sections: readonly Section[];
 	width: number;
+	isCompact?: boolean;
 }>;
 
 function Bar({ metric, width }: Readonly<{ metric: Metric; width: number }>) {
@@ -34,14 +35,17 @@ function Bar({ metric, width }: Readonly<{ metric: Metric; width: number }>) {
 	);
 }
 
+// A blank row between metrics, unless the terminal is too short for one.
 export default function TodayPanel({
 	title,
 	sections,
 	width,
+	isCompact = false,
 }: TodayPanelProps) {
 	const palette = usePalette();
-	// Border and padding take 4 columns, and " 100%" takes 5.
-	const barWidth = Math.max(width - 9, 4);
+	const gap = isCompact ? 0 : 1;
+	// Border and padding take 6 columns, and " 100%" takes 5.
+	const barWidth = Math.max(width - 11, 4);
 
 	return (
 		<Box
@@ -49,7 +53,8 @@ export default function TodayPanel({
 			borderStyle="round"
 			flexDirection="column"
 			flexShrink={0}
-			paddingX={1}
+			paddingX={2}
+			paddingY={gap}
 			width={width}
 		>
 			<Text bold>{title}</Text>
@@ -57,7 +62,8 @@ export default function TodayPanel({
 				<Box
 					key={section.title ?? `section-${index}`}
 					flexDirection="column"
-					marginTop={index === 0 ? 0 : 1}
+					gap={gap}
+					marginTop={index === 0 ? gap : gap + 1}
 				>
 					{section.title ? (
 						<Text bold color={palette.soft}>

@@ -24,21 +24,25 @@ import {
 import { quoteRefreshMinutes } from "./quotes.js";
 import type { Palette, ThemeName } from "./theme.js";
 
-export const characterWidth = 26;
+export const characterWidth = 28;
 
-// Header and footer take 5 rows. The character panel is 18 rows tall, Today
-// 17, and the menu with its recent logs at least 16.
+// Header and footer take 5 rows. The character panel is 19 rows tall, Today
+// 25 with its spacing or 16 compact, the menu about 11, and Recent 7.
 const chromeRows = 5;
-const characterRows = 18;
-const todayRows = 17;
-const panelRows = 16;
+const characterRows = 19;
+const todayRows = 25;
+const compactTodayRows = 16;
+const menuRows = 11;
+const recentRows = 7;
 
 export type Layout = Readonly<{
 	panelWidth: number;
 	todayWidth: number;
 	menuColumns: number;
 	showCharacter: boolean;
+	showRecent: boolean;
 	showToday: boolean;
+	isTodayCompact: boolean;
 	todayBeside: boolean;
 	stacked: boolean;
 }>;
@@ -48,12 +52,14 @@ export function layoutOf(columns: number, rows: number): Layout {
 	const menuColumnsOf = (panelWidth: number) => {
 		const inner = panelWidth - 4;
 
-		if (inner >= 90) {
+		if (inner >= 96) {
 			return 3;
 		}
 
-		return inner >= 52 ? 2 : 1;
+		return inner >= 60 ? 2 : 1;
 	};
+
+	const showRecent = rows >= chromeRows + menuRows + recentRows;
 
 	if (columns >= 120) {
 		const panelWidth = Math.floor((columns - characterWidth) / 2);
@@ -62,7 +68,9 @@ export function layoutOf(columns: number, rows: number): Layout {
 			todayWidth: columns - characterWidth - panelWidth,
 			menuColumns: menuColumnsOf(panelWidth),
 			showCharacter: true,
+			showRecent,
 			showToday: true,
+			isTodayCompact: rows < chromeRows + todayRows,
 			todayBeside: true,
 			stacked: false,
 		};
@@ -75,18 +83,23 @@ export function layoutOf(columns: number, rows: number): Layout {
 			todayWidth: columns,
 			menuColumns: menuColumnsOf(panelWidth),
 			showCharacter: true,
-			showToday: rows >= chromeRows + characterRows + todayRows,
+			showRecent,
+			showToday: rows >= chromeRows + characterRows + compactTodayRows,
+			isTodayCompact: rows < chromeRows + characterRows + todayRows,
 			todayBeside: false,
 			stacked: false,
 		};
 	}
 
+	const aboveToday = chromeRows + menuRows + recentRows + characterRows;
 	return {
 		panelWidth: columns,
 		todayWidth: columns,
 		menuColumns: menuColumnsOf(columns),
-		showCharacter: rows >= chromeRows + panelRows + characterRows,
-		showToday: rows >= chromeRows + panelRows + characterRows + todayRows,
+		showCharacter: rows >= aboveToday,
+		showRecent,
+		showToday: rows >= aboveToday + compactTodayRows,
+		isTodayCompact: rows < aboveToday + todayRows,
 		todayBeside: false,
 		stacked: true,
 	};

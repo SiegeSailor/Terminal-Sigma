@@ -74,7 +74,9 @@ export default function MenuGrid({
 								>
 									{`${isSelected ? "❯" : " "} ${index + 1}. ${item.label}`}
 								</Text>
-								<Text dimColor>{item.signal}</Text>
+								<Box flexShrink={0} marginLeft={1}>
+									<Text dimColor>{item.signal}</Text>
+								</Box>
 							</Box>
 						);
 					})}
