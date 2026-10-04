@@ -1,456 +1,80 @@
-import { Badge } from "@inkjs/ui";
 import React from "react";
-import { Box, Text } from "ink";
-
-type InkColor = React.ComponentProps<typeof Text>["color"];
-type BadgeColor = "blue" | "green" | "yellow" | "red";
-
-const beltShape = String.raw` /_\ `;
-const visorCrest = String.raw` /^\ `;
-const hoodCrest = String.raw` /~\ `;
-const backslash = String.raw`\ `.trimEnd();
-const walkStride = `/ ${backslash}`;
-
-export type ArmorOption = "scout-weave" | "carbon-shell" | "bulwark-plate";
-export type WeaponOption = "arc-blade" | "pulse-rifle" | "signal-staff";
-export type HelmetOption = "signal-visor" | "horned-guard" | "hood-shell";
-export type BackpackOption = "field-pack" | "cargo-rig" | "reactor-pack";
+import { Box, Text, useAnimation } from "ink";
+import {
+	type Activity,
+	animationOf,
+	composeFrame,
+	paletteOf,
+	toSegments,
+} from "../pixel-art.js";
+import { colors, spinnerFrames } from "../theme.js";
 
 type CharacterProps = Readonly<{
-	width: number;
 	name: string;
-	level: number;
-}>;
-
-type SpriteSegment = Readonly<{
-	key: string;
-	text: string;
-	color?: InkColor;
-}>;
-
-type LoadoutDisplay = Readonly<{
+	level: string;
+	levelNumber: number;
+	activity: Activity;
 	label: string;
-	color: InkColor;
+	width: number;
 }>;
 
-type ArmorDisplay = LoadoutDisplay &
-	Readonly<{
-		chest: string;
-		belt: string;
-	}>;
-
-type WeaponDisplay = LoadoutDisplay &
-	Readonly<{
-		top: string;
-		middle: string;
-		bottom: string;
-	}>;
-
-type HelmetDisplay = LoadoutDisplay &
-	Readonly<{
-		crest: string;
-		frameLeft: string;
-		frameRight: string;
-	}>;
-
-type BackpackDisplay = LoadoutDisplay &
-	Readonly<{
-		top: string;
-		middle: string;
-		bottom: string;
-	}>;
-
-type AnimationFrame = Readonly<{
-	mode: "walk" | "talk" | "guard";
-	leftArm: string;
-	rightArm: string;
-	legs: string;
-	expression: string;
-	callout: string;
-}>;
-
-type AnimationMode = AnimationFrame["mode"];
-
-type SpriteRowProps = Readonly<{
-	indent: number;
-	segments: readonly SpriteSegment[];
-}>;
-
-type LoadoutRowProps = Readonly<{
-	label: string;
-	value: string;
-	color: InkColor;
-}>;
-
-const armorOptions: Record<ArmorOption, ArmorDisplay> = {
-	"scout-weave": {
-		label: "Scout Weave",
-		color: "greenBright",
-		chest: "|=^=|",
-		belt: beltShape,
-	},
-	"carbon-shell": {
-		label: "Carbon Shell",
-		color: "yellowBright",
-		chest: "|###|",
-		belt: beltShape,
-	},
-	"bulwark-plate": {
-		label: "Bulwark Plate",
-		color: "cyanBright",
-		chest: "|*#*|",
-		belt: beltShape,
-	},
-};
-
-const weaponOptions: Record<WeaponOption, WeaponDisplay> = {
-	"arc-blade": {
-		label: "Arc Blade",
-		color: "magentaBright",
-		top: " /",
-		middle: "==>",
-		bottom: ` ${backslash}`,
-	},
-	"pulse-rifle": {
-		label: "Pulse Rifle",
-		color: "redBright",
-		top: " _",
-		middle: "-|>",
-		bottom: " /",
-	},
-	"signal-staff": {
-		label: "Signal Staff",
-		color: "blueBright",
-		top: " *",
-		middle: " |",
-		bottom: " |",
-	},
-};
-
-const helmetOptions: Record<HelmetOption, HelmetDisplay> = {
-	"signal-visor": {
-		label: "Signal Visor",
-		color: "cyanBright",
-		crest: visorCrest,
-		frameLeft: "[",
-		frameRight: "]",
-	},
-	"horned-guard": {
-		label: "Horned Guard",
-		color: "yellowBright",
-		crest: `/^^${backslash}`,
-		frameLeft: "{",
-		frameRight: "}",
-	},
-	"hood-shell": {
-		label: "Hood Shell",
-		color: "magentaBright",
-		crest: hoodCrest,
-		frameLeft: "<",
-		frameRight: ">",
-	},
-};
-
-const backpackOptions: Record<BackpackOption, BackpackDisplay> = {
-	"field-pack": {
-		label: "Field Pack",
-		color: "greenBright",
-		top: "[]",
-		middle: "[]",
-		bottom: "[]",
-	},
-	"cargo-rig": {
-		label: "Cargo Rig",
-		color: "yellowBright",
-		top: "{}",
-		middle: "{}",
-		bottom: "{}",
-	},
-	"reactor-pack": {
-		label: "Reactor Pack",
-		color: "cyanBright",
-		top: "()",
-		middle: "()",
-		bottom: "()",
-	},
-};
-
-const animationFrames: readonly AnimationFrame[] = [
-	{
-		mode: "walk",
-		leftArm: "/",
-		rightArm: "-",
-		legs: walkStride,
-		expression: "o_o",
-		callout: "Stride calibrated.",
-	},
-	{
-		mode: "walk",
-		leftArm: "<",
-		rightArm: backslash,
-		legs: "| /",
-		expression: "o_o",
-		callout: "Route locked.",
-	},
-	{
-		mode: "talk",
-		leftArm: "/",
-		rightArm: "^",
-		legs: walkStride,
-		expression: "o-o",
-		callout: "Telemetry sounds clean.",
-	},
-	{
-		mode: "talk",
-		leftArm: "/",
-		rightArm: "~",
-		legs: walkStride,
-		expression: "o_o",
-		callout: "Backlog pressure nominal.",
-	},
-	{
-		mode: "guard",
-		leftArm: "/",
-		rightArm: backslash,
-		legs: walkStride,
-		expression: "o_o",
-		callout: "Holding formation.",
-	},
-];
-
-// Weakest first. One slot upgrades per level from level 2, then every 4 levels per slot.
-const weaponTiers: readonly WeaponOption[] = [
-	"signal-staff",
-	"pulse-rifle",
-	"arc-blade",
-];
-const armorTiers: readonly ArmorOption[] = [
-	"scout-weave",
-	"carbon-shell",
-	"bulwark-plate",
-];
-const helmetTiers: readonly HelmetOption[] = [
-	"hood-shell",
-	"signal-visor",
-	"horned-guard",
-];
-const backpackTiers: readonly BackpackOption[] = [
-	"field-pack",
-	"cargo-rig",
-	"reactor-pack",
-];
-
-const tierOf = <Option,>(
-	tiers: readonly Option[],
-	level: number,
-	slot: number,
-): Option => {
-	const tier = Math.floor((level - 2 - slot) / 4) + 1;
-	const option = tiers[Math.min(Math.max(tier, 0), tiers.length - 1)];
-
-	if (option === undefined) {
-		throw new Error("Character gear tiers are required.");
-	}
-
-	return option;
-};
-
-export const loadoutOf = (level: number) => ({
-	weapon: tierOf(weaponTiers, level, 0),
-	armor: tierOf(armorTiers, level, 1),
-	helmet: tierOf(helmetTiers, level, 2),
-	backpack: tierOf(backpackTiers, level, 3),
-});
-
-const modeBadgeColor: Record<AnimationMode, BadgeColor> = {
-	walk: "blue",
-	talk: "green",
-	guard: "yellow",
-};
-
-const modeLabel: Record<AnimationMode, string> = {
-	walk: "WALK",
-	talk: "TALK",
-	guard: "GUARD",
-};
-
-const calloutColor: Record<AnimationMode, InkColor> = {
-	walk: "cyanBright",
-	talk: "magentaBright",
-	guard: "yellowBright",
-};
-
-function SpriteRow({ indent, segments }: SpriteRowProps) {
-	return (
-		<Box marginLeft={indent}>
-			{segments.map((segment) => (
-				<Text key={segment.key} color={segment.color}>
-					{segment.text}
-				</Text>
-			))}
-		</Box>
+export default function Character({
+	name,
+	level,
+	levelNumber,
+	activity,
+	label,
+	width,
+}: CharacterProps) {
+	const { frame } = useAnimation({ interval: animationOf(activity).interval });
+	const lines = toSegments(
+		composeFrame(activity, frame, levelNumber),
+		paletteOf(levelNumber),
 	);
-}
-
-function LoadoutRow({ label, value, color }: LoadoutRowProps) {
-	return (
-		<Box justifyContent="space-between">
-			<Text color="gray">{label}</Text>
-			<Text color={color}>{value}</Text>
-		</Box>
-	);
-}
-
-export default function Character({ width, name, level }: CharacterProps) {
-	const [frameIndex, setFrameIndex] = React.useState(0);
-
-	React.useEffect(() => {
-		const interval = setInterval(() => {
-			setFrameIndex((current) => (current + 1) % animationFrames.length);
-		}, 240);
-
-		return () => {
-			clearInterval(interval);
-		};
-	}, []);
-
-	const fallbackFrame = animationFrames[0];
-
-	if (!fallbackFrame) {
-		throw new Error("Character animation frames are required.");
-	}
-
-	const frame = animationFrames[frameIndex] ?? fallbackFrame;
-	const { armor, weapon, helmet, backpack } = loadoutOf(level);
-	const armorView = armorOptions[armor];
-	const weaponView = weaponOptions[weapon];
-	const helmetView = helmetOptions[helmet];
-	const backpackView = backpackOptions[backpack];
-	const face = `${helmetView.frameLeft}${frame.expression}${helmetView.frameRight}`;
-	const spriteWidth = 13;
-	const contentWidth = Math.max(width - 4, spriteWidth);
-	const indent = Math.max(Math.floor((contentWidth - spriteWidth) / 2), 0);
+	const spinner =
+		activity === "idle" ? "·" : spinnerFrames[frame % spinnerFrames.length];
 
 	return (
 		<Box
+			borderColor={colors.border}
 			borderStyle="round"
-			borderColor="cyan"
 			flexDirection="column"
 			paddingX={1}
-			paddingY={1}
 			width={width}
 		>
 			<Box justifyContent="space-between">
-				<Text color="whiteBright">{`${name}  LV ${level}`}</Text>
-				<Badge color={modeBadgeColor[frame.mode]}>
-					{modeLabel[frame.mode]}
-				</Badge>
+				<Text bold wrap="truncate-end">
+					{name}
+				</Text>
+				<Text color={colors.accent}>{level}</Text>
 			</Box>
-			<Text color="gray">Gear unlocks as you level</Text>
-			<Box marginTop={1}>
-				<Text color={calloutColor[frame.mode]}>{`"${frame.callout}"`}</Text>
+			<Box
+				alignItems="center"
+				flexDirection="column"
+				flexGrow={1}
+				justifyContent="center"
+			>
+				{lines.map((line, row) => (
+					// Rows and runs are positional by nature: a sprite never reorders.
+					// eslint-disable-next-line react/no-array-index-key
+					<Box key={row}>
+						{line.map((segment, column) => (
+							<Text
+								// eslint-disable-next-line react/no-array-index-key
+								key={column}
+								backgroundColor={segment.backgroundColor}
+								color={segment.color}
+							>
+								{segment.text}
+							</Text>
+						))}
+					</Box>
+				))}
 			</Box>
-
-			<Box flexDirection="column" marginTop={1}>
-				<SpriteRow
-					indent={indent}
-					segments={[
-						{ key: "indent", text: "  " },
-						{
-							key: "crest",
-							text: helmetView.crest,
-							color: helmetView.color,
-						},
-					]}
-				/>
-				<SpriteRow
-					indent={indent}
-					segments={[
-						{
-							key: "pack-top",
-							text: backpackView.top,
-							color: backpackView.color,
-						},
-						{ key: "face-gap", text: " " },
-						{ key: "face", text: face, color: helmetView.color },
-						{
-							key: "weapon-top",
-							text: weaponView.top,
-							color: weaponView.color,
-						},
-					]}
-				/>
-				<SpriteRow
-					indent={indent}
-					segments={[
-						{
-							key: "pack-middle",
-							text: backpackView.middle,
-							color: backpackView.color,
-						},
-						{ key: "left-arm", text: frame.leftArm, color: armorView.color },
-						{ key: "chest", text: armorView.chest, color: armorView.color },
-						{
-							key: "right-arm",
-							text: frame.rightArm,
-							color: armorView.color,
-						},
-						{
-							key: "weapon-middle",
-							text: weaponView.middle,
-							color: weaponView.color,
-						},
-					]}
-				/>
-				<SpriteRow
-					indent={indent}
-					segments={[
-						{
-							key: "pack-bottom",
-							text: backpackView.bottom,
-							color: backpackView.color,
-						},
-						{ key: "belt-gap-left", text: " " },
-						{ key: "belt", text: armorView.belt, color: armorView.color },
-						{ key: "belt-gap-right", text: " " },
-						{
-							key: "weapon-bottom",
-							text: weaponView.bottom,
-							color: weaponView.color,
-						},
-					]}
-				/>
-				<SpriteRow
-					indent={indent}
-					segments={[
-						{ key: "leg-indent", text: "   " },
-						{ key: "legs", text: frame.legs },
-					]}
-				/>
-			</Box>
-
-			<Box flexDirection="column" marginTop={1}>
-				<LoadoutRow
-					label="Armor"
-					value={armorView.label}
-					color={armorView.color}
-				/>
-				<LoadoutRow
-					label="Weapon"
-					value={weaponView.label}
-					color={weaponView.color}
-				/>
-				<LoadoutRow
-					label="Helmet"
-					value={helmetView.label}
-					color={helmetView.color}
-				/>
-				<LoadoutRow
-					label="Backpack"
-					value={backpackView.label}
-					color={backpackView.color}
-				/>
-			</Box>
+			<Text
+				color={colors.accent}
+				wrap="truncate-end"
+			>{`${spinner} ${label}`}</Text>
 		</Box>
 	);
 }
