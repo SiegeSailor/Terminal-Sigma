@@ -35,6 +35,17 @@ npm start
 TERMINAL_SIGMA_HOME="$(mktemp -d)" npm start
 ```
 
+### Desktop App
+
+The desktop app in [`desktop/`](../desktop/) is its own NPM package that bundles `source/` from the root's `node_modules`, so install the root first. Its constraints are in [`desktop/CLAUDE.md`](../desktop/CLAUDE.md):
+
+```shell
+npm ci --prefix desktop
+npm start --prefix desktop
+```
+
+`npm start --prefix desktop` downloads Electron once, then opens the window. `npm run dist --prefix desktop` packages the app for your system into `desktop/release/`.
+
 ## Branching Strategy
 
 This repository follows a simple [GitHub Flow](https://docs.github.com/en/get-started/using-github/github-flow), and Semantic Release cuts a release from `main`:
@@ -44,7 +55,7 @@ This repository follows a simple [GitHub Flow](https://docs.github.com/en/get-st
 | `feature-<name>` |         | `main`       | `main`   |
 | `main`           | `#.#.#` |              |          |
 
-Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), and the type decides the release: `feat` publishes a minor version, `fix` a patch, and the rest publish nothing.
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), and the type decides the release: `feat` publishes a minor version, `fix` a patch, and the rest publish nothing. The CLI and the desktop app share 1 version.
 
 ## Commands
 
@@ -80,6 +91,8 @@ flowchart LR
   F --> I[/Git tag/]
   F --> G[/Release notes/]
   F --> K[/Version commit/]
+  F --> D[[release-desktop.yml]]
+  D --> L[/macOS, Windows, and Linux apps on the release/]
 ```
 
 Publishing needs the `NPM_ACCESS_TOKEN` repository secret: a granular NPM token with read and write access that bypasses 2FA. NPM caps these at 90 days, so replace it when a release fails with 401 or 404:
