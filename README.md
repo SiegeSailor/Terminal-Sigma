@@ -6,17 +6,17 @@
 [![main: Release](https://github.com/SiegeSailor/Terminal-Sigma/actions/workflows/main-release.yml/badge.svg)](https://github.com/SiegeSailor/Terminal-Sigma/actions/workflows/main-release.yml)
 [![release: Desktop](https://github.com/SiegeSailor/Terminal-Sigma/actions/workflows/release-desktop.yml/badge.svg)](https://github.com/SiegeSailor/Terminal-Sigma/actions/workflows/release-desktop.yml)
 
-Terminal-Sigma is a terminal-based application that gives game-style feedback on your self-development journey. Though it is a CLI, it is meant to stay open: it fills the terminal, updates in real time, and is operated through menus rather than commands. It speaks English and Traditional Chinese, and it features 5 main components:
+Terminal-Sigma is a terminal-based application that gives game-style feedback on your self-development journey. Though it is a CLI, it is meant to stay open: it fills the terminal, updates in real time, and is operated through menus rather than commands. It speaks English, Traditional Chinese, and Korean, and it features 5 main components:
 
 | Component             | What It Does                                                                                                  |
 | --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Character Progression | A pixel-art character that levels up with you, unlocks gear, and acts out what you are doing                  |
-| Diet Tracker          | Logs each meal step by step, with its calories and protein, against a daily goal of 3 meals                   |
+| Character Progression | A hooded pixel-art wanderer that levels up with you, unlocks gear, and acts out what you are doing            |
 | Everyday Quotes       | An inspiring quote that refreshes every 30 minutes, on restart, or on demand                                  |
+| Health                | Your meals and workouts against daily targets worked out from your profile, with advice for the rest of today |
+| Logs                  | Every focus, meal, and workout you logged, with the latest 4 always on the menu                               |
 | Tomato Timer          | A Pomodoro timer: 25 minutes of focus, then a 5-minute break, against a daily goal of 4 focus sessions        |
-| Workout Tracker       | Logs each workout step by step, with its activity, minutes, and intensity, against a daily goal of 30 minutes |
 
-Underneath, your journey is written to the local file `~/.terminal-sigma/progress.json`. There is no plan to support logging at this point, and we chose JSON as a readable format, so that you can port it easily.
+Underneath, your journey and your settings are written to the local file `~/.terminal-sigma/progress.json`. There is no plan to support logging at this point, and we chose JSON as a readable format, so that you can port it easily.
 
 ## Installation
 
@@ -50,7 +50,7 @@ Download the file for your system from the [latest release](https://github.com/S
 > xattr -dr com.apple.quarantine "/Applications/Terminal Sigma.app"
 > ```
 
-The desktop app opens the dashboard in its own window, sends a system notification when a focus or break ends, and uses the default options below.
+The desktop app opens the dashboard in its own window, sends a system notification when a focus or break ends, and uses your profile's name and the default timer options below.
 
 ## Usage
 
@@ -62,26 +62,39 @@ siegesailor-terminal-sigma --name "Ken"
 
 On the first run, it asks for your language and saves the answer in `progress.json`; change it at any time from **Language** in the menu. Every option has a default:
 
-| Option          | Default      | Description                        |
-| --------------- | ------------ | ---------------------------------- |
-| `--break <min>` | `5`          | Minutes of each Tomato Timer break |
-| `--focus <min>` | `25`         | Minutes of each Tomato Timer focus |
-| `--name <name>` | `Rook Sigma` | The name of your character         |
+| Option          | Default                              | Description                        |
+| --------------- | ------------------------------------ | ---------------------------------- |
+| `--break <min>` | `5`                                  | Minutes of each Tomato Timer break |
+| `--focus <min>` | `25`                                 | Minutes of each Tomato Timer focus |
+| `--name <name>` | Your profile's name, or `Rook Sigma` | The name of your character         |
 
 ### Menu
 
-The menu at the bottom drives everything, and Enter opens an item:
+The menu drives everything, and Enter opens an item:
 
-| Item            | Enter Does                                                                 |
-| --------------- | -------------------------------------------------------------------------- |
-| Diet Tracker    | Asks for the food, its calories, and its protein, one at a time            |
-| Everyday Quotes | Draws a new quote                                                          |
-| Language        | Switches between English and Traditional Chinese                           |
-| Logs            | Lists every focus, meal, and workout, newest first, with a filter per kind |
-| Tomato Timer    | Starts a focus, or pauses, resumes, or stops the running one               |
-| Workout Tracker | Asks for the activity, its minutes, and its intensity, one at a time       |
+| Item            | Enter Does                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| Everyday Quotes | Draws a new quote                                                                                  |
+| Health          | Shows today's targets and advice, then logs a meal or a workout                                    |
+| Language        | Switches between English, Traditional Chinese, and Korean                                          |
+| Logs            | Lists every focus, meal, and workout, newest first, with a filter per kind                         |
+| Profile         | Asks for your name, age, height, weight, gender, work style, and health goal, showing saved values |
+| Theme           | Picks the color tone of the dashboard and your character: Dusk, Ember, Frost, Mono, or Moss        |
+| Tomato Timer    | Starts a focus, or pauses, resumes, or stops the running one                                       |
 
-A stopped focus earns nothing. While you log a meal or a workout, the character eats, runs, lifts, or stretches to match, and it celebrates when you level up.
+A meal asks for the food, its calories, and its protein; a workout asks for the activity, its minutes, and its intensity, one at a time. A stopped focus earns nothing. While you log, the character eats, runs, lifts, or stretches to match, and it celebrates when you level up.
+
+### Health Targets
+
+The Health group works out 3 daily targets from your profile, in metric units, and falls back to 2,000 kcal, 50 g of protein, and 30 minutes of exercise until you fill it in:
+
+| Target   | How It Is Worked Out                                                                                                      |
+| -------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Calories | The Mifflin-St Jeor resting rate, times 1.2 to 1.725 by work style, then 500 less to lose fat or 200 to 300 more to build |
+| Exercise | 30 minutes to stay healthy, 45 to lose fat or build muscle, and 60 to build endurance                                     |
+| Protein  | 1.0 to 2.0 g per kg of body weight by goal, plus up to 0.3 g for a physical job, never above 2.2 g                        |
+
+The targets are general guidance for healthy adults, not medical advice.
 
 ### Keys
 
@@ -89,7 +102,7 @@ Every view shows its keys at the bottom right:
 
 | Key                       | Action                                                    |
 | ------------------------- | --------------------------------------------------------- |
-| `1` to `6`                | Jump to a menu item                                       |
+| `1` to `7`                | Jump to a menu item                                       |
 | Arrows or `h` `j` `k` `l` | Move through the menu, a list, or the log filters         |
 | Enter                     | Open the item, choose the option, or go to the next field |
 | Esc                       | Go back to the menu without logging anything              |
@@ -108,11 +121,21 @@ Both are optional:
 
 ## Progress File
 
-`progress.json` holds your language and what you logged. Your experience, level, and daily progress are worked out from it every time, so editing the file by hand can never put them out of sync:
+`progress.json` holds your settings and what you logged. Your experience, level, and daily progress are worked out from it every time, so editing the file by hand can never put them out of sync:
 
 ```json
 {
 	"language": "en",
+	"theme": "ember",
+	"profile": {
+		"name": "Ken",
+		"age": 30,
+		"height": 175,
+		"weight": 70,
+		"gender": "male",
+		"workStyle": "desk",
+		"goal": "buildMuscle"
+	},
 	"focus": [{ "at": "2026-10-03T09:00:00.000Z", "minutes": 25 }],
 	"meals": [
 		{
@@ -133,7 +156,19 @@ Both are optional:
 }
 ```
 
-`language` is `en` or `zh-TW`. A workout's `activity` is one of `cycling`, `other`, `running`, `strength`, `swimming`, `walking`, or `yoga`, and its `intensity` is `light`, `moderate`, or `vigorous`. Files written by version 1 still load as they are.
+Each setting takes 1 of a fixed set of values:
+
+| Field                | Values                                                                      |
+| -------------------- | --------------------------------------------------------------------------- |
+| `language`           | `en`, `ko`, or `zh-TW`                                                      |
+| `profile.gender`     | `female`, `male`, or `other`                                                |
+| `profile.goal`       | `buildMuscle`, `endurance`, `loseFat`, or `maintain`                        |
+| `profile.workStyle`  | `active`, `athlete`, `desk`, or `standing`                                  |
+| `theme`              | `dusk`, `ember`, `frost`, `mono`, or `moss`                                 |
+| `workouts.activity`  | `cycling`, `other`, `running`, `strength`, `swimming`, `walking`, or `yoga` |
+| `workouts.intensity` | `light`, `moderate`, or `vigorous`                                          |
+
+Every setting is optional, and files written by version 1 still load as they are.
 
 Every 100 XP is a level, and every level from level 2 to level 9 upgrades 1 piece of your character's gear. Experience is earned as follows:
 
