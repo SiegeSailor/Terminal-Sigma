@@ -10,10 +10,10 @@ Terminal-Sigma is a terminal-based application that gives game-style feedback on
 
 | Component             | What It Does                                                                                                  |
 | --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Character Progression | A hooded pixel-art wanderer that levels up with you, unlocks gear, and acts out what you are doing            |
+| Character Progression | A pixel-art you, shaped by your profile and dressed by your level, who walks around and acts out what you do  |
 | Everyday Quotes       | An inspiring quote that refreshes every 30 minutes, on restart, or on demand                                  |
 | Health                | Your meals and workouts against daily targets worked out from your profile, with advice for the rest of today |
-| Logs                  | Every focus, meal, and workout you logged, with the latest 4 always on the menu                               |
+| Logs                  | Every focus, meal, and workout you logged, with the latest 4 in a Recent block next to the menu               |
 | Tomato Timer          | A Pomodoro timer: 25 minutes of focus, then a 5-minute break, against a daily goal of 4 focus sessions        |
 
 Underneath, your journey and your settings are written to the local file `~/.terminal-sigma/progress.json`. There is no plan to support logging at this point, and we chose JSON as a readable format, so that you can port it easily.
@@ -79,10 +79,19 @@ The menu drives everything, and Enter opens an item:
 | Language        | Switches between English, Traditional Chinese, and Korean                                          |
 | Logs            | Lists every focus, meal, and workout, newest first, with a filter per kind                         |
 | Profile         | Asks for your name, age, height, weight, gender, work style, and health goal, showing saved values |
-| Theme           | Picks the color tone of the dashboard and your character: Dusk, Ember, Frost, Mono, or Moss        |
+| Theme           | Picks the color tone of the dashboard and your character, previewing each one as the cursor moves  |
 | Tomato Timer    | Starts a focus, or pauses, resumes, or stops the running one                                       |
 
 A meal asks for the food, its calories, and its protein; a workout asks for the activity, its minutes, and its intensity, one at a time. A stopped focus earns nothing. While you log, the character eats, runs, lifts, or stretches to match, and it celebrates when you level up.
+
+### Character
+
+Your character is a pixel-art you that walks around its panel, pauses to look about, and switches to typing, eating, sipping coffee, running, lifting, or stretching to match what you do. 2 things shape it:
+
+| Shaped By | What Changes                                                                                                                       |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Level     | 1 piece of equipment per level up to level 9: headphones, a smartwatch, a hoodie, a jacket, a cap, a crown, a backpack, and a cape |
+| Profile   | The height follows yours, the build follows your weight for that height, and the hair and silhouette follow your gender            |
 
 ### Health Targets
 
