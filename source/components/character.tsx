@@ -2,8 +2,9 @@ import React from "react";
 import { Box, Text, useAnimation } from "ink";
 import {
 	type Activity,
-	animationOf,
-	composeFrame,
+	type Body,
+	composeScene,
+	intervalOf,
 	paletteOf,
 	toSegments,
 } from "../pixel-art.js";
@@ -14,6 +15,7 @@ type CharacterProps = Readonly<{
 	level: string;
 	levelNumber: number;
 	activity: Activity;
+	body: Body;
 	label: string;
 	width: number;
 }>;
@@ -23,14 +25,22 @@ export default function Character({
 	level,
 	levelNumber,
 	activity,
+	body,
 	label,
 	width,
 }: CharacterProps) {
 	const palette = usePalette();
-	const { frame } = useAnimation({ interval: animationOf(activity).interval });
+	const { frame } = useAnimation({ interval: intervalOf(activity) });
+	// Border and padding take 4 columns; the rest is the stage it walks on.
 	const lines = toSegments(
-		composeFrame(activity, frame, levelNumber),
-		paletteOf(levelNumber, palette),
+		composeScene({
+			activity,
+			counter: frame,
+			level: levelNumber,
+			body,
+			width: width - 4,
+		}),
+		paletteOf(palette),
 	);
 
 	return (
@@ -48,12 +58,7 @@ export default function Character({
 				</Text>
 				<Text color={palette.accent}>{level}</Text>
 			</Box>
-			<Box
-				alignItems="center"
-				flexDirection="column"
-				flexGrow={1}
-				justifyContent="center"
-			>
+			<Box flexDirection="column" flexGrow={1} justifyContent="flex-end">
 				{lines.map((line, row) => (
 					// Rows and runs are positional by nature: a sprite never reorders.
 					// eslint-disable-next-line react/no-array-index-key

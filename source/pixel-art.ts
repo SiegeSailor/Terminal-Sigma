@@ -1,27 +1,10 @@
+import type { Gender } from "./i18n.js";
 import type { Palette } from "./theme.js";
 
-// The character is a 20x28 pixel canvas, facing right. Each terminal cell draws
-// 2 stacked pixels with "▀", foreground for the top and background for the bottom.
-export const spriteWidth = 20;
-export const spriteHeight = 28;
-
-// Rows start at column `x`; "." is transparent. Upper layers move when the
-// character breathes, while the legs stay planted.
-type Layer = Readonly<{
-	x: number;
-	y: number;
-	rows: readonly string[];
-	upper?: boolean;
-}>;
-
-type Frame = Readonly<{
-	legs: Layer;
-	behind?: readonly Layer[];
-	front?: readonly Layer[];
-	dy?: number;
-	breathe?: boolean;
-	blink?: boolean;
-}>;
+// The character stands on a stage as wide as its panel and 30 pixels tall.
+// Each terminal cell draws 2 stacked pixels with "▀", foreground for the top
+// and background for the bottom, so the stage takes 15 rows.
+export const stageHeight = 30;
 
 export type Activity =
 	| "idle"
@@ -33,533 +16,755 @@ export type Activity =
 	| "stretch"
 	| "levelUp";
 
-const layer = (x: number, y: number, ...rows: string[]): Layer => ({
-	x,
-	y,
-	rows,
-});
-const upper = (x: number, y: number, ...rows: string[]): Layer => ({
-	x,
-	y,
-	rows,
-	upper: true,
-});
+export type Build = "slim" | "average" | "broad";
+export type Body = Readonly<{ height: number; build: Build; gender: Gender }>;
 
-const hood = upper(
-	0,
-	2,
-	"......kkkk",
-	"....kkHHHHkk",
-	"..kkHHHHHHHhk",
-	"kkHHHHHHHHhffk",
-	"..kHHHHHHhffEfk",
-	"...kHHHHHhfffk",
-	"....khhHHhffk",
-	"....kkkkkkkk",
-);
-const neckScarf = upper(4, 10, "kSSSSSSSk", ".ksSSSsk");
-const torso = upper(
-	4,
-	12,
-	".kCCCCCCk",
-	".kcCCCCCCk",
-	".kcCCCCCCk",
-	".kcCCCCCk",
-	".knnnnNnk",
-	"kcCCkCCCCk",
-	"kcCk.kCCCk",
-	".kk...kkk",
-);
-const pauldron = upper(8, 11, "kaak", ".aaak", ".AAk");
-
-const tails = [
-	upper(0, 10, "sSSS", "SS..", "s..."),
-	upper(0, 9, "s...", ".SSS", "..sS"),
-	upper(0, 10, "..SS", ".SSs", "Ss.."),
-	upper(0, 10, "SSSS", "ssss"),
-] as const;
-const [tailA, tailB, tailC, tailStream] = tails;
-
-const hangingArm = upper(10, 14, "cck", "cck", "cck", "mm");
-const standingLegs = layer(
-	5,
-	19,
-	".kpk.kpk",
-	".kPk.kppk",
-	".kPk.kppk",
-	".kPk.kppk",
-	".kPk.kppk",
-	".kbk.kbbk",
-	"kbbk.kbbbk",
-	"kkkk.kkkkk",
-);
-
-const stride = (back: string, front: string) =>
-	layer(
-		1,
-		19,
-		`.....k${back}${back}${front}${front}k`,
-		`....k${back}k..k${front}${front}k`,
-		`...k${back}k....k${front}${front}k`,
-		`..k${back}k......k${front}k`,
-		".kbk.......kpk",
-		"kbk........kbbk",
-		"kk.........kkkk",
-	);
-const passing = (raised: string, planted: string) =>
-	layer(
-		4,
-		19,
-		`..k${raised}${planted}${planted}k`,
-		`.kbk${planted}${planted}k`,
-		`kbbkk${planted}k`,
-		`.kk.k${planted}${planted}k`,
-		`....k${planted}k`,
-		"....kbbk",
-		"....kbbbk",
-		"....kkkkk",
-	);
-const runLegs = [
-	stride("P", "p"),
-	passing("P", "p"),
-	stride("p", "P"),
-	passing("p", "P"),
-] as const;
-const armForward = upper(10, 13, "cc..", ".cck", "..mm");
-const armBack = upper(7, 13, "..cc", ".cc.", "mm..");
-const speedLines = [
-	layer(0, 14, "vv", "", "", "", "v", "", "", "vv"),
-	layer(0, 15, "v", "", "", "vv", "", "", "", "v"),
-] as const;
-
-const table = layer(
-	12,
-	18,
-	"xxxxxxxx",
-	"......x.",
-	"......x.",
-	"......x.",
-	"......x.",
-	"......x.",
-	"......x.",
-	".....xxx",
-);
-const laptop = layer(
-	13,
-	12,
-	"....lL",
-	"....lL",
-	"....lL",
-	"....lL",
-	"....lL",
-	"LLLLLL",
-);
-const typing = [
-	upper(10, 13, "cc..", ".cc.", "..cm", "...m"),
-	upper(10, 13, "cc..", ".cc.", "..cm", "..m."),
-] as const;
-const codeBits = [
-	layer(14, 9, "y", "", "..y", "", ".y"),
-	layer(14, 7, ".y", "", "y", "", "..y"),
-	layer(15, 5, "y", "", ".y", "", "y"),
-	layer(14, 3, "..y", "", "y", "", ".y"),
-] as const;
-
-const cupLow = upper(10, 13, "cc..", ".ccm", "..QQ", "..Qo");
-const cupRaised = upper(
-	10,
-	6,
-	"...QQ",
-	"...Qo",
-	"..cm.",
-	".cc..",
-	".cc..",
-	".cc..",
-);
-const steam = [
-	layer(12, 12, ".v", "v.", ".v"),
-	layer(12, 11, "v.", ".v", "v."),
-	layer(14, 3, "v", ".v"),
-] as const;
-
-const appleAtMouth = upper(
-	10,
-	5,
-	"...G.",
-	"...FF",
-	"...FF",
-	"..cm.",
-	".cc..",
-	".cc..",
-	".cc..",
-);
-const appleInHand = upper(10, 13, "cc...", ".cmF.", "..FFG");
-const bitten = upper(10, 13, "cc...", ".cmF.", "..F.G");
-
-const dumbbellUp = upper(
-	13,
-	0,
-	"DDD",
-	"DdD",
-	"DDD",
-	".m.",
-	".c.",
-	".c.",
-	".c.",
-	".c.",
-	".c.",
-	".c.",
-	".c.",
-	".c.",
-	"cc.",
-);
-const dumbbellRacked = upper(13, 8, "DDD", "DdD", "DDD", ".m.", ".c.", "cc.");
-const sweat = [layer(16, 6, "u"), layer(16, 8, "u")] as const;
-
-const reachUp = upper(
-	13,
-	1,
-	".m",
-	".c",
-	".c",
-	".c",
-	".c",
-	".c",
-	".c",
-	".c",
-	".c",
-	".c",
-	".c",
-	"cc",
-);
-const reachForward = upper(10, 13, "ccccc", "....cmm");
-
-const swordRaised = upper(
-	13,
-	0,
-	".t.",
-	".t.",
-	".t.",
-	".t.",
-	"ggg",
-	".m.",
-	".c.",
-	".c.",
-	".c.",
-	".c.",
-	".c.",
-	".c.",
-	"cc.",
-);
-const sparkles = [
-	layer(0, 1, ".y..........y", "", "", "", "", "", "y.................y"),
-	layer(0, 3, "y.................y", "", "", "", "", "..y...........y"),
-] as const;
-
-const breathing = (legs: Layer, front: Layer[]): Frame[] => [
-	{ legs, behind: [tailA], front },
-	{ legs, behind: [tailB], front },
-	{ legs, behind: [tailC], front, breathe: true },
-	{ legs, behind: [tailB], front, breathe: true },
-	{ legs, behind: [tailA], front },
-	{ legs, behind: [tailB], front, blink: true },
-	{ legs, behind: [tailC], front, breathe: true },
-	{ legs, behind: [tailB], front, breathe: true },
-];
-
-const animations: Record<Activity, { interval: number; frames: Frame[] }> = {
-	idle: {
-		interval: 220,
-		frames: breathing(standingLegs, [hangingArm]),
-	},
-	focus: {
-		interval: 160,
-		frames: codeBits.map((bits, index) => ({
-			legs: standingLegs,
-			behind: [index % 2 === 0 ? tailA : tailB, table],
-			front: [laptop, typing[index % 2] ?? hangingArm, bits],
-			breathe: index >= 2,
-		})),
-	},
-	break: {
-		interval: 380,
-		frames: [
-			{ legs: standingLegs, behind: [tailA], front: [cupLow, steam[0]] },
-			{
-				legs: standingLegs,
-				behind: [tailB],
-				front: [cupLow, steam[1]],
-				breathe: true,
-			},
-			{
-				legs: standingLegs,
-				behind: [tailC],
-				front: [cupLow, steam[0]],
-				breathe: true,
-			},
-			{
-				legs: standingLegs,
-				behind: [tailB],
-				front: [cupRaised, steam[2]],
-				blink: true,
-			},
-			{
-				legs: standingLegs,
-				behind: [tailA],
-				front: [cupRaised, steam[2]],
-				blink: true,
-			},
-			{ legs: standingLegs, behind: [tailB], front: [cupLow, steam[1]] },
-		],
-	},
-	eat: {
-		interval: 300,
-		frames: [
-			{ legs: standingLegs, behind: [tailA], front: [appleInHand] },
-			{ legs: standingLegs, behind: [tailB], front: [appleAtMouth] },
-			{
-				legs: standingLegs,
-				behind: [tailC],
-				front: [appleAtMouth],
-				breathe: true,
-			},
-			{ legs: standingLegs, behind: [tailB], front: [bitten], breathe: true },
-		],
-	},
-	run: {
-		interval: 110,
-		frames: runLegs.map((legs, index) => ({
-			legs,
-			behind: [tailStream, speedLines[index % 2] ?? tailStream],
-			front: [index % 2 === 0 ? armForward : armBack],
-			dy: index % 2 === 0 ? 0 : -1,
-		})),
-	},
-	lift: {
-		interval: 420,
-		frames: [
-			{ legs: standingLegs, behind: [tailA], front: [dumbbellRacked] },
-			{
-				legs: standingLegs,
-				behind: [tailB],
-				front: [dumbbellUp, sweat[0]],
-				dy: -1,
-			},
-			{
-				legs: standingLegs,
-				behind: [tailC],
-				front: [dumbbellUp, sweat[1]],
-				dy: -1,
-			},
-			{
-				legs: standingLegs,
-				behind: [tailB],
-				front: [dumbbellRacked],
-				breathe: true,
-			},
-		],
-	},
-	stretch: {
-		interval: 520,
-		frames: [
-			{ legs: standingLegs, behind: [tailA], front: [reachUp], dy: -1 },
-			{ legs: standingLegs, behind: [tailB], front: [reachUp], dy: -1 },
-			{
-				legs: standingLegs,
-				behind: [tailC],
-				front: [reachForward],
-				breathe: true,
-			},
-			{
-				legs: standingLegs,
-				behind: [tailB],
-				front: [reachForward],
-				breathe: true,
-			},
-		],
-	},
-	levelUp: {
-		interval: 160,
-		frames: sparkles.flatMap((burst, index) => [
-			{
-				legs: standingLegs,
-				behind: [tailStream],
-				front: [swordRaised, burst],
-				dy: -1,
-			},
-			{
-				legs: standingLegs,
-				behind: [index === 0 ? tailA : tailC],
-				front: [swordRaised, burst],
-			},
-		]),
-	},
+export const defaultBody: Body = {
+	height: 23,
+	build: "average",
+	gender: "other",
 };
 
-export const animationOf = (activity: Activity) => animations[activity];
+// 145 cm draws 20 pixels tall and 205 cm 26; the build follows the BMI.
+export function bodyOf(
+	profile:
+		| Readonly<{ height: number; weight: number; gender: Gender }>
+		| undefined,
+): Body {
+	if (!profile) {
+		return defaultBody;
+	}
 
-// Each gear slot upgrades once from level 2 and again 4 levels later, staggered
-// so every level from 2 to 9 changes exactly 1 piece.
+	const bmi = profile.weight / (profile.height / 100) ** 2;
+	let build: Build = "average";
+
+	if (bmi < 20) {
+		build = "slim";
+	} else if (bmi >= 27) {
+		build = "broad";
+	}
+
+	return {
+		height: Math.min(
+			Math.max(Math.round(20 + (profile.height - 145) / 10), 20),
+			26,
+		),
+		build,
+		gender: profile.gender,
+	};
+}
+
+// Each equipment slot upgrades once from level 2 and again 4 levels later,
+// staggered so every level from 2 to 9 changes exactly 1 piece.
 export const gearOf = (level: number) => {
 	const tier = (slot: number) =>
 		Math.min(Math.max(Math.floor((level - 2 - slot) / 4) + 1, 0), 2);
 
-	return { weapon: tier(0), armor: tier(1), hood: tier(2), relic: tier(3) };
+	return { gadget: tier(0), top: tier(1), headwear: tier(2), back: tier(3) };
 };
 
-const weapons: readonly Layer[] = [
-	upper(2, 13, ".g.", "xxx", ".W.", ".W.", ".W.", ".W.", ".W.", ".w."),
-	upper(
-		2,
-		11,
-		".g.",
-		".g.",
-		"xxx",
-		".w.",
-		".W.",
-		".W.",
-		".W.",
-		".W.",
-		".W.",
-		".W.",
-		".W.",
-		".w.",
-	),
-	upper(
-		1,
-		10,
-		"..t",
-		"..g",
-		".xxx",
-		".tw",
-		".tw",
-		".tw",
-		".tw",
-		".tw",
-		".tw",
-		".tw",
-		".tw",
-		".tw",
-		"..t",
-	),
-];
-const hoods: readonly Layer[] = [
-	upper(0, 0, ""),
-	upper(4, 4, "SSSSSSS"),
-	upper(4, 0, ".Y....Y", ".YY..YY"),
-];
-// The relic is a companion orb that bobs beside the character.
-const relics: ReadonlyArray<(bob: number) => Layer[]> = [
-	() => [],
-	(bob) => [layer(17, 4 + bob, "t")],
-	(bob) => [layer(16, 3 + bob, ".y.", "ytt", ".tt")],
-];
-const orbBob = [0, 0, 1, 1] as const;
+type Gear = ReturnType<typeof gearOf>;
+type Point = readonly [number, number];
 
-const armorColors = [
-	["#6B4A35", "#4A3324"],
-	["#A3ACB8", "#6A7380"],
-	["#D9B45A", "#9C7A2E"],
-] as const;
+type Dims = Readonly<{
+	legWidth: number;
+	frontHip: number;
+	backHip: number;
+	legs: number;
+	torso: number;
+	left: number;
+	right: number;
+	shoulder: number;
+	neck: number;
+	arm: number;
+}>;
 
-export function paletteOf(
-	level: number,
-	palette: Palette,
-): ReadonlyMap<string, string> {
-	const gear = gearOf(level);
-	const [armor, armorShade] = armorColors[gear.armor] ?? armorColors[0];
+const widthOf: Record<Build, number> = { slim: 4, average: 5, broad: 6 };
+
+const dimsOf = (body: Body): Dims => {
+	// Shoes, neck, a 4-row head, and its top row take 7 of the height.
+	const span = body.height - 7;
+	const torso = Math.round(span * 0.4);
+	const legs = span - torso;
+	const width = widthOf[body.build];
+	const legWidth = body.build === "broad" ? 3 : 2;
+	const right = Math.floor(width / 2) - 1;
+
+	return {
+		legWidth,
+		frontHip: right - legWidth + 1,
+		backHip: -Math.ceil(width / 2),
+		legs,
+		torso,
+		left: -Math.ceil(width / 2),
+		right: Math.floor(width / 2) - 1,
+		shoulder: legs + torso,
+		neck: legs + torso + 1,
+		arm: torso - 1,
+	};
+};
+
+// A pose in local coordinates: x grows toward where the character faces, y
+// grows up from the ground. Hands are relative to their shoulders.
+type Pose = Readonly<{
+	front: Point;
+	back: Point;
+	frontHand: Point;
+	backHand: Point;
+	lift?: number;
+	bob?: number;
+	blink?: boolean;
+}>;
+
+type Draw = (put: (x: number, y: number, key: string) => void, d: Dims) => void;
+
+type Scene = Readonly<{
+	x: number;
+	facing: 1 | -1;
+	pose: (d: Dims) => Pose;
+	props?: Draw[];
+}>;
+
+const pointsOf = ([x0, y0]: Point, [x1, y1]: Point): Point[] => {
+	const points: Point[] = [];
+	const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+
+	for (let step = 0; step <= steps; step++) {
+		points.push([
+			Math.round(x0 + ((x1 - x0) * step) / steps),
+			Math.round(y0 + ((y1 - y0) * step) / steps),
+		]);
+	}
+
+	return points;
+};
+
+// Feet are relative to their own hip.
+const standing = (d: Dims, hand: Point = [0, -d.arm]): Pose => ({
+	front: [0, 0],
+	back: [0, 0],
+	frontHand: hand,
+	backHand: [-1, -d.arm],
+});
+
+const walkFeet: ReadonlyArray<[Point, Point]> = [
+	[
+		[2, 0],
+		[-1, 0],
+	],
+	[
+		[0, 0],
+		[0, 1],
+	],
+	[
+		[-3, 0],
+		[4, 0],
+	],
+	[
+		[-2, 1],
+		[2, 0],
+	],
+];
+const runFeet: ReadonlyArray<[Point, Point]> = [
+	[
+		[3, 1],
+		[-2, 2],
+	],
+	[
+		[0, 0],
+		[0, 3],
+	],
+	[
+		[-4, 2],
+		[5, 1],
+	],
+	[
+		[-2, 3],
+		[2, 0],
+	],
+];
+
+const stride = (
+	d: Dims,
+	feet: ReadonlyArray<[Point, Point]>,
+	step: number,
+	swing: number,
+	lift = 0,
+): Pose => {
+	const [front, back] = feet[step % feet.length] ?? [
+		[0, 0],
+		[0, 0],
+	];
+	const sway = step % 2 === 0 ? swing : 0;
+	const direction = step % 4 < 2 ? -1 : 1;
+
+	return {
+		front,
+		back,
+		frontHand: [direction * sway, -d.arm + (sway ? 1 : 0)],
+		backHand: [-direction * sway, -d.arm + (sway ? 1 : 0)],
+		lift: step % 2 === 1 ? lift : 0,
+	};
+};
+
+const sparkle =
+	(points: Point[]): Draw =>
+	(put) => {
+		for (const [x, y] of points) {
+			put(x, y, "y");
+		}
+	};
+
+const desk: Draw = (put, d) => {
+	const top = d.legs + 1;
+
+	for (let x = 3; x <= 9; x++) {
+		put(x, top, "x");
+	}
+
+	for (let y = 0; y < top; y++) {
+		put(8, y, "x");
+	}
+
+	for (let x = 4; x <= 7; x++) {
+		put(x, top + 1, "L");
+	}
+
+	for (let y = top + 2; y <= top + 5; y++) {
+		put(6, y, "l");
+		put(7, y, "L");
+	}
+};
+
+const cup =
+	(at: (d: Dims) => Point, steamStep?: number): Draw =>
+	(put, d) => {
+		const [x, y] = at(d);
+		put(x, y, "Q");
+		put(x + 1, y, "Q");
+		put(x, y + 1, "o");
+		put(x + 1, y + 1, "Q");
+
+		if (steamStep !== undefined) {
+			const sway = steamStep % 2;
+			put(x + sway, y + 3, "v");
+			put(x + 1 - sway, y + 4, "v");
+		}
+	};
+
+const apple =
+	(at: (d: Dims) => Point, bitten = false): Draw =>
+	(put, d) => {
+		const [x, y] = at(d);
+		put(x, y, "F");
+		put(x + 1, y, bitten ? "." : "F");
+		put(x, y + 1, "F");
+		put(x + 1, y + 1, "F");
+		put(x + 1, y + 2, "G");
+	};
+
+const dumbbell =
+	(at: (d: Dims) => Point): Draw =>
+	(put, d) => {
+		const [x, y] = at(d);
+		put(x, y - 1, "D");
+		put(x, y, "d");
+		put(x, y + 1, "D");
+	};
+
+const shoulderOf = (d: Dims): Point => [d.right, d.shoulder];
+const handAt = (d: Dims, [dx, dy]: Point): Point => [
+	d.right + dx,
+	d.shoulder + dy,
+];
+
+// Where the character stands and what it does on every tick of `counter`.
+function sceneOf(activity: Activity, counter: number, width: number): Scene {
+	const home = 6;
+	const minimum = 5;
+	const maximum = Math.max(width - 7, minimum + 1);
+	const span = maximum - minimum;
+
+	switch (activity) {
+		case "idle": {
+			// Wander: pause, walk across, pause and look around, walk back.
+			const pause = 8;
+			const cycle = 2 * (pause + span);
+			const tick = counter % cycle;
+			const breathe = (d: Dims, at: number): Pose => ({
+				...standing(d),
+				bob: Math.floor(at / 2) % 2,
+				blink: at % pause === 5,
+			});
+
+			if (tick < pause) {
+				return {
+					x: minimum,
+					facing: tick === 3 || tick === 4 ? -1 : 1,
+					pose: (d) => breathe(d, tick),
+				};
+			}
+
+			if (tick < pause + span) {
+				const step = tick - pause;
+				return {
+					x: minimum + step,
+					facing: 1,
+					pose: (d) => stride(d, walkFeet, step, 1),
+				};
+			}
+
+			if (tick < 2 * pause + span) {
+				const at = tick - pause - span;
+				return {
+					x: maximum,
+					facing: at === 3 || at === 4 ? 1 : -1,
+					pose: (d) => breathe(d, at),
+				};
+			}
+
+			const step = tick - 2 * pause - span;
+			return {
+				x: maximum - step,
+				facing: -1,
+				pose: (d) => stride(d, walkFeet, step, 1),
+			};
+		}
+
+		case "run": {
+			// Laps across the panel, 2 pixels a tick.
+			const lap = Math.max(Math.ceil(span / 2), 1);
+			const tick = counter % (2 * lap);
+			const forward = tick < lap;
+			const step = forward ? tick : tick - lap;
+
+			return {
+				x: forward
+					? Math.min(minimum + step * 2, maximum)
+					: Math.max(maximum - step * 2, minimum),
+				facing: forward ? 1 : -1,
+				pose: (d) => stride(d, runFeet, counter, 2, 1),
+				props: [
+					sparkle(
+						counter % 2 === 0
+							? [
+									[-6, 6],
+									[-7, 9],
+								]
+							: [
+									[-7, 7],
+									[-6, 10],
+								],
+					),
+				],
+			};
+		}
+
+		case "focus": {
+			const step = counter % 4;
+			return {
+				x: home,
+				facing: 1,
+				pose: (d) => ({
+					...standing(d),
+					frontHand: [4 - d.right + (step % 2), d.legs + 2 - d.shoulder],
+					backHand: [3 - d.right, d.legs + 2 - d.shoulder],
+					bob: step < 2 ? 0 : 1,
+				}),
+				props: [
+					desk,
+					(put, d) => {
+						const top = d.legs + 7;
+						put(6 + (step % 3), top + step, "y");
+						put(8 - (step % 2), top + ((step + 2) % 4), "y");
+					},
+				],
+			};
+		}
+
+		case "break": {
+			const step = counter % 6;
+			const sipping = step >= 4;
+			const hand = (d: Dims): Point =>
+				sipping ? [2, d.neck + 1 - d.shoulder] : [2, -d.arm + 2];
+
+			return {
+				x: home,
+				facing: 1,
+				pose: (d) => ({
+					...standing(d, hand(d)),
+					bob: step % 2,
+					blink: sipping,
+				}),
+				props: [
+					cup(
+						(d) => {
+							const [x, y] = handAt(d, hand(d));
+							return [x + 1, y];
+						},
+						sipping ? undefined : step,
+					),
+				],
+			};
+		}
+
+		case "eat": {
+			const step = counter % 4;
+			const atMouth = step === 1 || step === 2;
+			const hand = (d: Dims): Point =>
+				atMouth ? [2, d.neck + 1 - d.shoulder] : [2, -d.arm + 2];
+
+			return {
+				x: home,
+				facing: 1,
+				pose: (d) => ({ ...standing(d, hand(d)), bob: step === 2 ? 1 : 0 }),
+				props: [
+					apple((d) => {
+						const [x, y] = handAt(d, hand(d));
+						return [x + 1, y];
+					}, step === 3),
+				],
+			};
+		}
+
+		case "lift": {
+			const step = counter % 4;
+			const hand = (d: Dims): Point =>
+				step === 2 ? [1, d.arm] : [2, step === 0 ? -d.arm + 3 : 1];
+
+			return {
+				x: home,
+				facing: 1,
+				pose: (d) => ({
+					...standing(d, hand(d)),
+					backHand: [-1, -d.arm],
+					bob: step % 2,
+				}),
+				props: [dumbbell((d) => handAt(d, hand(d)))],
+			};
+		}
+
+		case "stretch": {
+			const step = counter % 4;
+			const up = step < 2;
+
+			return {
+				x: home,
+				facing: 1,
+				pose: (d) => ({
+					...standing(d, up ? [step, d.arm] : [d.arm, step - 2]),
+					backHand: up ? [-step, d.arm] : [d.arm - 1, step - 3],
+					bob: step % 2,
+				}),
+			};
+		}
+
+		case "levelUp": {
+			const step = counter % 4;
+			const lift = [0, 2, 3, 1][step] ?? 0;
+
+			return {
+				x: home,
+				facing: 1,
+				pose: (d) => ({ ...standing(d, [1, d.arm]), lift }),
+				props: [
+					sparkle(
+						step % 2 === 0
+							? [
+									[-5, 20],
+									[5, 22],
+									[-6, 12],
+									[6, 14],
+								]
+							: [
+									[-6, 22],
+									[6, 20],
+									[-5, 14],
+									[5, 12],
+								],
+					),
+				],
+			};
+		}
+	}
+}
+
+export const intervalOf = (activity: Activity): number =>
+	({
+		idle: 200,
+		focus: 180,
+		break: 380,
+		eat: 300,
+		run: 110,
+		lift: 400,
+		stretch: 480,
+		levelUp: 160,
+	})[activity];
+
+// How many ticks one loop of an activity takes on a stage of `width`.
+export function cycleOf(activity: Activity, width: number): number {
+	const walk = Math.max(width - 7, 6) - 5;
+
+	if (activity === "idle") {
+		return 2 * (8 + walk);
+	}
+
+	if (activity === "run") {
+		return 2 * Math.max(Math.ceil(walk / 2), 1);
+	}
+
+	return activity === "break" ? 6 : 4;
+}
+
+type Put = (x: number, y: number, key: string) => void;
+
+// Everything a painter needs; `upper` follows the breathing, `put` stays planted.
+type Paint = Readonly<{
+	put: Put;
+	upper: Put;
+	d: Dims;
+	body: Body;
+	gear: Gear;
+	pose: Pose;
+	counter: number;
+}>;
+
+const span = (put: Put, from: number, to: number, y: number, key: string) => {
+	for (let x = from; x <= to; x++) {
+		put(x, y, key);
+	}
+};
+
+function paintArm(
+	{ upper, gear }: Paint,
+	shoulder: Point,
+	hand: Point,
+	isFront: boolean,
+) {
+	const points = pointsOf(shoulder, [
+		shoulder[0] + hand[0],
+		shoulder[1] + hand[1],
+	]);
+	const sleeve = gear.top === 0 ? "U" : "c";
+	const skin = isFront ? "s" : "q";
+
+	for (const [index, [x, y]] of points.entries()) {
+		const isHand = index === points.length - 1;
+		const isBare = gear.top === 0 && index >= 2;
+		upper(x, y, isHand || isBare ? skin : sleeve);
+	}
+
+	const wrist = points.at(-2);
+
+	if (isFront && gear.gadget === 2 && wrist && points.length > 2) {
+		upper(wrist[0], wrist[1], "t");
+	}
+}
+
+// Behind the body: a cape that flares and ripples, or a backpack.
+function paintBack({ upper, d, gear, counter }: Paint) {
+	if (gear.back === 2) {
+		for (let row = 0; row <= d.torso + 3; row++) {
+			const flare = Math.floor(row / 3) + ((counter + row) % 4 < 2 ? 0 : 1);
+			upper(d.left - 1 - flare, d.shoulder - row, "z");
+			span(upper, d.left - flare, d.left, d.shoulder - row, "S");
+		}
+	} else if (gear.back === 1) {
+		for (let row = 1; row <= 5; row++) {
+			upper(d.left - 1, d.shoulder - row, row === 1 ? "B" : "b");
+			upper(d.left - 2, d.shoulder - row, "b");
+		}
+	}
+}
+
+function paintLegs({ put, d, pose }: Paint) {
+	const leg = (hip: number, foot: Point, pants: string, shoe: string) => {
+		const footX = hip + foot[0];
+
+		for (const [x, y] of pointsOf([hip, d.legs], [footX, foot[1] + 1])) {
+			span(put, x, x + d.legWidth - 1, y, pants);
+		}
+
+		span(put, footX, footX + d.legWidth, foot[1], shoe);
+	};
+
+	leg(d.backHip, pose.back, "P", "W");
+	leg(d.frontHip, pose.front, "p", "w");
+}
+
+// Men carry width at the shoulders, women at the hips.
+function paintTorso({ upper, d, body, gear }: Paint) {
+	const [coat, shade] = gear.top === 0 ? ["T", "U"] : ["C", "c"];
+
+	for (let row = 0; row < d.torso; row++) {
+		const narrowed =
+			(body.gender === "female" && row >= d.torso - 2) ||
+			(body.gender === "male" && row < 2);
+		const left = d.left + (narrowed ? 1 : 0);
+		upper(left, d.legs + 1 + row, shade);
+		span(upper, left + 1, d.right, d.legs + 1 + row, coat);
+	}
+
+	if (gear.top === 1) {
+		span(upper, d.left, d.left + 1, d.shoulder + 1, shade);
+	} else if (gear.top === 2) {
+		for (let row = 0; row < d.torso; row++) {
+			upper(d.right, d.legs + 1 + row, "S");
+		}
+
+		upper(d.right - 1, d.shoulder, "S");
+	}
+}
+
+// Facing forward, with the hair at the back of the head.
+function paintHead({ upper, d, body, pose }: Paint) {
+	const n = d.neck;
+	span(upper, -1, 0, n, "q");
+
+	for (let row = 1; row <= 4; row++) {
+		span(upper, -1, 1, n + row, "s");
+		upper(-2, n + row, "h");
+	}
+
+	upper(2, n + 2, "s");
+	upper(1, n + 3, pose.blink ? "s" : "e");
+	span(upper, -2, 1, n + 5, "h");
+	upper(-1, n + 4, "h");
+
+	if (body.gender === "female") {
+		for (let y = n - 2; y <= n + 4; y++) {
+			upper(-3, y, "h");
+		}
+
+		span(upper, -2, -2, n - 1, "h");
+		upper(-2, n, "h");
+		upper(0, n + 4, "h");
+	} else if (body.gender === "other") {
+		for (let y = n + 1; y <= n + 3; y++) {
+			upper(-3, y, "h");
+		}
+	}
+}
+
+// Headphones go on first, so a cap or a crown sits over their band.
+function paintHeadgear({ upper, d, gear }: Paint) {
+	const n = d.neck;
+
+	if (gear.gadget === 1) {
+		upper(-2, n, "S");
+		upper(1, n, "S");
+	} else if (gear.gadget === 2) {
+		span(upper, -2, 1, n + 5, "k");
+		upper(-1, n + 2, "S");
+		upper(-1, n + 3, "S");
+	}
+
+	if (gear.headwear === 1) {
+		span(upper, -2, 1, n + 5, "S");
+		span(upper, -2, 0, n + 6, "S");
+		span(upper, 2, 3, n + 5, "z");
+	} else if (gear.headwear === 2) {
+		span(upper, -2, 1, n + 6, "g");
+		upper(-2, n + 7, "g");
+		upper(0, n + 7, "g");
+		upper(-1, n + 6, "t");
+	}
+}
+
+function drawCharacter(paint: Paint) {
+	const { d, pose } = paint;
+	paintBack(paint);
+	paintArm(paint, [d.left + 1, d.shoulder], pose.backHand, false);
+	paintLegs(paint);
+	paintTorso(paint);
+	paintHead(paint);
+	paintHeadgear(paint);
+	paintArm(paint, shoulderOf(d), pose.frontHand, true);
+}
+
+export function paletteOf(palette: Palette): ReadonlyMap<string, string> {
 	const { cloak, cloakShade, scarf, scarfShade, glow } = palette.sprite;
 
 	return new Map([
-		["A", armorShade],
-		["a", armor],
-		["b", "#3B2D25"],
+		["B", "#3E3226"],
+		["b", "#5A4632"],
 		["C", cloak],
 		["c", cloakShade],
 		["D", "#50555F"],
 		["d", "#8A8F99"],
-		["E", glow],
+		["e", "#2B2B2B"],
 		["F", "#C8473F"],
-		["f", "#241F2B"],
 		["G", "#5F8F4E"],
-		["g", "#B8913A"],
-		["H", cloak],
-		["h", cloakShade],
-		["k", "#15121A"],
+		["g", "#D9B45A"],
+		["h", "#6B4A2E"],
+		["k", "#2B2B2B"],
 		["L", "#4A505B"],
 		["l", glow],
-		["m", "#C99272"],
-		["N", armor],
-		["n", "#4A3628"],
 		["o", "#5A3A25"],
-		["P", "#23252F"],
-		["p", "#2E3140"],
+		["P", "#3E6870"],
+		["p", "#4F8189"],
 		["Q", "#E6E0D4"],
+		["q", "#C99872"],
 		["S", scarf],
-		["s", scarfShade],
+		["s", "#E2B48C"],
+		["T", "#DCD7CC"],
 		["t", glow],
-		["u", "#8FC6E8"],
+		["U", "#B4AE9F"],
 		["v", "#9AA0A8"],
-		["W", "#8792A0"],
-		["w", "#C9D3DE"],
+		["W", "#C8C8C8"],
+		["w", "#F2F2F2"],
 		["x", "#3D414B"],
-		["Y", "#E8DCC0"],
 		["y", palette.soft],
+		["z", scarfShade],
 	]);
 }
 
-// The pixel keys of 1 frame, row by row, "." where nothing is drawn. The
-// counter keeps running across frames, so the relic bobs on its own beat.
-export function composeFrame(
-	activity: Activity,
-	counter: number,
-	level: number,
-): string[] {
-	const { frames } = animations[activity];
-	const frame = frames[counter % frames.length] ?? frames[0];
-	const gear = gearOf(level);
-	const canvas = Array.from({ length: spriteHeight }, () =>
-		Array.from({ length: spriteWidth }, () => "."),
+export type SceneInput = Readonly<{
+	activity: Activity;
+	counter: number;
+	level: number;
+	body: Body;
+	width: number;
+}>;
+
+// The pixel keys of 1 frame, row by row, "." where nothing is drawn.
+export function composeScene({
+	activity,
+	counter,
+	level,
+	body,
+	width,
+}: SceneInput): string[] {
+	const canvas = Array.from({ length: stageHeight }, () =>
+		Array.from({ length: width }, () => "."),
 	);
+	const scene = sceneOf(activity, counter, width);
+	const d = dimsOf(body);
+	const pose = scene.pose(d);
+	const lift = pose.lift ?? 0;
+	const put = (x: number, y: number, key: string) => {
+		const column = scene.x + scene.facing * x;
+		const row = canvas[stageHeight - 1 - (y + lift)];
 
-	if (!frame) {
-		return canvas.map((row) => row.join(""));
-	}
-
-	const lowerDy = frame.dy ?? 0;
-	const upperDy = lowerDy + (frame.breathe ? 1 : 0);
-	const head: Layer = frame.blink
-		? { ...hood, rows: hood.rows.map((row) => row.replaceAll("E", "f")) }
-		: hood;
-	const layers = [
-		weapons[gear.weapon],
-		...(frame.behind ?? []),
-		frame.legs,
-		torso,
-		neckScarf,
-		head,
-		hoods[gear.hood],
-		pauldron,
-		...(frame.front ?? []),
-		...(relics[gear.relic]?.(orbBob[counter % orbBob.length] ?? 0) ?? []),
-	];
-
-	for (const item of layers) {
-		if (!item) {
-			continue;
+		if (row && column >= 0 && column < width && key !== ".") {
+			row[column] = key;
 		}
+	};
 
-		const dy = item.upper ? upperDy : lowerDy;
+	drawCharacter({
+		put,
+		upper(x, y, key) {
+			put(x, y - (pose.bob ?? 0), key);
+		},
+		d,
+		body,
+		gear: gearOf(level),
+		pose,
+		counter,
+	});
 
-		for (const [offset, row] of item.rows.entries()) {
-			const target = canvas[item.y + offset + dy];
-
-			for (const [index, key] of [...row].entries()) {
-				if (target && key !== "." && item.x + index < spriteWidth) {
-					target[item.x + index] = key;
-				}
-			}
-		}
+	for (const draw of scene.props ?? []) {
+		draw(put, d);
 	}
 
 	return canvas.map((row) => row.join(""));
@@ -577,13 +782,14 @@ export function toSegments(
 	palette: ReadonlyMap<string, string>,
 ): Segment[][] {
 	const lines: Segment[][] = [];
+	const width = frame[0]?.length ?? 0;
 
 	for (let y = 0; y < frame.length; y += 2) {
 		const top = frame[y] ?? "";
 		const bottom = frame[y + 1] ?? "";
 		const line: Segment[] = [];
 
-		for (let x = 0; x < spriteWidth; x++) {
+		for (let x = 0; x < width; x++) {
 			const upperColor = palette.get(top[x] ?? ".");
 			const lowerColor = palette.get(bottom[x] ?? ".");
 			const cell: Segment =
