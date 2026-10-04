@@ -8,20 +8,21 @@ Path-scoped rules live in [`.claude/rules/`](./.claude/rules/); read the ones wh
 
 TypeScript in `source/` compiles to `build/`, which the NPM package ships. The CLI entry renders [`App`](./source/app.tsx) with Ink into the terminal, and the desktop app renders the same `App` into a window:
 
-| Path                                                                       | Contents                                                                                  |
-| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [`desktop/`](./desktop/)                                                   | The Electron wrapper, its own NPM package; see [`desktop/CLAUDE.md`](./desktop/CLAUDE.md) |
-| [`source/app.tsx`](./source/app.tsx)                                       | The dashboard: views, state, the timer, and saving                                        |
-| [`source/command-line-interface.tsx`](./source/command-line-interface.tsx) | The `bin`: parses the flags, loads the progress, and renders in the alternate screen      |
-| [`source/components/`](./source/components/)                               | Presentational Ink components that take everything they show as props                     |
-| [`source/content.ts`](./source/content.ts)                                 | The layout rules, the menu, the metrics, and the log forms                                |
-| [`source/i18n.ts`](./source/i18n.ts)                                       | Every user-facing string, in English and Traditional Chinese                              |
-| [`source/pixel-art.ts`](./source/pixel-art.ts)                             | The character sprite, its animations, and its gear                                        |
-| [`source/progress.ts`](./source/progress.ts)                               | The `progress.json` schema, loading, saving, experience, and logs                         |
-| [`source/quotes.ts`](./source/quotes.ts)                                   | The bundled quotes in both languages, and the optional API Ninjas fetch                   |
-| [`source/tests/`](./source/tests/)                                         | AVA tests, compiled and run from `build/tests/`                                           |
-| [`source/theme.ts`](./source/theme.ts)                                     | The Claude Code palette and spinner                                                       |
-| [`source/timer.ts`](./source/timer.ts)                                     | The Tomato Timer as pure functions of a timestamp                                         |
+| Path                                                                       | Contents                                                                                        |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [`desktop/`](./desktop/)                                                   | The Electron wrapper, its own NPM package; see [`desktop/CLAUDE.md`](./desktop/CLAUDE.md)       |
+| [`source/app.tsx`](./source/app.tsx)                                       | The dashboard: views, state, the timer, and saving                                              |
+| [`source/command-line-interface.tsx`](./source/command-line-interface.tsx) | The `bin`: parses the flags, loads the progress, and renders in the alternate screen            |
+| [`source/components/`](./source/components/)                               | Presentational Ink components that take everything they show as props                           |
+| [`source/content.ts`](./source/content.ts)                                 | The layout rules, the menu, the Today sections, and the forms                                   |
+| [`source/health.ts`](./source/health.ts)                                   | Daily targets and advice from the profile: calories, protein, and exercise                      |
+| [`source/i18n.ts`](./source/i18n.ts)                                       | Every user-facing string, in English, Traditional Chinese, and Korean                           |
+| [`source/pixel-art.ts`](./source/pixel-art.ts)                             | The character sprite, its animations, and its gear                                              |
+| [`source/progress.ts`](./source/progress.ts)                               | The `progress.json` schema with its settings and profile, loading, saving, experience, and logs |
+| [`source/quotes.ts`](./source/quotes.ts)                                   | The bundled quotes in all 3 languages, and the optional API Ninjas fetch                        |
+| [`source/tests/`](./source/tests/)                                         | AVA tests, compiled and run from `build/tests/`                                                 |
+| [`source/theme.ts`](./source/theme.ts)                                     | The 5 tonal themes, the palette context, and Claude Code's spinner                              |
+| [`source/timer.ts`](./source/timer.ts)                                     | The Tomato Timer as pure functions of a timestamp                                               |
 
 Logic that branches lives in the plain `.ts` modules as pure functions, so a test can call it without rendering. Components stay presentational.
 
@@ -53,7 +54,8 @@ These hold everywhere, and none may be broken on the way to finishing something 
 - **Keep Old Progress Files Loading**: A field added to the schema is optional, and a test loads a file the previous version wrote
 - **Never Bump a Version by Hand**: Semantic Release owns `version` in `package.json` and `package-lock.json`
 - **Never Commit `build/`, `desktop/dist/`, or `desktop/release/`**: They are generated, and only CI publishes them
-- **Never Hard-Code User-Facing Text**: Add it to both languages in [`i18n.ts`](./source/i18n.ts); the `Messages` type rejects a language that misses a key
+- **Never Hard-Code a Color in a Component**: Read it from `usePalette()`, so every theme recolors the whole dashboard
+- **Never Hard-Code User-Facing Text**: Add it to all 3 languages in [`i18n.ts`](./source/i18n.ts); the `Messages` type rejects a language that misses a key
 - **Never Overwrite an Unreadable `progress.json`**: `loadProgress` refuses one and `saveProgress` validates before writing. The file holds the user's whole journey
 - **Pick Commit Types Deliberately**: Every `feat` or `fix` that reaches `main` publishes a new version to NPM and a new desktop release
 
