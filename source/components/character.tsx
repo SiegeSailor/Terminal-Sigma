@@ -7,7 +7,7 @@ import {
 	paletteOf,
 	toSegments,
 } from "../pixel-art.js";
-import { colors, spinnerFrames } from "../theme.js";
+import { spinnerFrames, usePalette } from "../theme.js";
 
 type CharacterProps = Readonly<{
 	name: string;
@@ -26,27 +26,27 @@ export default function Character({
 	label,
 	width,
 }: CharacterProps) {
+	const palette = usePalette();
 	const { frame } = useAnimation({ interval: animationOf(activity).interval });
 	const lines = toSegments(
 		composeFrame(activity, frame, levelNumber),
-		paletteOf(levelNumber),
+		paletteOf(levelNumber, palette),
 	);
-	const spinner =
-		activity === "idle" ? "·" : spinnerFrames[frame % spinnerFrames.length];
 
 	return (
 		<Box
-			borderColor={colors.border}
+			borderColor={palette.border}
 			borderStyle="round"
 			flexDirection="column"
+			flexShrink={0}
 			paddingX={1}
 			width={width}
 		>
-			<Box justifyContent="space-between">
+			<Box gap={1} justifyContent="space-between">
 				<Text bold wrap="truncate-end">
 					{name}
 				</Text>
-				<Text color={colors.accent}>{level}</Text>
+				<Text color={palette.accent}>{level}</Text>
 			</Box>
 			<Box
 				alignItems="center"
@@ -71,10 +71,9 @@ export default function Character({
 					</Box>
 				))}
 			</Box>
-			<Text
-				color={colors.accent}
-				wrap="truncate-end"
-			>{`${spinner} ${label}`}</Text>
+			<Text color={palette.accent} wrap="truncate-end">
+				{`${spinnerFrames[frame % spinnerFrames.length] ?? "·"} ${label}`}
+			</Text>
 		</Box>
 	);
 }

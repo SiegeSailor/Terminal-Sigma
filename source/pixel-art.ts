@@ -1,12 +1,25 @@
-// The character is a 16x20 pixel canvas. Each terminal cell draws 2 stacked
-// pixels with "▀", foreground for the top and background for the bottom.
-export const spriteWidth = 16;
-export const spriteHeight = 20;
+import type { Palette } from "./theme.js";
 
-type Layer = Readonly<{ y: number; rows: readonly string[] }>;
+// The character is a 20x28 pixel canvas, facing right. Each terminal cell draws
+// 2 stacked pixels with "▀", foreground for the top and background for the bottom.
+export const spriteWidth = 20;
+export const spriteHeight = 28;
+
+// Rows start at column `x`; "." is transparent. Upper layers move when the
+// character breathes, while the legs stay planted.
+type Layer = Readonly<{
+	x: number;
+	y: number;
+	rows: readonly string[];
+	upper?: boolean;
+}>;
+
 type Frame = Readonly<{
-	layers: readonly Layer[];
+	legs: Layer;
+	behind?: readonly Layer[];
+	front?: readonly Layer[];
 	dy?: number;
+	breathe?: boolean;
 	blink?: boolean;
 }>;
 
@@ -20,283 +33,366 @@ export type Activity =
 	| "stretch"
 	| "levelUp";
 
-const rows = (count: number, row: string) =>
-	Array.from({ length: count }, () => row);
-
-const head: Layer = {
-	y: 2,
-	rows: [
-		"....kkkkkkkk....",
-		"...khhhhhhhhk...",
-		"..khhhhhhhhhhk..",
-		"..khsssssssshk..",
-		"..kssessssessk..",
-		"..ksrssmmssrsk..",
-		"...kssssssssk...",
-		"....kkksskkk....",
-	],
-};
-const body: Layer = {
-	y: 10,
-	rows: [
-		"...kaaaaaaaak...",
-		"...kAaaaaaaAk...",
-		"...kAaaaaaaAk...",
-		"...knnnnnnnnk...",
-		"...kppppppppk...",
-	],
-};
-const straps: Layer = { y: 10, rows: rows(3, "......P..P......") };
-const leftArm: Layer = {
-	y: 10,
-	rows: ["..kA............", "..kA............", "..ks............"],
-};
-const rightArm: Layer = {
-	y: 10,
-	rows: ["............Ak..", "............Ak..", "............sk.."],
-};
-const swingingArms: Layer = {
-	y: 10,
-	rows: ["..kA........Ak..", ".ks..........sk."],
-};
-const raisedArms: Layer = {
-	y: 3,
-	rows: [
-		".s............s.",
-		...rows(4, ".A............A."),
-		...rows(3, "..A..........A.."),
-	],
-};
-const standingLegs: Layer = {
-	y: 15,
-	rows: [
-		"....kpp..ppk....",
-		"....kpp..ppk....",
-		"....kbb..bbk....",
-		"...kbbb..bbbk...",
-	],
-};
-const stridingLegs: Layer = {
-	y: 15,
-	rows: ["....kpp..ppk....", "...kpp....ppk...", "..kbb......bbk.."],
-};
-const passingLegs: Layer = {
-	y: 15,
-	rows: [
-		".....kppppk.....",
-		"......kppk......",
-		"......kbbk......",
-		".....kbbbbk.....",
-	],
-};
-const sweat: Layer = { y: 3, rows: ["..............d."] };
-const motionLines: Layer = {
-	y: 15,
-	rows: ["vv..............", "................", "v..............."],
-};
-const laptop: Layer = {
-	y: 12,
-	rows: [
-		"..kggggggggggk..",
-		"..kggggLLggggk..",
-		"..kggggLLggggk..",
-		"..kggggggggggk..",
-		".kkkkkkkkkkkkkk.",
-	],
-};
-const typingArms = (hands: string): Layer => ({
-	y: 10,
-	rows: ["..kA........Ak..", hands],
+const layer = (x: number, y: number, ...rows: string[]): Layer => ({
+	x,
+	y,
+	rows,
 });
-const cup: Layer = {
-	y: 11,
-	rows: [".............ccc", ".............chc", ".............ccc"],
-};
-const steam = (y: number, row: string): Layer => ({ y, rows: [row] });
-const appleAtMouth: Layer = {
-	y: 6,
-	rows: [
-		".........q......",
-		".........ff.....",
-		".........ff.....",
-		"..........s.....",
-		"..........AAk...",
-	],
-};
-const appleInHand: Layer = {
-	y: 11,
-	rows: ["...............q", "..............ff", "..............ff"],
-};
-const chewing: Layer = { y: 7, rows: [".......oo......."] };
-const dumbbellsUp: Layer = {
-	y: 1,
-	rows: [
-		"GG............GG",
-		"GG............GG",
-		".s............s.",
-		...rows(6, ".A............A."),
-		"..A..........A..",
-	],
-};
-const dumbbellsDown: Layer = {
-	y: 7,
-	rows: [
-		"GG............GG",
-		"GG............GG",
-		".s............s.",
-		".AA..........AA.",
-	],
-};
-const sparkles = (top: string, y: number, bottom: string): Layer[] => [
-	{ y: 0, rows: [top] },
-	{ y, rows: [bottom] },
-];
+const upper = (x: number, y: number, ...rows: string[]): Layer => ({
+	x,
+	y,
+	rows,
+	upper: true,
+});
 
-const weapons: readonly Layer[] = [
-	{ y: 2, rows: ["..............O.", ...rows(15, "..............W.")] },
-	{ y: 4, rows: [".O..............", ...rows(11, ".G..............")] },
-	{
-		y: 0,
-		rows: [
-			...rows(11, "..............B."),
-			".............yyy",
-			"..............n.",
-			"..............n.",
-		],
-	},
-];
-const helmets: readonly Layer[][] = [
-	[
-		{
-			y: 2,
-			rows: [
-				"....HHHHHHHH....",
-				"...HHHHHHHHHH...",
-				"..HHH......HHH..",
-				...rows(3, "..HH........HH.."),
-				"...H........H...",
-			],
-		},
-	],
-	[
-		{
-			y: 1,
-			rows: ["...........V....", "....MMMMMMMM....", "...kMMMMMMMMk..."],
-		},
-		{ y: 6, rows: ["..kVVVVVVVVVVk.."] },
-	],
-	[
-		{
-			y: 0,
-			rows: [
-				".Y............Y.",
-				".YY..........YY.",
-				"..YYMMMMMMMMYY..",
-				"...kMMMMMMMMk...",
-				"..kMMMMMMMMMMk..",
-			],
-		},
-	],
-];
+const hood = upper(
+	0,
+	2,
+	"......kkkk",
+	"....kkHHHHkk",
+	"..kkHHHHHHHhk",
+	"kkHHHHHHHHhffk",
+	"..kHHHHHHhffEfk",
+	"...kHHHHHhfffk",
+	"....khhHHhffk",
+	"....kkkkkkkk",
+);
+const neckScarf = upper(4, 10, "kSSSSSSSk", ".ksSSSsk");
+const torso = upper(
+	4,
+	12,
+	".kCCCCCCk",
+	".kcCCCCCCk",
+	".kcCCCCCCk",
+	".kcCCCCCk",
+	".knnnnNnk",
+	"kcCCkCCCCk",
+	"kcCk.kCCCk",
+	".kk...kkk",
+);
+const pauldron = upper(8, 11, "kaak", ".aaak", ".AAk");
 
-const arms = [leftArm, rightArm];
+const tails = [
+	upper(0, 10, "sSSS", "SS..", "s..."),
+	upper(0, 9, "s...", ".SSS", "..sS"),
+	upper(0, 10, "..SS", ".SSs", "Ss.."),
+	upper(0, 10, "SSSS", "ssss"),
+] as const;
+const [tailA, tailB, tailC, tailStream] = tails;
+
+const hangingArm = upper(10, 14, "cck", "cck", "cck", "mm");
+const standingLegs = layer(
+	5,
+	19,
+	".kpk.kpk",
+	".kPk.kppk",
+	".kPk.kppk",
+	".kPk.kppk",
+	".kPk.kppk",
+	".kbk.kbbk",
+	"kbbk.kbbbk",
+	"kkkk.kkkkk",
+);
+
+const stride = (back: string, front: string) =>
+	layer(
+		1,
+		19,
+		`.....k${back}${back}${front}${front}k`,
+		`....k${back}k..k${front}${front}k`,
+		`...k${back}k....k${front}${front}k`,
+		`..k${back}k......k${front}k`,
+		".kbk.......kpk",
+		"kbk........kbbk",
+		"kk.........kkkk",
+	);
+const passing = (raised: string, planted: string) =>
+	layer(
+		4,
+		19,
+		`..k${raised}${planted}${planted}k`,
+		`.kbk${planted}${planted}k`,
+		`kbbkk${planted}k`,
+		`.kk.k${planted}${planted}k`,
+		`....k${planted}k`,
+		"....kbbk",
+		"....kbbbk",
+		"....kkkkk",
+	);
+const runLegs = [
+	stride("P", "p"),
+	passing("P", "p"),
+	stride("p", "P"),
+	passing("p", "P"),
+] as const;
+const armForward = upper(10, 13, "cc..", ".cck", "..mm");
+const armBack = upper(7, 13, "..cc", ".cc.", "mm..");
+const speedLines = [
+	layer(0, 14, "vv", "", "", "", "v", "", "", "vv"),
+	layer(0, 15, "v", "", "", "vv", "", "", "", "v"),
+] as const;
+
+const table = layer(
+	12,
+	18,
+	"xxxxxxxx",
+	"......x.",
+	"......x.",
+	"......x.",
+	"......x.",
+	"......x.",
+	"......x.",
+	".....xxx",
+);
+const laptop = layer(
+	13,
+	12,
+	"....lL",
+	"....lL",
+	"....lL",
+	"....lL",
+	"....lL",
+	"LLLLLL",
+);
+const typing = [
+	upper(10, 13, "cc..", ".cc.", "..cm", "...m"),
+	upper(10, 13, "cc..", ".cc.", "..cm", "..m."),
+] as const;
+const codeBits = [
+	layer(14, 9, "y", "", "..y", "", ".y"),
+	layer(14, 7, ".y", "", "y", "", "..y"),
+	layer(15, 5, "y", "", ".y", "", "y"),
+	layer(14, 3, "..y", "", "y", "", ".y"),
+] as const;
+
+const cupLow = upper(10, 13, "cc..", ".ccm", "..QQ", "..Qo");
+const cupRaised = upper(
+	10,
+	6,
+	"...QQ",
+	"...Qo",
+	"..cm.",
+	".cc..",
+	".cc..",
+	".cc..",
+);
+const steam = [
+	layer(12, 12, ".v", "v.", ".v"),
+	layer(12, 11, "v.", ".v", "v."),
+	layer(14, 3, "v", ".v"),
+] as const;
+
+const appleAtMouth = upper(
+	10,
+	5,
+	"...G.",
+	"...FF",
+	"...FF",
+	"..cm.",
+	".cc..",
+	".cc..",
+	".cc..",
+);
+const appleInHand = upper(10, 13, "cc...", ".cmF.", "..FFG");
+const bitten = upper(10, 13, "cc...", ".cmF.", "..F.G");
+
+const dumbbellUp = upper(
+	13,
+	0,
+	"DDD",
+	"DdD",
+	"DDD",
+	".m.",
+	".c.",
+	".c.",
+	".c.",
+	".c.",
+	".c.",
+	".c.",
+	".c.",
+	".c.",
+	"cc.",
+);
+const dumbbellRacked = upper(13, 8, "DDD", "DdD", "DDD", ".m.", ".c.", "cc.");
+const sweat = [layer(16, 6, "u"), layer(16, 8, "u")] as const;
+
+const reachUp = upper(
+	13,
+	1,
+	".m",
+	".c",
+	".c",
+	".c",
+	".c",
+	".c",
+	".c",
+	".c",
+	".c",
+	".c",
+	".c",
+	"cc",
+);
+const reachForward = upper(10, 13, "ccccc", "....cmm");
+
+const swordRaised = upper(
+	13,
+	0,
+	".t.",
+	".t.",
+	".t.",
+	".t.",
+	"ggg",
+	".m.",
+	".c.",
+	".c.",
+	".c.",
+	".c.",
+	".c.",
+	".c.",
+	"cc.",
+);
+const sparkles = [
+	layer(0, 1, ".y..........y", "", "", "", "", "", "y.................y"),
+	layer(0, 3, "y.................y", "", "", "", "", "..y...........y"),
+] as const;
+
+const breathing = (legs: Layer, front: Layer[]): Frame[] => [
+	{ legs, behind: [tailA], front },
+	{ legs, behind: [tailB], front },
+	{ legs, behind: [tailC], front, breathe: true },
+	{ legs, behind: [tailB], front, breathe: true },
+	{ legs, behind: [tailA], front },
+	{ legs, behind: [tailB], front, blink: true },
+	{ legs, behind: [tailC], front, breathe: true },
+	{ legs, behind: [tailB], front, breathe: true },
+];
 
 const animations: Record<Activity, { interval: number; frames: Frame[] }> = {
 	idle: {
-		interval: 300,
-		frames: [
-			...Array.from({ length: 11 }, () => ({
-				layers: [...arms, standingLegs],
-			})),
-			{ layers: [...arms, standingLegs], blink: true },
-		],
+		interval: 220,
+		frames: breathing(standingLegs, [hangingArm]),
 	},
 	focus: {
-		interval: 250,
-		frames: [
-			{
-				layers: [
-					typingArms("...ks......sk..."),
-					standingLegs,
-					laptop,
-					steam(1, "............O..."),
-				],
-			},
-			{
-				layers: [
-					typingArms("...kss....ssk..."),
-					standingLegs,
-					laptop,
-					steam(0, "..............O."),
-				],
-			},
-		],
+		interval: 160,
+		frames: codeBits.map((bits, index) => ({
+			legs: standingLegs,
+			behind: [index % 2 === 0 ? tailA : tailB, table],
+			front: [laptop, typing[index % 2] ?? hangingArm, bits],
+			breathe: index >= 2,
+		})),
 	},
 	break: {
-		interval: 600,
+		interval: 380,
 		frames: [
+			{ legs: standingLegs, behind: [tailA], front: [cupLow, steam[0]] },
 			{
-				layers: [...arms, standingLegs, cup, steam(10, "..............v.")],
+				legs: standingLegs,
+				behind: [tailB],
+				front: [cupLow, steam[1]],
+				breathe: true,
 			},
 			{
-				layers: [
-					...arms,
-					standingLegs,
-					cup,
-					steam(9, "..............v."),
-					steam(8, ".............v.."),
-				],
+				legs: standingLegs,
+				behind: [tailC],
+				front: [cupLow, steam[0]],
+				breathe: true,
+			},
+			{
+				legs: standingLegs,
+				behind: [tailB],
+				front: [cupRaised, steam[2]],
 				blink: true,
 			},
+			{
+				legs: standingLegs,
+				behind: [tailA],
+				front: [cupRaised, steam[2]],
+				blink: true,
+			},
+			{ legs: standingLegs, behind: [tailB], front: [cupLow, steam[1]] },
 		],
 	},
 	eat: {
-		interval: 400,
+		interval: 300,
 		frames: [
-			{ layers: [leftArm, standingLegs, appleAtMouth] },
-			{ layers: [...arms, standingLegs, appleInHand, chewing] },
+			{ legs: standingLegs, behind: [tailA], front: [appleInHand] },
+			{ legs: standingLegs, behind: [tailB], front: [appleAtMouth] },
+			{
+				legs: standingLegs,
+				behind: [tailC],
+				front: [appleAtMouth],
+				breathe: true,
+			},
+			{ legs: standingLegs, behind: [tailB], front: [bitten], breathe: true },
 		],
 	},
 	run: {
-		interval: 180,
-		frames: [
-			{ layers: [swingingArms, stridingLegs, sweat, motionLines] },
-			{ layers: [...arms, passingLegs], dy: -1 },
-		],
+		interval: 110,
+		frames: runLegs.map((legs, index) => ({
+			legs,
+			behind: [tailStream, speedLines[index % 2] ?? tailStream],
+			front: [index % 2 === 0 ? armForward : armBack],
+			dy: index % 2 === 0 ? 0 : -1,
+		})),
 	},
 	lift: {
-		interval: 500,
+		interval: 420,
 		frames: [
-			{ layers: [dumbbellsUp, standingLegs, sweat] },
-			{ layers: [dumbbellsDown, standingLegs] },
+			{ legs: standingLegs, behind: [tailA], front: [dumbbellRacked] },
+			{
+				legs: standingLegs,
+				behind: [tailB],
+				front: [dumbbellUp, sweat[0]],
+				dy: -1,
+			},
+			{
+				legs: standingLegs,
+				behind: [tailC],
+				front: [dumbbellUp, sweat[1]],
+				dy: -1,
+			},
+			{
+				legs: standingLegs,
+				behind: [tailB],
+				front: [dumbbellRacked],
+				breathe: true,
+			},
 		],
 	},
 	stretch: {
-		interval: 700,
+		interval: 520,
 		frames: [
-			{ layers: [raisedArms, standingLegs] },
-			{ layers: [...arms, standingLegs] },
+			{ legs: standingLegs, behind: [tailA], front: [reachUp], dy: -1 },
+			{ legs: standingLegs, behind: [tailB], front: [reachUp], dy: -1 },
+			{
+				legs: standingLegs,
+				behind: [tailC],
+				front: [reachForward],
+				breathe: true,
+			},
+			{
+				legs: standingLegs,
+				behind: [tailB],
+				front: [reachForward],
+				breathe: true,
+			},
 		],
 	},
 	levelUp: {
-		interval: 250,
-		frames: [
+		interval: 160,
+		frames: sparkles.flatMap((burst, index) => [
 			{
-				layers: [
-					raisedArms,
-					standingLegs,
-					...sparkles("...y........y...", 13, "y..............y"),
-				],
-			},
-			{
-				layers: [
-					raisedArms,
-					standingLegs,
-					...sparkles("y..............y", 16, "..y..........y.."),
-				],
+				legs: standingLegs,
+				behind: [tailStream],
+				front: [swordRaised, burst],
 				dy: -1,
 			},
-		],
+			{
+				legs: standingLegs,
+				behind: [index === 0 ? tailA : tailC],
+				front: [swordRaised, burst],
+			},
+		]),
 	},
 };
 
@@ -308,96 +404,159 @@ export const gearOf = (level: number) => {
 	const tier = (slot: number) =>
 		Math.min(Math.max(Math.floor((level - 2 - slot) / 4) + 1, 0), 2);
 
-	return {
-		weapon: tier(0),
-		armor: tier(1),
-		helmet: tier(2),
-		backpack: tier(3),
-	};
+	return { weapon: tier(0), armor: tier(1), hood: tier(2), relic: tier(3) };
 };
 
-const fixedColors: ReadonlyArray<[string, string]> = [
-	["b", "#3a2a24"],
-	["B", "#cfe8ff"],
-	["c", "#f4f4f4"],
-	["d", "#7fd3ff"],
-	["e", "#2b2135"],
-	["f", "#e5484d"],
-	["g", "#9aa3ad"],
-	["G", "#6e7681"],
-	["h", "#6b4226"],
-	["H", "#8e5cc4"],
-	["k", "#2b2135"],
-	["L", "#D97757"],
-	["m", "#b5524f"],
-	["M", "#b8c0cc"],
-	["n", "#7a4f2a"],
-	["o", "#7a2e2e"],
-	["O", "#57e3f0"],
-	["p", "#3d4f7a"],
-	["q", "#4caf6a"],
-	["r", "#f08c8c"],
-	["s", "#f5c9a0"],
-	["v", "#c8c8c8"],
-	["V", "#57e3f0"],
-	["W", "#9b6b3d"],
-	["y", "#ffd84d"],
-	["Y", "#f2e6c8"],
+const weapons: readonly Layer[] = [
+	upper(2, 13, ".g.", "xxx", ".W.", ".W.", ".W.", ".W.", ".W.", ".w."),
+	upper(
+		2,
+		11,
+		".g.",
+		".g.",
+		"xxx",
+		".w.",
+		".W.",
+		".W.",
+		".W.",
+		".W.",
+		".W.",
+		".W.",
+		".W.",
+		".w.",
+	),
+	upper(
+		1,
+		10,
+		"..t",
+		"..g",
+		".xxx",
+		".tw",
+		".tw",
+		".tw",
+		".tw",
+		".tw",
+		".tw",
+		".tw",
+		".tw",
+		".tw",
+		"..t",
+	),
 ];
-const armorColors = [
-	["#4caf6a", "#2f7a45"],
-	["#d9a440", "#9c7322"],
-	["#4fb3e3", "#2a7fb0"],
-] as const;
-const backpackColors = ["#8a6d3b", "#c08a2e", "#57e3f0"] as const;
+const hoods: readonly Layer[] = [
+	upper(0, 0, ""),
+	upper(4, 4, "SSSSSSS"),
+	upper(4, 0, ".Y....Y", ".YY..YY"),
+];
+// The relic is a companion orb that bobs beside the character.
+const relics: ReadonlyArray<(bob: number) => Layer[]> = [
+	() => [],
+	(bob) => [layer(17, 4 + bob, "t")],
+	(bob) => [layer(16, 3 + bob, ".y.", "ytt", ".tt")],
+];
+const orbBob = [0, 0, 1, 1] as const;
 
-export function paletteOf(level: number): ReadonlyMap<string, string> {
+const armorColors = [
+	["#6B4A35", "#4A3324"],
+	["#A3ACB8", "#6A7380"],
+	["#D9B45A", "#9C7A2E"],
+] as const;
+
+export function paletteOf(
+	level: number,
+	palette: Palette,
+): ReadonlyMap<string, string> {
 	const gear = gearOf(level);
 	const [armor, armorShade] = armorColors[gear.armor] ?? armorColors[0];
+	const { cloak, cloakShade, scarf, scarfShade, glow } = palette.sprite;
 
 	return new Map([
-		...fixedColors,
-		["a", armor],
 		["A", armorShade],
-		["P", backpackColors[gear.backpack] ?? backpackColors[0]],
+		["a", armor],
+		["b", "#3B2D25"],
+		["C", cloak],
+		["c", cloakShade],
+		["D", "#50555F"],
+		["d", "#8A8F99"],
+		["E", glow],
+		["F", "#C8473F"],
+		["f", "#241F2B"],
+		["G", "#5F8F4E"],
+		["g", "#B8913A"],
+		["H", cloak],
+		["h", cloakShade],
+		["k", "#15121A"],
+		["L", "#4A505B"],
+		["l", glow],
+		["m", "#C99272"],
+		["N", armor],
+		["n", "#4A3628"],
+		["o", "#5A3A25"],
+		["P", "#23252F"],
+		["p", "#2E3140"],
+		["Q", "#E6E0D4"],
+		["S", scarf],
+		["s", scarfShade],
+		["t", glow],
+		["u", "#8FC6E8"],
+		["v", "#9AA0A8"],
+		["W", "#8792A0"],
+		["w", "#C9D3DE"],
+		["x", "#3D414B"],
+		["Y", "#E8DCC0"],
+		["y", palette.soft],
 	]);
 }
 
-// The pixel keys of 1 frame, row by row, "." where nothing is drawn.
+// The pixel keys of 1 frame, row by row, "." where nothing is drawn. The
+// counter keeps running across frames, so the relic bobs on its own beat.
 export function composeFrame(
 	activity: Activity,
-	frameIndex: number,
+	counter: number,
 	level: number,
 ): string[] {
 	const { frames } = animations[activity];
-	const frame = frames[frameIndex % frames.length] ?? { layers: [] };
+	const frame = frames[counter % frames.length] ?? frames[0];
 	const gear = gearOf(level);
-	const canvas = rows(spriteHeight, ".".repeat(spriteWidth)).map((row) => [
-		...row,
-	]);
-	const faceLayer: Layer = frame.blink
-		? { y: head.y, rows: head.rows.map((row) => row.replaceAll("e", "s")) }
-		: head;
+	const canvas = Array.from({ length: spriteHeight }, () =>
+		Array.from({ length: spriteWidth }, () => "."),
+	);
+
+	if (!frame) {
+		return canvas.map((row) => row.join(""));
+	}
+
+	const lowerDy = frame.dy ?? 0;
+	const upperDy = lowerDy + (frame.breathe ? 1 : 0);
+	const head: Layer = frame.blink
+		? { ...hood, rows: hood.rows.map((row) => row.replaceAll("E", "f")) }
+		: hood;
 	const layers = [
 		weapons[gear.weapon],
-		faceLayer,
-		body,
-		straps,
-		...(helmets[gear.helmet] ?? []),
-		...frame.layers,
+		...(frame.behind ?? []),
+		frame.legs,
+		torso,
+		neckScarf,
+		head,
+		hoods[gear.hood],
+		pauldron,
+		...(frame.front ?? []),
+		...(relics[gear.relic]?.(orbBob[counter % orbBob.length] ?? 0) ?? []),
 	];
 
-	for (const layer of layers) {
-		if (!layer) {
+	for (const item of layers) {
+		if (!item) {
 			continue;
 		}
 
-		for (const [offset, row] of layer.rows.entries()) {
-			const target = canvas[layer.y + offset + (frame.dy ?? 0)];
+		const dy = item.upper ? upperDy : lowerDy;
 
-			for (const [x, key] of [...row].entries()) {
-				if (target && key !== ".") {
-					target[x] = key;
+		for (const [offset, row] of item.rows.entries()) {
+			const target = canvas[item.y + offset + dy];
+
+			for (const [index, key] of [...row].entries()) {
+				if (target && key !== "." && item.x + index < spriteWidth) {
+					target[item.x + index] = key;
 				}
 			}
 		}
@@ -425,14 +584,14 @@ export function toSegments(
 		const line: Segment[] = [];
 
 		for (let x = 0; x < spriteWidth; x++) {
-			const upper = palette.get(top[x] ?? ".");
-			const lower = palette.get(bottom[x] ?? ".");
+			const upperColor = palette.get(top[x] ?? ".");
+			const lowerColor = palette.get(bottom[x] ?? ".");
 			const cell: Segment =
-				upper === undefined
-					? lower === undefined
+				upperColor === undefined
+					? lowerColor === undefined
 						? { text: " " }
-						: { text: "▄", color: lower }
-					: { text: "▀", color: upper, backgroundColor: lower };
+						: { text: "▄", color: lowerColor }
+					: { text: "▀", color: upperColor, backgroundColor: lowerColor };
 			const previous = line.at(-1);
 
 			if (
