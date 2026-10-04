@@ -9,12 +9,13 @@ paths:
 
 One workflow does one task, a single job with a single outcome. When a second outcome appears, it becomes a second file:
 
-| Workflow                                                       | Trigger                                        | Task                                                                     |
-| -------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
-| [`main-release.yml`](../../.github/workflows/main-release.yml) | `push: Verify` succeeds on `main`              | Run Semantic Release: version, tag, GitHub release, and NPM publish      |
-| [`push-verify.yml`](../../.github/workflows/push-verify.yml)   | Any push that touches source, config, or locks | Lint the commit messages, then run `npm test`, the same gate as the hook |
+| Workflow                                                             | Trigger                                        | Task                                                                                  |
+| -------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [`main-release.yml`](../../.github/workflows/main-release.yml)       | `push: Verify` succeeds on `main`              | Run Semantic Release: version, tag, GitHub release, and NPM publish                   |
+| [`push-verify.yml`](../../.github/workflows/push-verify.yml)         | Any push that touches source, config, or locks | Lint the commits, run `npm test`, then type-check and bundle the desktop app          |
+| [`release-desktop.yml`](../../.github/workflows/release-desktop.yml) | `main: Release` succeeds, or manual with a tag | Build the macOS, Windows, and Linux apps, and attach them to the tag's GitHub release |
 
-Renaming a workflow breaks the table above, the `workflows:` trigger of `main-release.yml`, and the badges in [`README.md`](../../README.md); update all 3 in the same commit. Confirm the file parses before finishing:
+Renaming a workflow breaks the table above, the `workflows:` triggers that chain them, and the badges in [`README.md`](../../README.md); update all 3 in the same commit. Confirm the file parses before finishing:
 
 ```shell
 node -e "console.log(require('js-yaml').load(require('fs').readFileSync('.github/workflows/<file>.yml','utf8')).name)"
@@ -25,6 +26,10 @@ node -e "console.log(require('js-yaml').load(require('fs').readFileSync('.github
 Publishing is chained behind verification rather than repeating it. `main-release.yml` listens for `workflow_run` of `push: Verify` and checks out `workflow_run.head_sha`, the commit that passed, never the newest one. When `main` has moved on in the meantime, Semantic Release skips the run, and the newer commit's own verification releases it. A push that touches none of the `paths:` in `push-verify.yml`, such as a README edit, therefore never releases.
 
 There is deliberately no `workflow_dispatch`: a manual trigger would skip the gate. A failed release is re-run from its run page.
+
+`release-desktop.yml` is the third link: it finds the tag Semantic Release put on the child of the verified commit, checks it out, and builds 1 app per runner in a matrix, passing the version through `-c.extraMetadata.version`. A run that finds no tag cut nothing and does nothing. Unlike the release, it has a `workflow_dispatch` with a `tag` input, because rebuilding the apps of a tag that already passed the gate skips nothing. GitHub chains `workflow_run` at most 3 levels deep, so nothing can listen to this one.
+
+The macOS app is ad-hoc signed (`identity: "-"` in [`desktop/package.json`](../../desktop/package.json)), not notarized, and the Windows installer is unsigned; both warn on first launch until signing certificates exist.
 
 [`release.config.mjs`](../../release.config.mjs) commits the bumped `package.json` and `package-lock.json` back to `main` as `chore(release): <version> [skip ci]`, and `prepack` builds before `npm publish`. The publish carries provenance, which needs `id-token: write`:
 
