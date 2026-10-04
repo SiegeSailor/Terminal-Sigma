@@ -6,10 +6,12 @@ import {
 	experienceOf,
 	levelOf,
 	loadProgress,
-	parseEntry,
+	logsOf,
+	parseWholeNumber,
 	type Progress,
 	saveProgress,
 	todayOf,
+	workoutExperience,
 } from "../progress.js";
 
 const temporaryFile = () =>
@@ -19,19 +21,46 @@ const temporaryFile = () =>
 	);
 
 const sample: Progress = {
+	language: "en",
 	focus: [{ at: "2026-10-03T09:00:00.000Z", minutes: 25 }],
 	meals: [
-		{ at: "2026-10-03T08:00:00.000Z", food: "Oatmeal", calories: 350 },
+		{
+			at: "2026-10-03T08:00:00.000Z",
+			food: "Oatmeal",
+			calories: 350,
+			protein: 12,
+		},
 		{ at: "2026-10-01T08:00:00.000Z", food: "Toast" },
 	],
-	workouts: [{ at: "2026-10-03T07:00:00.000Z", activity: "Run", minutes: 80 }],
+	workouts: [
+		{
+			at: "2026-10-03T07:00:00.000Z",
+			activity: "running",
+			minutes: 40,
+			intensity: "vigorous",
+		},
+	],
 };
 
-test("parses an entry with and without an amount", (t) => {
-	t.deepEqual(parseEntry("Oatmeal 350"), { label: "Oatmeal", amount: 350 });
-	t.deepEqual(parseEntry("  Chicken salad  "), { label: "Chicken salad" });
-	t.deepEqual(parseEntry("5k run"), { label: "5k run" });
-	t.is(parseEntry("   "), undefined);
+test("accepts only whole numbers within range", (t) => {
+	t.is(parseWholeNumber(" 350 ", 0, 5000), 350);
+	t.is(parseWholeNumber("0", 0, 10), 0);
+	t.is(parseWholeNumber("0", 1, 10), undefined);
+	t.is(parseWholeNumber("12.5", 0, 100), undefined);
+	t.is(parseWholeNumber("-3", 0, 100), undefined);
+	t.is(parseWholeNumber("abc", 0, 100), undefined);
+	t.is(parseWholeNumber("", 0, 100), undefined);
+});
+
+test("scales workout experience by intensity", (t) => {
+	const at = "2026-10-03T07:00:00.000Z";
+	const yoga = (intensity: "light" | "moderate" | "vigorous") =>
+		workoutExperience({ at, activity: "yoga", minutes: 30, intensity });
+
+	t.is(yoga("light"), 30);
+	t.is(yoga("moderate"), 45);
+	t.is(yoga("vigorous"), 60);
+	t.is(workoutExperience({ at, activity: "Run", minutes: 30 }), 30);
 });
 
 test("derives experience and level from entries", (t) => {
@@ -41,14 +70,25 @@ test("derives experience and level from entries", (t) => {
 	t.is(levelOf(experienceOf(sample)), 2);
 });
 
-test("counts only today's entries", (t) => {
-	const today = todayOf(sample, Date.parse("2026-10-03T12:00:00.000Z"));
+test("lists every log newest first", (t) => {
+	t.deepEqual(
+		logsOf(sample).map((log) => [log.kind, log.experience]),
+		[
+			["focus", 25],
+			["meal", 5],
+			["workout", 80],
+			["meal", 5],
+		],
+	);
+});
 
-	t.deepEqual(today, {
+test("counts only today's entries", (t) => {
+	t.deepEqual(todayOf(sample, Date.parse("2026-10-03T12:00:00.000Z")), {
 		focusSessions: 1,
 		meals: 1,
 		calories: 350,
-		workoutMinutes: 80,
+		protein: 12,
+		workoutMinutes: 40,
 	});
 });
 
@@ -58,6 +98,26 @@ test("starts empty and round-trips through the file", (t) => {
 	t.deepEqual(loadProgress(file), { focus: [], meals: [], workouts: [] });
 	saveProgress(file, sample);
 	t.deepEqual(loadProgress(file), sample);
+});
+
+test("still loads a file written by 1.0.0", (t) => {
+	const file = temporaryFile();
+	writeFileSync(
+		file,
+		JSON.stringify({
+			focus: [],
+			meals: [
+				{ at: "2026-10-03T08:00:00.000Z", food: "Oatmeal", calories: 350 },
+			],
+			workouts: [
+				{ at: "2026-10-03T07:00:00.000Z", activity: "Run", minutes: 30 },
+			],
+		}),
+	);
+
+	const progress = loadProgress(file);
+	t.is(progress.language, undefined);
+	t.is(experienceOf(progress), 35);
 });
 
 test("refuses an unreadable file without touching it", (t) => {
