@@ -6,23 +6,34 @@ paths:
 
 # Drawing the Character
 
-The character is a slim, hooded wanderer facing right, in the spirit of Dead Cells and Drova, on a 20 by 28 pixel canvas in [`pixel-art.ts`](../../source/pixel-art.ts). Each terminal cell shows 2 stacked pixels as `▀`, with the top pixel as the foreground and the bottom one as the background, so the sprite takes 20 columns by 14 rows.
+The character is a casual, modern figure in 3/4 side view, in the style of a slim pixel portrait in a hoodie, jeans, and sneakers. [`pixel-art.ts`](../../source/pixel-art.ts) paints it procedurally onto a stage as wide as its panel and 30 pixels tall. Each terminal cell shows 2 stacked pixels as `▀`, with the top pixel as the foreground and the bottom one as the background, so the stage takes 15 rows.
 
-A layer is a list of strings placed at column `x` and row `y`, where `.` is transparent and every other character is a key in `paletteOf`. `upper()` layers move down 1 pixel when a frame breathes, while `layer()` ones, the legs and the props, stay planted. Layers draw in this order, so later ones cover earlier ones:
+## What Shapes It
 
-1. The weapon on the back
-2. The frame's `behind` layers: the scarf tail, the desk
-3. The frame's legs, then the torso, the neck scarf, and the hood
-4. The hood's gear, then the pauldron
-5. The frame's `front` layers: arms and props
-6. The relic orb, which bobs on its own beat
+3 things feed `composeScene`, and each changes the figure in a fixed place:
 
-## Colors and Gear
+| Input    | Comes From             | Changes                                                                                                  |
+| -------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| Activity | What the user is doing | The pose, the props, and where on the stage it stands                                                    |
+| Body     | `bodyOf(profile)`      | Height from 20 to 26 pixels by the profile's height, the build by BMI, and hair and silhouette by gender |
+| Level    | `gearOf(level)`        | 4 equipment slots, each upgraded once from level 2 and again 4 levels later                              |
 
-The hood, coat, scarf, and glow take their colors from the theme's `sprite` tones, so the character changes with the theme. Outlines, skin, cloth, and props keep fixed colors. `gearOf` upgrades exactly 1 of the 4 slots, weapon, armor, hood, and relic, per level from level 2 to level 9.
+The slots are the gadget (headphones, then headphones and a smartwatch), the top (a tee, a hoodie, then a jacket), the headwear (a cap, then a crown), and the back (a backpack, then a cape). Every level from 2 to 9 changes exactly 1 of them.
+
+## How It Is Painted
+
+All drawing happens in local coordinates: x grows toward where the character faces, and y grows up from the ground. `composeScene` mirrors the figure when it walks left. A pose sets the feet relative to their hips and the hands relative to their shoulders, and the painters run in this order:
+
+1. `paintBack`: the cape or the backpack
+2. `paintArm` for the far arm
+3. `paintLegs`, then `paintTorso`
+4. `paintHead`, then `paintHeadgear`
+5. `paintArm` for the near arm, then the scene's props
+
+`upper` moves with the breathing bob while `put` stays planted. Clothes and accessories take the theme's `sprite` tones; skin, hair, denim, and sneakers keep fixed colors.
 
 ## Motion
 
-The character must never look stuck: every activity needs at least 4 frames, and no frame may repeat the one before it, which [`pixel-art.test.ts`](../../source/tests/pixel-art.test.ts) checks along with the canvas size and the palette keys. Idle breathes, flutters its scarf, and blinks.
+The character must never look stuck. Idle wanders: it pauses, looks around, walks across the stage, and comes back; running laps the stage. [`pixel-art.test.ts`](../../source/tests/pixel-art.test.ts) fails when any activity holds 1 frame for 3 ticks, when idle stops covering the stage, or when a taller, heavier profile stops drawing a taller, wider figure.
 
-Render every frame to an image before calling art done; the shape is invisible in a diff and the test cannot tell ugly art from good.
+Render every scene to an image before calling art done; the shape is invisible in a diff, and the tests cannot tell ugly art from good.
