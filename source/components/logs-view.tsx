@@ -8,23 +8,10 @@ import {
 	type WorkoutActivity,
 } from "../i18n.js";
 import type { Log } from "../progress.js";
-import { colors } from "../theme.js";
+import { usePalette } from "../theme.js";
 
 const filters = ["all", "focus", "meal", "workout"] as const;
 type Filter = (typeof filters)[number];
-
-type LogsViewProps = Readonly<{
-	logs: readonly Log[];
-	language: Language;
-	messages: Messages;
-	height: number;
-}>;
-
-const kindColor: Record<Log["kind"], string> = {
-	focus: colors.focus,
-	meal: colors.diet,
-	workout: colors.workout,
-};
 
 const isWorkoutActivity = (activity: string): activity is WorkoutActivity =>
 	(workoutActivities as readonly string[]).includes(activity);
@@ -59,23 +46,25 @@ export function describeLog(log: Log, language: Language, messages: Messages) {
 	}
 }
 
-export default function LogsView({
-	logs,
-	language,
-	messages,
-	height,
-}: LogsViewProps) {
-	const [filter, setFilter] = React.useState<Filter>("all");
-	const [offset, setOffset] = React.useState(0);
-	const shown = logs.filter((log) => filter === "all" || log.kind === filter);
-	// Title, tabs, summary, and their spacing take 4 rows.
-	const pageSize = Math.max(height - 4, 3);
-	const maximumOffset = Math.max(shown.length - pageSize, 0);
-	const labels: Record<Filter, string> = {
-		all: messages.logs.all,
-		focus: messages.logs.focus,
-		meal: messages.logs.diet,
-		workout: messages.logs.workout,
+const kindLabels = (messages: Messages): Record<Filter, string> => ({
+	all: messages.logs.all,
+	focus: messages.logs.focus,
+	meal: messages.logs.diet,
+	workout: messages.logs.workout,
+});
+
+type LogRowProps = Readonly<{
+	log: Log;
+	language: Language;
+	messages: Messages;
+}>;
+
+export function LogRow({ log, language, messages }: LogRowProps) {
+	const palette = usePalette();
+	const kindColor: Record<Log["kind"], string> = {
+		focus: palette.metrics.focus,
+		meal: palette.metrics.protein,
+		workout: palette.metrics.workout,
 	};
 	const formatDate = new Intl.DateTimeFormat(language, {
 		month: "2-digit",
@@ -84,6 +73,48 @@ export default function LogsView({
 		minute: "2-digit",
 		hour12: false,
 	});
+
+	return (
+		<Box gap={2}>
+			<Box flexShrink={0} width={12}>
+				<Text dimColor>{formatDate.format(new Date(log.at))}</Text>
+			</Box>
+			<Box flexShrink={0} width={8}>
+				<Text color={kindColor[log.kind]} wrap="truncate-end">
+					{kindLabels(messages)[log.kind]}
+				</Text>
+			</Box>
+			<Box flexGrow={1}>
+				<Text wrap="truncate-end">{describeLog(log, language, messages)}</Text>
+			</Box>
+			<Box flexShrink={0} justifyContent="flex-end" width={8}>
+				<Text color={palette.accent}>{`+${log.experience} XP`}</Text>
+			</Box>
+		</Box>
+	);
+}
+
+type LogsViewProps = Readonly<{
+	logs: readonly Log[];
+	language: Language;
+	messages: Messages;
+	height: number;
+}>;
+
+export default function LogsView({
+	logs,
+	language,
+	messages,
+	height,
+}: LogsViewProps) {
+	const palette = usePalette();
+	const [filter, setFilter] = React.useState<Filter>("all");
+	const [offset, setOffset] = React.useState(0);
+	const shown = logs.filter((log) => filter === "all" || log.kind === filter);
+	// Title, tabs, summary, and their spacing take 4 rows.
+	const pageSize = Math.max(height - 4, 3);
+	const maximumOffset = Math.max(shown.length - pageSize, 0);
+	const labels = kindLabels(messages);
 
 	useInput((input, key) => {
 		const move = (step: number) => {
@@ -122,14 +153,14 @@ export default function LogsView({
 	return (
 		<Box flexDirection="column" flexGrow={1}>
 			<Box gap={2}>
-				<Text bold color={colors.accent}>
+				<Text bold color={palette.accent}>
 					{messages.logs.title}
 				</Text>
 				{filters.map((option) => (
 					<Text
 						key={option}
 						bold={option === filter}
-						color={option === filter ? colors.accent : undefined}
+						color={option === filter ? palette.accent : undefined}
 						dimColor={option !== filter}
 						underline={option === filter}
 					>
@@ -148,22 +179,12 @@ export default function LogsView({
 					<Text dimColor>{messages.logs.empty}</Text>
 				) : null}
 				{shown.slice(offset, offset + pageSize).map((log) => (
-					<Box key={`${log.kind}-${log.at}`} gap={2}>
-						<Box flexShrink={0} width={12}>
-							<Text dimColor>{formatDate.format(new Date(log.at))}</Text>
-						</Box>
-						<Box flexShrink={0} width={8}>
-							<Text color={kindColor[log.kind]}>{labels[log.kind]}</Text>
-						</Box>
-						<Box flexGrow={1}>
-							<Text wrap="truncate-end">
-								{describeLog(log, language, messages)}
-							</Text>
-						</Box>
-						<Box flexShrink={0} justifyContent="flex-end" width={8}>
-							<Text color={colors.accent}>{`+${log.experience} XP`}</Text>
-						</Box>
-					</Box>
+					<LogRow
+						key={`${log.kind}-${log.at}`}
+						language={language}
+						log={log}
+						messages={messages}
+					/>
 				))}
 			</Box>
 		</Box>

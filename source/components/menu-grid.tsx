@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
-import { colors } from "../theme.js";
+import { usePalette } from "../theme.js";
 
 export type MenuItem = Readonly<{
 	label: string;
@@ -24,6 +24,7 @@ export default function MenuGrid({
 	onSelect,
 	isActive = true,
 }: MenuGridProps) {
+	const palette = usePalette();
 	const [selectedIndex, setSelectedIndex] = React.useState(0);
 	const last = items.length - 1;
 
@@ -68,7 +69,7 @@ export default function MenuGrid({
 							>
 								<Text
 									bold={isSelected}
-									color={isSelected ? colors.accent : undefined}
+									color={isSelected ? palette.accent : undefined}
 									wrap="truncate-end"
 								>
 									{`${isSelected ? "❯" : " "} ${index + 1}. ${item.label}`}
