@@ -178,6 +178,21 @@ test("changes the theme", async (t) => {
 	unmount();
 });
 
+test("previews a theme while browsing without saving it", async (t) => {
+	const { file, stdin, lastFrame, unmount } = start();
+	const before = lastFrame() ?? "";
+
+	await type(stdin, ["6", "\r", down]);
+	t.not(lastFrame(), before);
+	t.is(loadProgress(file).theme, undefined);
+
+	await type(stdin, ["\u001B"]);
+	t.is(loadProgress(file).theme, undefined);
+	t.true((lastFrame() ?? "").includes("Tomato Timer"));
+
+	unmount();
+});
+
 test("stops a running tomato without credit", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 

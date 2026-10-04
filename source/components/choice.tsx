@@ -11,6 +11,7 @@ export type Option = Readonly<{
 type ChoiceProps = Readonly<{
 	options: readonly Option[];
 	onSelect: (value: string) => void;
+	onFocus?: (value: string) => void;
 	initialValue?: string;
 	isActive?: boolean;
 }>;
@@ -20,6 +21,7 @@ type ChoiceProps = Readonly<{
 export default function Choice({
 	options,
 	onSelect,
+	onFocus,
 	initialValue,
 	isActive = true,
 }: ChoiceProps) {
@@ -33,12 +35,21 @@ export default function Choice({
 
 	useInput(
 		(input, key) => {
-			const count = options.length;
+			const move = (step: number) => {
+				const next = (index + step + options.length) % options.length;
+				setIndex(next);
+
+				const option = options[next];
+
+				if (option) {
+					onFocus?.(option.value);
+				}
+			};
 
 			if (key.upArrow || input === "k") {
-				setIndex((current) => (current - 1 + count) % count);
+				move(-1);
 			} else if (key.downArrow || input === "j") {
-				setIndex((current) => (current + 1) % count);
+				move(1);
 			} else if (key.return) {
 				const option = options[index];
 

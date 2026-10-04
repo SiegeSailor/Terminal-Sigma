@@ -33,7 +33,7 @@ import {
 	workoutActivities,
 	workStyles,
 } from "./i18n.js";
-import type { Activity } from "./pixel-art.js";
+import { type Activity, bodyOf } from "./pixel-art.js";
 import {
 	experienceOf,
 	experiencePerMeal,
@@ -164,7 +164,9 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	const language = progress.language ?? "en";
 	const messages = messagesOf(language);
 	const themeName = progress.theme ?? "ember";
-	const palette = themes[themeName];
+	// While the theme picker is open, the focused theme previews live.
+	const [previewTheme, setPreviewTheme] = React.useState<ThemeName>();
+	const palette = themes[previewTheme ?? themeName];
 	const uiTheme = React.useMemo(() => uiThemeOf(palette), [palette]);
 	const name = options.name ?? progress.profile?.name ?? "Rook Sigma";
 	const [message, setMessage] = React.useState<{ text: string; tone: Tone }>(
@@ -292,6 +294,7 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	const backToMenu = (text?: string) => {
 		setView("menu");
 		setDraftActivity(undefined);
+		setPreviewTheme(undefined);
 
 		if (text) {
 			say(text);
@@ -497,38 +500,20 @@ export default function App({ options, file, initialProgress }: AppProps) {
 
 	const panels: Record<Exclude<View, "logs">, React.ReactNode> = {
 		menu: (
-			<Box flexDirection="column">
-				<MenuGrid
-					columns={layout.menuColumns}
-					isActive={view === "menu"}
-					items={menuItemsOf(messages, language, {
-						timerSignal,
-						progress,
-						now,
-						logs: logs.length,
-						theme: themeName,
-						focus: durations.focus,
-						rest: durations.break,
-					})}
-					onSelect={selectMenu}
-				/>
-				<Box flexDirection="column" marginTop={1}>
-					<Text bold color={palette.soft}>
-						{messages.recent.title}
-					</Text>
-					{logs.length === 0 ? (
-						<Text dimColor>{messages.recent.empty}</Text>
-					) : null}
-					{logs.slice(0, recentCount).map((log) => (
-						<LogRow
-							key={`${log.kind}-${log.at}`}
-							language={language}
-							log={log}
-							messages={messages}
-						/>
-					))}
-				</Box>
-			</Box>
+			<MenuGrid
+				columns={layout.menuColumns}
+				isActive={view === "menu"}
+				items={menuItemsOf(messages, language, {
+					timerSignal,
+					progress,
+					now,
+					logs: logs.length,
+					theme: themeName,
+					focus: durations.focus,
+					rest: durations.break,
+				})}
+				onSelect={selectMenu}
+			/>
 		),
 		timer: (
 			<Titled title={messages.menu.timer}>
@@ -591,6 +576,9 @@ export default function App({ options, file, initialProgress }: AppProps) {
 						value: option,
 						hint: <Swatches palette={themes[option]} />,
 					}))}
+					onFocus={(value) => {
+						setPreviewTheme(pick(themeNames, value, themeName));
+					}}
 					onSelect={chooseTheme}
 				/>
 			</Titled>
@@ -610,9 +598,33 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	const todayPanel = (
 		<TodayPanel
 			sections={sectionsOf(language, palette, progress, now)}
+			isCompact={layout.isTodayCompact}
 			title={messages.today.title}
 			width={layout.todayWidth}
 		/>
+	);
+
+	const recentBlock = (
+		<Box
+			borderColor={palette.border}
+			borderStyle="round"
+			flexDirection="column"
+			flexShrink={0}
+			paddingX={1}
+		>
+			<Text bold color={palette.soft}>
+				{messages.recent.title}
+			</Text>
+			{logs.length === 0 ? <Text dimColor>{messages.recent.empty}</Text> : null}
+			{logs.slice(0, recentCount).map((log) => (
+				<LogRow
+					key={`${log.kind}-${log.at}`}
+					language={language}
+					log={log}
+					messages={messages}
+				/>
+			))}
+		</Box>
 	);
 
 	return providers(
@@ -668,6 +680,7 @@ export default function App({ options, file, initialProgress }: AppProps) {
 										? `${messages.activity.levelUp} ${messages.level(level)}`
 										: messages.activity[activity]
 								}
+								body={bodyOf(progress.profile)}
 								level={messages.level(level)}
 								levelNumber={level}
 								name={name}
@@ -675,14 +688,17 @@ export default function App({ options, file, initialProgress }: AppProps) {
 							/>
 						) : null}
 						{layout.showToday && layout.todayBeside ? todayPanel : null}
-						<Box
-							borderColor={view === "menu" ? palette.border : palette.accent}
-							borderStyle="round"
-							flexDirection="column"
-							paddingX={1}
-							width={layout.panelWidth}
-						>
-							{view === "menu" ? panels.menu : panels[view]}
+						<Box flexDirection="column" width={layout.panelWidth}>
+							<Box
+								borderColor={view === "menu" ? palette.border : palette.accent}
+								borderStyle="round"
+								flexDirection="column"
+								flexGrow={1}
+								paddingX={1}
+							>
+								{view === "menu" ? panels.menu : panels[view]}
+							</Box>
+							{layout.showRecent ? recentBlock : null}
 						</Box>
 					</Box>
 					{layout.showToday && !layout.todayBeside ? todayPanel : null}
