@@ -13,7 +13,7 @@ const cli = meow(
 	  $ siegesailor-terminal-sigma [options]
 
 	Options
-	  --name   Your character's name (default: Rook Sigma)
+	  --name   Your character's name (default: your profile's name)
 	  --focus  Minutes of each Tomato Timer focus (default: 25)
 	  --break  Minutes of each Tomato Timer break (default: 5)
 `,

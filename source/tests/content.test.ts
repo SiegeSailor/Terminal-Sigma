@@ -11,7 +11,7 @@ test("keeps the input panel and adds panels as the terminal grows", (t) => {
 	t.like(layoutOf(100, 24), {
 		showCharacter: true,
 		showToday: false,
-		panelWidth: 70,
+		panelWidth: 74,
 	});
 	t.like(layoutOf(100, 40), { showToday: true, todayBeside: false });
 	t.like(layoutOf(60, 24), {

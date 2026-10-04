@@ -1,12 +1,13 @@
 import { homedir } from "node:os";
 import zod from "zod";
 import React from "react";
-import { Select, ThemeProvider } from "@inkjs/ui";
+import { ThemeProvider } from "@inkjs/ui";
 import { Box, Text, useApp, useInput, useStdout, useWindowSize } from "ink";
 import Character from "./components/character.js";
+import Choice from "./components/choice.js";
 import EntryForm from "./components/entry-form.js";
 import Footer, { type Tone } from "./components/footer.js";
-import LogsView from "./components/logs-view.js";
+import LogsView, { LogRow } from "./components/logs-view.js";
 import MenuGrid from "./components/menu-grid.js";
 import TodayPanel from "./components/today-panel.js";
 import {
@@ -15,15 +16,22 @@ import {
 	layoutOf,
 	menuItemsOf,
 	menuOrder,
-	metricsOf,
+	profileFieldsOf,
+	sectionsOf,
 	workoutFieldsOf,
 } from "./content.js";
+import { adviceOf, targetsOf } from "./health.js";
 import {
+	formatNumber,
+	genders,
+	healthGoals,
 	intensities,
 	type Language,
 	languages,
+	type Messages,
 	messagesOf,
 	workoutActivities,
+	workStyles,
 } from "./i18n.js";
 import type { Activity } from "./pixel-art.js";
 import {
@@ -44,7 +52,14 @@ import {
 	quoteRefreshMinutes,
 	randomBundledQuote,
 } from "./quotes.js";
-import { colors, uiTheme } from "./theme.js";
+import {
+	type Palette,
+	paletteContext,
+	type ThemeName,
+	themeNames,
+	themes,
+	uiThemeOf,
+} from "./theme.js";
 import {
 	advanceTimer,
 	formatClock,
@@ -54,7 +69,7 @@ import {
 } from "./timer.js";
 
 export const optionsSchema = zod.object({
-	name: zod.string().min(1).default("Rook Sigma"),
+	name: zod.string().min(1).optional(),
 	focus: zod.number().int().positive().default(25),
 	break: zod.number().int().positive().default(5),
 });
@@ -67,10 +82,20 @@ type AppProps = Readonly<{
 	initialProgress: Progress;
 }>;
 
-type View = "menu" | "timer" | "diet" | "workout" | "logs" | "language";
+type View =
+	| "menu"
+	| "timer"
+	| "health"
+	| "diet"
+	| "workout"
+	| "logs"
+	| "profile"
+	| "theme"
+	| "language";
 type Flash = Readonly<{ activity: Activity; until: number }>;
 
 const flashMilliseconds = 6000;
+const recentCount = 4;
 
 const workoutAnimation = (activity: string | undefined): Activity => {
 	if (activity === "strength") {
@@ -85,20 +110,39 @@ const languageOptions = languages.map((language) => ({
 	value: language,
 }));
 
-const asLanguage = (value: string): Language =>
-	value === "zh-TW" ? "zh-TW" : "en";
+const pick = <Value extends string>(
+	options: readonly Value[],
+	value: string | undefined,
+	fallback: Value,
+): Value => options.find((option) => option === value) ?? fallback;
 
 function Titled({
 	title,
 	children,
 }: Readonly<{ title: string; children: React.ReactNode }>) {
 	return (
-		<Box flexDirection="column">
-			<Text bold color={colors.accent}>
-				{title}
-			</Text>
-			{children}
-		</Box>
+		<paletteContext.Consumer>
+			{(palette) => (
+				<Box flexDirection="column">
+					<Text bold color={palette.accent}>
+						{title}
+					</Text>
+					{children}
+				</Box>
+			)}
+		</paletteContext.Consumer>
+	);
+}
+
+function Swatches({ palette }: Readonly<{ palette: Palette }>) {
+	return (
+		<Text>
+			{Object.values(palette.metrics).map((color) => (
+				<Text key={color} color={color}>
+					██
+				</Text>
+			))}
+		</Text>
 	);
 }
 
@@ -119,6 +163,10 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	const [draftActivity, setDraftActivity] = React.useState<string>();
 	const language = progress.language ?? "en";
 	const messages = messagesOf(language);
+	const themeName = progress.theme ?? "ember";
+	const palette = themes[themeName];
+	const uiTheme = React.useMemo(() => uiThemeOf(palette), [palette]);
+	const name = options.name ?? progress.profile?.name ?? "Rook Sigma";
 	const [message, setMessage] = React.useState<{ text: string; tone: Tone }>(
 		() => ({
 			text: messages.savedTo(file.replace(homedir(), "~")),
@@ -132,6 +180,22 @@ export default function App({ options, file, initialProgress }: AppProps) {
 
 	// Saves first and only then shows the change, so the screen never claims
 	// something the file does not hold.
+	const save = React.useCallback(
+		(next: Progress) => {
+			try {
+				saveProgress(file, next);
+				return true;
+			} catch (error) {
+				setMessage({
+					text: messagesOf(next.language ?? "en").notSaved(String(error)),
+					tone: "error",
+				});
+				return false;
+			}
+		},
+		[file],
+	);
+
 	const record = React.useCallback(
 		(
 			update: (current: Progress) => Progress,
@@ -139,12 +203,8 @@ export default function App({ options, file, initialProgress }: AppProps) {
 			activity: Activity,
 		) => {
 			const next = update(progress);
-			const { form, notSaved } = messagesOf(next.language ?? "en");
 
-			try {
-				saveProgress(file, next);
-			} catch (error) {
-				setMessage({ text: notSaved(String(error)), tone: "error" });
+			if (!save(next)) {
 				return;
 			}
 
@@ -152,7 +212,9 @@ export default function App({ options, file, initialProgress }: AppProps) {
 			const leveledUp = after > levelOf(experienceOf(progress));
 			setProgress(next);
 			setMessage({
-				text: leveledUp ? `${text} ${form.levelUp(after)}` : text,
+				text: leveledUp
+					? `${text} ${messagesOf(next.language ?? "en").form.levelUp(after)}`
+					: text,
 				tone: "success",
 			});
 			setFlash({
@@ -160,7 +222,7 @@ export default function App({ options, file, initialProgress }: AppProps) {
 				until: Date.now() + flashMilliseconds,
 			});
 		},
-		[file, progress],
+		[progress, save],
 	);
 
 	React.useEffect(() => {
@@ -241,50 +303,50 @@ export default function App({ options, file, initialProgress }: AppProps) {
 			if (view === "menu" && input === "q") {
 				exit();
 			} else if (view !== "menu" && key.escape) {
-				const isForm = view === "diet" || view === "workout";
+				const isForm = ["diet", "workout", "profile"].includes(view);
 				backToMenu(isForm ? messages.form.cancelled : undefined);
 			}
 		},
 		{ isActive: progress.language !== undefined },
 	);
 
-	const chooseLanguage = (next: Language) => {
-		const updated = { ...progress, language: next };
-
-		try {
-			saveProgress(file, updated);
-		} catch (error) {
-			say(messagesOf(next).notSaved(String(error)), "error");
-			return;
+	const saveSetting = (next: Progress, text: string) => {
+		if (save(next)) {
+			setProgress(next);
+			backToMenu(text);
 		}
-
-		setProgress(updated);
-		backToMenu(messagesOf(next).languageChanged);
 	};
 
+	const chooseLanguage = (value: string) => {
+		const next = pick(languages, value, "en");
+		saveSetting(
+			{ ...progress, language: next },
+			messagesOf(next).languageChanged,
+		);
+	};
+
+	const providers = (children: React.ReactNode) => (
+		<paletteContext.Provider value={palette}>
+			<ThemeProvider theme={uiTheme}>{children}</ThemeProvider>
+		</paletteContext.Provider>
+	);
+
 	if (progress.language === undefined) {
-		return (
-			<ThemeProvider theme={uiTheme}>
-				<Box
-					borderColor={colors.accent}
-					borderStyle="round"
-					flexDirection="column"
-					paddingX={2}
-					paddingY={1}
-				>
-					<Titled title="✻ Terminal Sigma">
-						<Text dimColor>{messages.chooseLanguage}</Text>
-						<Box marginTop={1}>
-							<Select
-								options={languageOptions}
-								onChange={(value) => {
-									chooseLanguage(asLanguage(value));
-								}}
-							/>
-						</Box>
-					</Titled>
-				</Box>
-			</ThemeProvider>
+		return providers(
+			<Box
+				borderColor={palette.accent}
+				borderStyle="round"
+				flexDirection="column"
+				paddingX={2}
+				paddingY={1}
+			>
+				<Titled title="✻ Terminal Sigma">
+					<Text dimColor>{messages.chooseLanguage}</Text>
+					<Box marginTop={1}>
+						<Choice options={languageOptions} onSelect={chooseLanguage} />
+					</Box>
+				</Titled>
+			</Box>,
 		);
 	}
 
@@ -322,6 +384,14 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		}
 	};
 
+	const chooseHealthAction = (action: string) => {
+		if (action === "diet" || action === "workout" || action === "profile") {
+			setView(action);
+		} else {
+			backToMenu();
+		}
+	};
+
 	const submitMeal = (values: Record<string, string>) => {
 		const food = values.food ?? "";
 		backToMenu();
@@ -346,12 +416,9 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	const submitWorkout = (values: Record<string, string>) => {
 		const workout = {
 			at: new Date().toISOString(),
-			activity:
-				workoutActivities.find((option) => option === values.activity) ??
-				"other",
+			activity: pick(workoutActivities, values.activity, "other"),
 			minutes: Number(values.minutes),
-			intensity:
-				intensities.find((option) => option === values.intensity) ?? "moderate",
+			intensity: pick(intensities, values.intensity, "moderate"),
 		};
 		backToMenu();
 		record(
@@ -362,6 +429,32 @@ export default function App({ options, file, initialProgress }: AppProps) {
 				workoutExperience(workout),
 			),
 			workoutAnimation(workout.activity),
+		);
+	};
+
+	const submitProfile = (values: Record<string, string>) => {
+		saveSetting(
+			{
+				...progress,
+				profile: {
+					name: values.name ?? name,
+					age: Number(values.age),
+					height: Number(values.height),
+					weight: Number(values.weight),
+					gender: pick(genders, values.gender, "other"),
+					workStyle: pick(workStyles, values.workStyle, "desk"),
+					goal: pick(healthGoals, values.goal, "maintain"),
+				},
+			},
+			messages.form.profileSaved,
+		);
+	};
+
+	const chooseTheme = (value: string) => {
+		const next: ThemeName = pick(themeNames, value, "ember");
+		saveSetting(
+			{ ...progress, theme: next },
+			messages.themes.changed(messages.themes.names[next]),
 		);
 	};
 
@@ -395,29 +488,51 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		logs: messages.hints.logs,
 		diet: messages.hints.form,
 		workout: messages.hints.form,
+		profile: messages.hints.form,
 		timer: messages.hints.select,
+		health: messages.hints.select,
+		theme: messages.hints.select,
 		language: messages.hints.select,
 	};
 
 	const panels: Record<Exclude<View, "logs">, React.ReactNode> = {
 		menu: (
-			<MenuGrid
-				columns={layout.menuColumns}
-				isActive={view === "menu"}
-				items={menuItemsOf(messages, language, {
-					timerSignal,
-					meals: today.meals,
-					workoutMinutes: today.workoutMinutes,
-					logs: logs.length,
-					focus: durations.focus,
-					rest: durations.break,
-				})}
-				onSelect={selectMenu}
-			/>
+			<Box flexDirection="column">
+				<MenuGrid
+					columns={layout.menuColumns}
+					isActive={view === "menu"}
+					items={menuItemsOf(messages, language, {
+						timerSignal,
+						progress,
+						now,
+						logs: logs.length,
+						theme: themeName,
+						focus: durations.focus,
+						rest: durations.break,
+					})}
+					onSelect={selectMenu}
+				/>
+				<Box flexDirection="column" marginTop={1}>
+					<Text bold color={palette.soft}>
+						{messages.recent.title}
+					</Text>
+					{logs.length === 0 ? (
+						<Text dimColor>{messages.recent.empty}</Text>
+					) : null}
+					{logs.slice(0, recentCount).map((log) => (
+						<LogRow
+							key={`${log.kind}-${log.at}`}
+							language={language}
+							log={log}
+							messages={messages}
+						/>
+					))}
+				</Box>
+			</Box>
 		),
 		timer: (
 			<Titled title={messages.menu.timer}>
-				<Select
+				<Choice
 					options={[
 						{
 							label: isRunning ? messages.timer.pause : messages.timer.resume,
@@ -426,9 +541,19 @@ export default function App({ options, file, initialProgress }: AppProps) {
 						{ label: messages.timer.stop, value: "stop" },
 						{ label: messages.timer.back, value: "back" },
 					]}
-					onChange={chooseTimerAction}
+					onSelect={chooseTimerAction}
 				/>
 			</Titled>
+		),
+		health: (
+			<HealthPanel
+				language={language}
+				messages={messages}
+				palette={palette}
+				progress={progress}
+				today={today}
+				onSelect={chooseHealthAction}
+			/>
 		),
 		diet: (
 			<EntryForm
@@ -449,13 +574,33 @@ export default function App({ options, file, initialProgress }: AppProps) {
 				}}
 			/>
 		),
+		profile: (
+			<EntryForm
+				fields={profileFieldsOf(messages, progress.profile, name)}
+				messages={messages}
+				title={messages.form.profileTitle}
+				onSubmit={submitProfile}
+			/>
+		),
+		theme: (
+			<Titled title={messages.menu.theme}>
+				<Choice
+					initialValue={themeName}
+					options={themeNames.map((option) => ({
+						label: messages.themes.names[option].padEnd(8),
+						value: option,
+						hint: <Swatches palette={themes[option]} />,
+					}))}
+					onSelect={chooseTheme}
+				/>
+			</Titled>
+		),
 		language: (
 			<Titled title={messages.menu.language}>
-				<Select
+				<Choice
+					initialValue={language}
 					options={languageOptions}
-					onChange={(value) => {
-						chooseLanguage(asLanguage(value));
-					}}
+					onSelect={chooseLanguage}
 				/>
 			</Titled>
 		),
@@ -464,102 +609,158 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	const shownQuote = localizedQuote(quote, language);
 	const todayPanel = (
 		<TodayPanel
-			metrics={metricsOf(messages, language, progress, now)}
+			sections={sectionsOf(language, palette, progress, now)}
 			title={messages.today.title}
 			width={layout.todayWidth}
 		/>
 	);
 
-	return (
-		<ThemeProvider theme={uiTheme}>
+	return providers(
+		<Box
+			flexDirection="column"
+			height={size.rows ? rows : undefined}
+			overflow="hidden"
+			width={columns}
+		>
 			<Box
+				borderColor={palette.accent}
+				borderStyle="round"
 				flexDirection="column"
-				height={size.rows ? rows : undefined}
-				overflow="hidden"
-				width={columns}
+				flexShrink={0}
+				paddingX={1}
 			>
+				<Box justifyContent="space-between">
+					<Text bold color={palette.accent}>
+						✻ Terminal Sigma
+					</Text>
+					<Text dimColor>{new Date(now).toTimeString().slice(0, 8)}</Text>
+				</Box>
+				<Text dimColor italic wrap="truncate-end">
+					{`“${shownQuote.quote}” — ${shownQuote.author}`}
+				</Text>
+			</Box>
+
+			{view === "logs" ? (
 				<Box
-					borderColor={colors.accent}
+					borderColor={palette.accent}
 					borderStyle="round"
-					flexDirection="column"
-					flexShrink={0}
+					flexGrow={1}
 					paddingX={1}
 				>
-					<Box justifyContent="space-between">
-						<Text bold color={colors.accent}>
-							✻ Terminal Sigma
-						</Text>
-						<Text dimColor>
-							{new Date(now).toLocaleTimeString(language, { hour12: false })}
-						</Text>
-					</Box>
-					<Text dimColor italic wrap="truncate-end">
-						{`“${shownQuote.quote}” — ${shownQuote.author}`}
-					</Text>
+					<LogsView
+						height={rows - 7}
+						language={language}
+						logs={logs}
+						messages={messages}
+					/>
 				</Box>
-
-				{view === "logs" ? (
+			) : (
+				<>
 					<Box
-						borderColor={colors.accent}
-						borderStyle="round"
+						flexDirection={layout.stacked ? "column-reverse" : "row"}
 						flexGrow={1}
-						paddingX={1}
 					>
-						<LogsView
-							height={rows - 7}
-							language={language}
-							logs={logs}
-							messages={messages}
-						/>
-					</Box>
-				) : (
-					<>
+						{layout.showCharacter ? (
+							<Character
+								activity={activity}
+								label={
+									activity === "levelUp"
+										? `${messages.activity.levelUp} ${messages.level(level)}`
+										: messages.activity[activity]
+								}
+								level={messages.level(level)}
+								levelNumber={level}
+								name={name}
+								width={characterWidth}
+							/>
+						) : null}
+						{layout.showToday && layout.todayBeside ? todayPanel : null}
 						<Box
-							flexDirection={layout.stacked ? "column-reverse" : "row"}
-							flexGrow={1}
+							borderColor={view === "menu" ? palette.border : palette.accent}
+							borderStyle="round"
+							flexDirection="column"
+							paddingX={1}
+							width={layout.panelWidth}
 						>
-							{layout.showCharacter ? (
-								<Character
-									activity={activity}
-									label={
-										activity === "levelUp"
-											? `${messages.activity.levelUp} ${messages.level(level)}`
-											: messages.activity[activity]
-									}
-									level={messages.level(level)}
-									levelNumber={level}
-									name={options.name}
-									width={characterWidth}
-								/>
-							) : null}
-							{layout.showToday && layout.todayBeside ? todayPanel : null}
-							<Box
-								borderColor={view === "menu" ? colors.border : colors.accent}
-								borderStyle="round"
-								flexDirection="column"
-								paddingX={1}
-								width={layout.panelWidth}
-							>
-								{view === "menu" ? panels.menu : panels[view]}
-							</Box>
+							{view === "menu" ? panels.menu : panels[view]}
 						</Box>
-						{layout.showToday && !layout.todayBeside ? todayPanel : null}
-					</>
-				)}
+					</Box>
+					{layout.showToday && !layout.todayBeside ? todayPanel : null}
+				</>
+			)}
 
-				<Footer
-					hint={hints[view]}
-					message={
-						isIdle || isRunning
-							? message.text
-							: `${messages.timer.pausedAt(phaseLabel, clock)} · ${message.text}`
-					}
-					status={
-						isRunning ? messages.timer.left(phaseLabel, clock) : undefined
-					}
-					tone={message.tone}
-				/>
+			<Footer
+				hint={hints[view]}
+				message={
+					isIdle || isRunning
+						? message.text
+						: `${messages.timer.pausedAt(phaseLabel, clock)} · ${message.text}`
+				}
+				status={isRunning ? messages.timer.left(phaseLabel, clock) : undefined}
+				tone={message.tone}
+			/>
+		</Box>,
+	);
+}
+
+type HealthPanelProps = Readonly<{
+	language: Language;
+	messages: Messages;
+	palette: Palette;
+	progress: Progress;
+	today: ReturnType<typeof todayOf>;
+	onSelect: (action: string) => void;
+}>;
+
+function HealthPanel({
+	language,
+	messages,
+	palette,
+	progress,
+	today,
+	onSelect,
+}: HealthPanelProps) {
+	const { profile } = progress;
+	const targets = targetsOf(profile);
+	const { health } = messages;
+	const options = [
+		...(profile ? [] : [{ label: health.setUp, value: "profile" }]),
+		{ label: health.logMeal, value: "diet" },
+		{ label: health.logWorkout, value: "workout" },
+		{ label: health.back, value: "back" },
+	];
+
+	return (
+		<Box flexDirection="column">
+			<Text bold color={palette.accent}>
+				{profile
+					? health.title(messages.goal[profile.goal])
+					: messages.menu.health}
+			</Text>
+			<Text dimColor>
+				{health.targets(
+					formatNumber(language, targets.calories),
+					targets.protein,
+					targets.workoutMinutes,
+				)}
+			</Text>
+			<Box flexDirection="column" marginY={1}>
+				{profile ? null : <Text dimColor>{health.noProfile}</Text>}
+				{adviceOf(profile, today, language, messages).map((advice) => (
+					<Text key={advice.text}>
+						<Text color={advice.isDone ? palette.success : palette.accent}>
+							{"⏺ "}
+						</Text>
+						<Text>{advice.text}</Text>
+					</Text>
+				))}
+				{profile ? (
+					<Text dimColor italic>
+						{health.tip[profile.goal]}
+					</Text>
+				) : null}
 			</Box>
-		</ThemeProvider>
+			<Choice options={options} onSelect={onSelect} />
+		</Box>
 	);
 }

@@ -1,28 +1,37 @@
 import type { Field } from "./components/entry-form.js";
 import type { MenuItem } from "./components/menu-grid.js";
-import type { Metric } from "./components/today-panel.js";
+import type { Section } from "./components/today-panel.js";
+import { adviceOf, targetsOf } from "./health.js";
 import {
 	formatNumber,
+	genders,
+	healthGoals,
 	intensities,
 	type Language,
 	type Messages,
+	messagesOf,
 	workoutActivities,
+	workStyles,
 } from "./i18n.js";
 import {
 	dailyGoals,
 	experienceOf,
 	experiencePerLevel,
+	type Profile,
 	type Progress,
 	todayOf,
 } from "./progress.js";
 import { quoteRefreshMinutes } from "./quotes.js";
-import { colors } from "./theme.js";
+import type { Palette, ThemeName } from "./theme.js";
 
-export const characterWidth = 30;
+export const characterWidth = 26;
 
-// Header and footer take 5 rows; the character and Today panels 15 each.
+// Header and footer take 5 rows. The character panel is 18 rows tall, Today
+// 17, and the menu with its recent logs at least 16.
 const chromeRows = 5;
-const panelRows = 15;
+const characterRows = 18;
+const todayRows = 17;
+const panelRows = 16;
 
 export type Layout = Readonly<{
 	panelWidth: number;
@@ -66,7 +75,7 @@ export function layoutOf(columns: number, rows: number): Layout {
 			todayWidth: columns,
 			menuColumns: menuColumnsOf(panelWidth),
 			showCharacter: true,
-			showToday: rows >= chromeRows + panelRows * 2,
+			showToday: rows >= chromeRows + characterRows + todayRows,
 			todayBeside: false,
 			stacked: false,
 		};
@@ -76,8 +85,8 @@ export function layoutOf(columns: number, rows: number): Layout {
 		panelWidth: columns,
 		todayWidth: columns,
 		menuColumns: menuColumnsOf(columns),
-		showCharacter: rows >= chromeRows + panelRows * 2,
-		showToday: rows >= chromeRows + panelRows * 3,
+		showCharacter: rows >= chromeRows + panelRows + characterRows,
+		showToday: rows >= chromeRows + panelRows + characterRows + todayRows,
 		todayBeside: false,
 		stacked: true,
 	};
@@ -85,80 +94,126 @@ export function layoutOf(columns: number, rows: number): Layout {
 
 const percentOf = (value: number, goal: number) => (value / goal) * 100;
 
-export function metricsOf(
-	messages: Messages,
+export function sectionsOf(
 	language: Language,
+	palette: Palette,
 	progress: Progress,
 	now: number,
-): Metric[] {
+): Section[] {
+	const messages = messagesOf(language);
 	const today = todayOf(progress, now);
+	const targets = targetsOf(progress.profile);
 	const experience = experienceOf(progress);
 	const level = Math.floor(experience / experiencePerLevel) + 1;
 	const levelExperience = experience % experiencePerLevel;
+	const advice = adviceOf(progress.profile, today, language, messages);
+	const format = (value: number) => formatNumber(language, value);
 
 	return [
 		{
-			label: messages.today.character,
-			detail: messages.today.characterDetail(
-				level + 1,
-				experiencePerLevel - levelExperience,
-			),
-			value: percentOf(levelExperience, experiencePerLevel),
-			color: colors.accent,
+			metrics: [
+				{
+					label: messages.today.character,
+					detail: messages.today.characterDetail(
+						level + 1,
+						experiencePerLevel - levelExperience,
+					),
+					value: percentOf(levelExperience, experiencePerLevel),
+					color: palette.metrics.character,
+				},
+				{
+					label: messages.today.focus,
+					detail: messages.today.focusDetail(
+						today.focusSessions,
+						dailyGoals.focusSessions,
+					),
+					value: percentOf(today.focusSessions, dailyGoals.focusSessions),
+					color: palette.metrics.focus,
+				},
+			],
 		},
 		{
-			label: messages.today.focus,
-			detail: messages.today.focusDetail(
-				today.focusSessions,
-				dailyGoals.focusSessions,
-			),
-			value: percentOf(today.focusSessions, dailyGoals.focusSessions),
-			color: colors.focus,
-		},
-		{
-			label: messages.today.diet,
-			detail: messages.today.dietDetail(
-				today.meals,
-				dailyGoals.meals,
-				formatNumber(language, today.calories),
-				formatNumber(language, today.protein),
-			),
-			value: percentOf(today.meals, dailyGoals.meals),
-			color: colors.diet,
-		},
-		{
-			label: messages.today.workout,
-			detail: messages.today.workoutDetail(
-				today.workoutMinutes,
-				dailyGoals.workoutMinutes,
-			),
-			value: percentOf(today.workoutMinutes, dailyGoals.workoutMinutes),
-			color: colors.workout,
+			title: progress.profile
+				? messages.health.title(messages.goal[progress.profile.goal])
+				: messages.today.health,
+			metrics: [
+				{
+					label: messages.today.protein,
+					detail: messages.today.proteinDetail(
+						format(today.protein),
+						format(targets.protein),
+					),
+					value: percentOf(today.protein, targets.protein),
+					color: palette.metrics.protein,
+				},
+				{
+					label: messages.today.calories,
+					detail: messages.today.caloriesDetail(
+						format(today.calories),
+						format(targets.calories),
+						today.meals,
+					),
+					value: percentOf(today.calories, targets.calories),
+					color: palette.metrics.calories,
+				},
+				{
+					label: messages.today.workout,
+					detail: messages.today.workoutDetail(
+						today.workoutMinutes,
+						targets.workoutMinutes,
+					),
+					value: percentOf(today.workoutMinutes, targets.workoutMinutes),
+					color: palette.metrics.workout,
+				},
+			],
+			advice: progress.profile
+				? (advice.find((item) => !item.isDone) ?? advice[0])
+				: { text: messages.health.noProfile, isDone: false },
 		},
 	];
 }
 
 export const menuOrder = [
 	"timer",
-	"diet",
-	"workout",
+	"health",
 	"logs",
 	"quotes",
+	"profile",
+	"theme",
 	"language",
 ] as const;
+
+const languageSignal: Record<Language, string> = {
+	en: "EN",
+	"zh-TW": "繁中",
+	ko: "한국어",
+};
 
 export function menuItemsOf(
 	messages: Messages,
 	language: Language,
 	state: Readonly<{
 		timerSignal: string;
-		meals: number;
-		workoutMinutes: number;
+		progress: Progress;
+		now: number;
 		logs: number;
+		theme: ThemeName;
 		focus: number;
 		rest: number;
 	}>,
 ): MenuItem[] {
+	const { profile } = state.progress;
+	const proteinLeft =
+		targetsOf(profile).protein - todayOf(state.progress, state.now).protein;
+	let healthSignal = messages.signal.setUp;
+
+	if (profile) {
+		healthSignal =
+			proteinLeft > 0
+				? messages.signal.proteinLeft(proteinLeft)
+				: messages.signal.onTrack;
+	}
+
 	return [
 		{
 			label: messages.menu.timer,
@@ -166,14 +221,9 @@ export function menuItemsOf(
 			description: messages.describe.timer(state.focus, state.rest),
 		},
 		{
-			label: messages.menu.diet,
-			signal: messages.signal.meals(state.meals),
-			description: messages.describe.diet,
-		},
-		{
-			label: messages.menu.workout,
-			signal: messages.signal.minutes(state.workoutMinutes),
-			description: messages.describe.workout,
+			label: messages.menu.health,
+			signal: healthSignal,
+			description: messages.describe.health,
 		},
 		{
 			label: messages.menu.logs,
@@ -186,8 +236,18 @@ export function menuItemsOf(
 			description: messages.describe.quotes(quoteRefreshMinutes),
 		},
 		{
+			label: messages.menu.profile,
+			signal: profile?.name ?? messages.signal.setUp,
+			description: messages.describe.profile,
+		},
+		{
+			label: messages.menu.theme,
+			signal: messages.themes.names[state.theme],
+			description: messages.describe.theme,
+		},
+		{
 			label: messages.menu.language,
-			signal: language === "zh-TW" ? "繁中" : "EN",
+			signal: languageSignal[language],
 			description: messages.describe.language,
 		},
 	];
@@ -241,5 +301,73 @@ export const workoutFieldsOf = (messages: Messages): Field[] => [
 			label: messages.intensity[option],
 			value: option,
 		})),
+	},
+];
+
+// Saved values come back as defaults, so editing the profile is a run of Enter.
+export const profileFieldsOf = (
+	messages: Messages,
+	profile: Profile | undefined,
+	name: string,
+): Field[] => [
+	{
+		key: "name",
+		label: messages.form.name,
+		kind: "text",
+		defaultValue: profile?.name ?? name,
+	},
+	{
+		key: "age",
+		label: messages.form.age,
+		kind: "number",
+		minimum: 10,
+		maximum: 100,
+		defaultValue: profile ? String(profile.age) : undefined,
+	},
+	{
+		key: "height",
+		label: messages.form.height,
+		kind: "number",
+		minimum: 100,
+		maximum: 250,
+		defaultValue: profile ? String(profile.height) : undefined,
+	},
+	{
+		key: "weight",
+		label: messages.form.weight,
+		kind: "number",
+		minimum: 30,
+		maximum: 300,
+		defaultValue: profile ? String(profile.weight) : undefined,
+	},
+	{
+		key: "gender",
+		label: messages.form.gender,
+		kind: "select",
+		options: genders.map((option) => ({
+			label: messages.gender[option],
+			value: option,
+		})),
+		defaultValue: profile?.gender,
+	},
+	{
+		key: "workStyle",
+		label: messages.form.workStyle,
+		kind: "select",
+		options: workStyles.map((option) => ({
+			label: messages.workStyle[option],
+			value: option,
+		})),
+		defaultValue: profile?.workStyle,
+	},
+	{
+		key: "goal",
+		label: messages.form.goal,
+		kind: "select",
+		options: healthGoals.map((option) => ({
+			label: messages.goal[option],
+			value: option,
+		})),
+		defaultValue: profile?.goal,
 	},
 ];
