@@ -1,15 +1,16 @@
 import React from "react";
-import { Select, TextInput } from "@inkjs/ui";
+import { TextInput } from "@inkjs/ui";
 import { Box, Text } from "ink";
 import type { Messages } from "../i18n.js";
 import { parseWholeNumber } from "../progress.js";
-import { colors } from "../theme.js";
+import { usePalette } from "../theme.js";
+import Choice, { type Option } from "./choice.js";
 
 export type Field = Readonly<
-	{ key: string; label: string } & (
+	{ key: string; label: string; defaultValue?: string } & (
 		| { kind: "text"; placeholder?: string }
 		| { kind: "number"; minimum: number; maximum: number }
-		| { kind: "select"; options: Array<{ label: string; value: string }> }
+		| { kind: "select"; options: readonly Option[] }
 	)
 >;
 
@@ -28,6 +29,7 @@ export default function EntryForm({
 	onSubmit,
 	onValues,
 }: EntryFormProps) {
+	const palette = usePalette();
 	const [values, setValues] = React.useState<Record<string, string>>({});
 	const [error, setError] = React.useState<string>();
 	const field = fields[Object.keys(values).length];
@@ -69,14 +71,14 @@ export default function EntryForm({
 
 	return (
 		<Box flexDirection="column">
-			<Text bold color={colors.accent}>
+			<Text bold color={palette.accent}>
 				{title}
 			</Text>
 			{fields
 				.filter((done) => done.key in values)
 				.map((done) => (
-					<Text key={done.key}>
-						<Text color={colors.focus}>✓ </Text>
+					<Text key={done.key} wrap="truncate-end">
+						<Text color={palette.success}>✓ </Text>
 						<Text dimColor>{`${done.label}: `}</Text>
 						<Text>{shown(done)}</Text>
 					</Text>
@@ -86,15 +88,16 @@ export default function EntryForm({
 					<Text bold>{`❯ ${field.label}`}</Text>
 					<Box paddingLeft={2}>
 						{field.kind === "select" ? (
-							<Select
+							<Choice
 								key={field.key}
+								initialValue={field.defaultValue}
 								options={field.options}
-								visibleOptionCount={field.options.length}
-								onChange={accept}
+								onSelect={accept}
 							/>
 						) : (
 							<TextInput
 								key={field.key}
+								defaultValue={field.defaultValue}
 								placeholder={
 									field.kind === "text"
 										? field.placeholder
@@ -106,7 +109,7 @@ export default function EntryForm({
 					</Box>
 				</Box>
 			) : null}
-			{error ? <Text color={colors.error}>{error}</Text> : null}
+			{error ? <Text color={palette.error}>{error}</Text> : null}
 		</Box>
 	);
 }

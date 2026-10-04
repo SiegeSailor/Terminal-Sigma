@@ -9,7 +9,15 @@ import { homedir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import zod from "zod";
-import { intensities, type Intensity, languages } from "./i18n.js";
+import {
+	genders,
+	healthGoals,
+	intensities,
+	type Intensity,
+	languages,
+	workStyles,
+} from "./i18n.js";
+import { themeNames } from "./theme.js";
 
 const timestamp = zod.iso.datetime({ offset: true });
 
@@ -31,21 +39,34 @@ const workoutSchema = zod.object({
 	intensity: zod.enum(intensities).optional(),
 });
 
+const profileSchema = zod.object({
+	name: zod.string().min(1),
+	age: zod.number().int().min(10).max(100),
+	height: zod.number().min(100).max(250),
+	weight: zod.number().min(30).max(300),
+	gender: zod.enum(genders),
+	workStyle: zod.enum(workStyles),
+	goal: zod.enum(healthGoals),
+});
+
 const progressSchema = zod.object({
 	language: zod.enum(languages).optional(),
+	theme: zod.enum(themeNames).optional(),
+	profile: profileSchema.optional(),
 	focus: zod.array(focusSchema).default([]),
 	meals: zod.array(mealSchema).default([]),
 	workouts: zod.array(workoutSchema).default([]),
 });
 
 export type Progress = zod.infer<typeof progressSchema>;
+export type Profile = zod.infer<typeof profileSchema>;
 export type Focus = zod.infer<typeof focusSchema>;
 export type Meal = zod.infer<typeof mealSchema>;
 export type Workout = zod.infer<typeof workoutSchema>;
 
 export const experiencePerLevel = 100;
 export const experiencePerMeal = 5;
-export const dailyGoals = { focusSessions: 4, meals: 3, workoutMinutes: 30 };
+export const dailyGoals = { focusSessions: 4 };
 
 // Entries from before intensity existed earned 1 XP per minute, and still do.
 const intensityFactor: Record<Intensity, number> = {

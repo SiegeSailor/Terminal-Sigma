@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { colors } from "../theme.js";
+import { usePalette } from "../theme.js";
 
 export type Metric = Readonly<{
 	label: string;
@@ -9,19 +9,43 @@ export type Metric = Readonly<{
 	color: string;
 }>;
 
+export type Section = Readonly<{
+	title?: string;
+	metrics: readonly Metric[];
+	advice?: Readonly<{ text: string; isDone: boolean }>;
+}>;
+
 type TodayPanelProps = Readonly<{
 	title: string;
-	metrics: readonly Metric[];
+	sections: readonly Section[];
 	width: number;
 }>;
 
-export default function TodayPanel({ title, metrics, width }: TodayPanelProps) {
+function Bar({ metric, width }: Readonly<{ metric: Metric; width: number }>) {
+	const value = Math.min(Math.max(Math.round(metric.value), 0), 100);
+	const filled = Math.round((value / 100) * width);
+
+	return (
+		<Text>
+			<Text color={metric.color}>{"█".repeat(filled)}</Text>
+			<Text dimColor>{"░".repeat(width - filled)}</Text>
+			<Text>{` ${String(value).padStart(3)}%`}</Text>
+		</Text>
+	);
+}
+
+export default function TodayPanel({
+	title,
+	sections,
+	width,
+}: TodayPanelProps) {
+	const palette = usePalette();
 	// Border and padding take 4 columns, and " 100%" takes 5.
 	const barWidth = Math.max(width - 9, 4);
 
 	return (
 		<Box
-			borderColor={colors.border}
+			borderColor={palette.border}
 			borderStyle="round"
 			flexDirection="column"
 			flexShrink={0}
@@ -29,34 +53,42 @@ export default function TodayPanel({ title, metrics, width }: TodayPanelProps) {
 			width={width}
 		>
 			<Text bold>{title}</Text>
-			{metrics.map((metric, index) => {
-				const value = Math.min(Math.max(Math.round(metric.value), 0), 100);
-				const filled = Math.round((value / 100) * barWidth);
-
-				return (
-					<Box
-						key={metric.label}
-						flexDirection="column"
-						marginTop={index === 0 ? 0 : 1}
-					>
-						<Box gap={1} justifyContent="space-between">
-							<Box flexShrink={0}>
-								<Text bold color={metric.color}>
-									{metric.label}
+			{sections.map((section, index) => (
+				<Box
+					key={section.title ?? `section-${index}`}
+					flexDirection="column"
+					marginTop={index === 0 ? 0 : 1}
+				>
+					{section.title ? (
+						<Text bold color={palette.soft}>
+							{section.title}
+						</Text>
+					) : null}
+					{section.metrics.map((metric) => (
+						<Box key={metric.label} flexDirection="column">
+							<Box gap={1} justifyContent="space-between">
+								<Box flexShrink={0}>
+									<Text color={metric.color}>{metric.label}</Text>
+								</Box>
+								<Text dimColor wrap="truncate-end">
+									{metric.detail}
 								</Text>
 							</Box>
-							<Text dimColor wrap="truncate-end">
-								{metric.detail}
-							</Text>
+							<Bar metric={metric} width={barWidth} />
 						</Box>
-						<Text>
-							<Text color={metric.color}>{"█".repeat(filled)}</Text>
-							<Text dimColor>{"░".repeat(barWidth - filled)}</Text>
-							<Text>{` ${String(value).padStart(3)}%`}</Text>
+					))}
+					{section.advice ? (
+						<Text wrap="truncate-end">
+							<Text
+								color={section.advice.isDone ? palette.success : palette.accent}
+							>
+								{"⏺ "}
+							</Text>
+							<Text dimColor>{section.advice.text}</Text>
 						</Text>
-					</Box>
-				);
-			})}
+					) : null}
+				</Box>
+			))}
 		</Box>
 	);
 }
