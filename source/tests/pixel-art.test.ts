@@ -2,14 +2,12 @@ import test from "ava";
 import type { Mood } from "../i18n.js";
 import {
 	type Activity,
-	type Badges,
 	composeScene,
 	cycleOf,
 	defaultLook,
 	gearOf,
 	type Look,
 	lookOf,
-	noBadges,
 	paletteOf,
 	stageHeight,
 	toSegments,
@@ -28,12 +26,30 @@ const activities: Activity[] = [
 ];
 const moods: Mood[] = ["sleepy", "content", "happy"];
 const width = 32;
+
+const lookFor = (profile: Partial<Parameters<typeof lookOf>[0]> = {}) =>
+	lookOf({
+		age: 30,
+		height: 170,
+		weight: 65,
+		gender: "other",
+		workStyle: "desk",
+		goal: "maintain",
+		...profile,
+	});
+
 const looks: Look[] = [
 	defaultLook,
-	lookOf({ height: 150, weight: 42, gender: "female", goal: "loseFat" }),
-	lookOf({ height: 195, weight: 110, gender: "male", goal: "buildMuscle" }),
+	lookFor({ height: 150, weight: 42, gender: "female", workStyle: "athlete" }),
+	lookFor({
+		height: 195,
+		weight: 120,
+		gender: "male",
+		workStyle: "active",
+		goal: "buildMuscle",
+	}),
+	lookFor({ gender: "female", workStyle: "standing", age: 72 }),
 ];
-const all: Badges = { meal: true, workout: true, focus: true };
 
 type Scene = Partial<{
 	activity: Activity;
@@ -41,7 +57,6 @@ type Scene = Partial<{
 	level: number;
 	look: Look;
 	mood: Mood;
-	badges: Badges;
 }>;
 
 const scene = (input: Scene = {}) =>
@@ -51,16 +66,15 @@ const scene = (input: Scene = {}) =>
 		level: 1,
 		look: defaultLook,
 		mood: "content",
-		badges: noBadges,
 		width,
 		...input,
 	});
 
-// The rows and columns the pet covers, ignoring the badge corner.
+// The rows and columns the body covers, leaving out its shadow.
 const extentOf = (frame: string[]) => {
 	const cells = frame.flatMap((row, y) =>
 		[...row].flatMap((key, x) =>
-			key === "." || y < 4 ? [] : [[x, y] as const],
+			key === "." || key === "A" ? [] : [[x, y] as const],
 		),
 	);
 	const xs = cells.map(([x]) => x);
@@ -81,13 +95,7 @@ test("every scene fits its stage and uses only known colors", (t) => {
 			for (const level of [1, 5, 10]) {
 				for (const activity of activities) {
 					for (let counter = 0; counter < cycleOf(activity, width); counter++) {
-						const frame = scene({
-							activity,
-							counter,
-							level,
-							look,
-							badges: all,
-						});
+						const frame = scene({ activity, counter, level, look });
 						const unknown = [...frame.join("").replaceAll(".", "")].filter(
 							(key) => !palette.has(key),
 						);
@@ -106,7 +114,7 @@ test("every scene fits its stage and uses only known colors", (t) => {
 	}
 });
 
-// The pet must never look stuck: no frame survives 3 ticks in a row.
+// The character must never look stuck: no frame survives 3 ticks in a row.
 test("every animation keeps moving, in every mood", (t) => {
 	for (const mood of moods) {
 		for (const activity of activities) {
@@ -137,34 +145,75 @@ test("wanders across the stage while idle", (t) => {
 	t.true(lefts.size >= 8);
 });
 
-test("grows with the profile and the level", (t) => {
+test("draws the body from the profile", (t) => {
 	t.deepEqual(lookOf(undefined), defaultLook);
 
-	const small = extentOf(scene({ look: looks[1] }));
-	const big = extentOf(scene({ look: looks[2] }));
-	t.true(big.rows > small.rows, "taller for a taller profile");
-	t.true(big.columns > small.columns, "wider for a heavier profile");
+	const extentFor = (profile: Parameters<typeof lookFor>[0]) =>
+		extentOf(scene({ look: lookFor(profile) }));
 
-	const young = extentOf(scene({ level: 1 }));
-	const grown = extentOf(scene({ level: 9 }));
-	t.true(grown.rows > young.rows && grown.columns > young.columns);
+	t.true(
+		extentFor({ height: 195 }).rows > extentFor({ height: 150 }).rows,
+		"taller for a taller profile",
+	);
+	t.true(
+		extentFor({ weight: 110 }).columns > extentFor({ weight: 55 }).columns,
+		"wider for a heavier profile",
+	);
+	t.true(
+		extentFor({ gender: "male" }).columns >
+			extentFor({ gender: "female" }).columns,
+		"broader shoulders for a man",
+	);
+
+	const styles = (["desk", "standing", "active", "athlete"] as const).map(
+		(workStyle) => scene({ look: lookFor({ workStyle }) }).join(""),
+	);
+	t.is(new Set(styles).size, 4, "dressed for each work style");
+	t.true(
+		scene({ look: lookFor({ age: 60 }) })
+			.join("")
+			.includes("H"),
+	);
+	t.true(
+		scene({ look: lookFor({ age: 75 }) })
+			.join("")
+			.includes("I"),
+	);
 });
 
-test("shows the mood and today's badges", (t) => {
-	const sleepy = scene({ mood: "sleepy" }).join("");
-	const happy = scene({ mood: "happy" }).join("");
-
-	t.true(sleepy.includes("z"), "Zs while asleep");
-	t.false(happy.includes("z"));
-	t.notDeepEqual(scene({ mood: "content" }), scene({ mood: "happy" }));
-
-	const corner = (frame: string[]) => frame.slice(0, 4).join("");
-	t.notRegex(corner(scene()), /[TFD]/v);
-	t.true(corner(scene({ badges: { ...noBadges, focus: true } })).includes("T"));
-	t.true(corner(scene({ badges: { ...noBadges, meal: true } })).includes("F"));
-	t.true(
-		corner(scene({ badges: { ...noBadges, workout: true } })).includes("D"),
+test("dresses up with the level", (t) => {
+	const frames = Array.from({ length: 9 }, (_, index) =>
+		scene({ level: index + 1 }).join(""),
 	);
+
+	t.is(new Set(frames).size, 9, "every level from 1 to 9 looks different");
+	t.true(frames[8]?.includes("g"), "a crown and a medal at level 9");
+});
+
+test("shows the mood on the face", (t) => {
+	const sleepy = scene({ mood: "sleepy" }).join("");
+
+	t.true(sleepy.includes("Z"), "Zs while dozing");
+	t.false(scene().join("").includes("Z"));
+	t.true(scene({ mood: "happy" }).join("").includes("m"), "a smile");
+	t.false(scene().join("").includes("m"));
+});
+
+test("casts an oval shadow under the feet", (t) => {
+	const frame = scene();
+	const rowsWithShadow = frame.flatMap((row, y) =>
+		row.includes("A") ? [y] : [],
+	);
+
+	t.deepEqual(rowsWithShadow, [
+		stageHeight - 3,
+		stageHeight - 2,
+		stageHeight - 1,
+	]);
+
+	const widthAt = (y: number) =>
+		[...(frame[y] ?? "")].filter((key) => key !== ".").length;
+	t.true(widthAt(stageHeight - 2) > widthAt(stageHeight - 1), "an oval");
 });
 
 test("renders 2 pixel rows per terminal row at full width", (t) => {
@@ -186,6 +235,6 @@ test("upgrades exactly 1 piece of equipment on each level from 2 to 9", (t) => {
 		t.is(changed.length, 1, `level ${level}`);
 	}
 
-	t.deepEqual(gearOf(1), { gadget: 0, wear: 0, headwear: 0, aura: 0 });
-	t.deepEqual(gearOf(20), { gadget: 2, wear: 2, headwear: 2, aura: 2 });
+	t.deepEqual(gearOf(1), { gadget: 0, wear: 0, headwear: 0, carry: 0 });
+	t.deepEqual(gearOf(20), { gadget: 2, wear: 2, headwear: 2, carry: 2 });
 });

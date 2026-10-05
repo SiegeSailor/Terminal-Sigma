@@ -18,7 +18,7 @@ test("keeps the menu and adds panels as the terminal grows", (t) => {
 		isMenuSplit: true,
 		panelWidth: 64,
 	});
-	t.like(layoutOf(100, 40), { showToday: true, todayBeside: false });
+	t.like(layoutOf(100, 44), { showToday: true, todayBeside: false });
 	t.like(layoutOf(84, 24), { isMenuSplit: false });
 	t.like(layoutOf(56, 24), {
 		showCharacter: false,

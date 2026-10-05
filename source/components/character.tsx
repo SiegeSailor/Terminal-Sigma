@@ -3,7 +3,6 @@ import { Box, Text, useAnimation } from "ink";
 import type { Mood } from "../i18n.js";
 import {
 	type Activity,
-	type Badges,
 	composeScene,
 	intervalOf,
 	type Look,
@@ -19,7 +18,6 @@ type CharacterProps = Readonly<{
 	activity: Activity;
 	look: Look;
 	mood: Mood;
-	badges: Badges;
 	label: string;
 	width: number;
 }>;
@@ -31,7 +29,6 @@ export default function Character({
 	activity,
 	look,
 	mood,
-	badges,
 	label,
 	width,
 }: CharacterProps) {
@@ -45,7 +42,6 @@ export default function Character({
 			level: levelNumber,
 			look,
 			mood,
-			badges,
 			width: width - 4,
 		}),
 		paletteOf(palette),

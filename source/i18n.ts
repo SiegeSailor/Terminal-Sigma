@@ -83,8 +83,8 @@ const en = {
 			"Your diet and workouts against targets from your profile, with advice for the rest of today.",
 		logs: "Browse every focus, meal, workout, and action you have taken.",
 		profile:
-			"Your name, body, work style, and health goal, which set your daily targets and shape your pet.",
-		theme: "Pick the color tone of the dashboard and your pet.",
+			"Your name, body, work style, and health goal, which set your daily targets and shape your character.",
+		theme: "Pick the color tone of the dashboard and your character.",
 		language: "Switch between English, Traditional Chinese, and Korean.",
 		open: "Enter to open",
 	},
@@ -100,7 +100,7 @@ const en = {
 	},
 	today: {
 		title: "Today",
-		character: "Pet",
+		character: "Character",
 		characterDetail: (next: number, missing: number) =>
 			`${missing} XP to Lv ${next}`,
 		focus: "Focus",
@@ -371,8 +371,8 @@ const traditionalChinese: Messages = {
 		health: "依個人資料設定的目標檢視飲食與運動，並提供今天剩餘時間的建議。",
 		logs: "瀏覽所有專注、飲食、運動與操作紀錄。",
 		profile:
-			"你的名字、身體數據、工作型態與健康目標，用來計算每日目標並決定寵物的樣子。",
-		theme: "選擇儀表板與寵物的色調。",
+			"你的名字、身體數據、工作型態與健康目標，用來計算每日目標並決定角色的樣子。",
+		theme: "選擇儀表板與角色的色調。",
 		language: "切換英文、繁體中文與韓文。",
 		open: "按 Enter 開啟",
 	},
@@ -388,7 +388,7 @@ const traditionalChinese: Messages = {
 	},
 	today: {
 		title: "今日",
-		character: "寵物",
+		character: "角色",
 		characterDetail: (next, missing) => `距 Lv ${next} 還差 ${missing} XP`,
 		focus: "專注",
 		focusDetail: (count, goal) => `${count} / ${goal} 次`,
@@ -648,8 +648,8 @@ const korean: Messages = {
 			"프로필로 정한 목표에 맞춰 식단과 운동을 확인하고, 남은 하루에 대한 조언을 받습니다.",
 		logs: "기록한 모든 집중, 식사, 운동, 활동을 봅니다.",
 		profile:
-			"이름, 신체 정보, 업무 형태, 건강 목표로 하루 목표를 정하고 펫의 모습을 바꿉니다.",
-		theme: "대시보드와 펫의 색조를 고릅니다.",
+			"이름, 신체 정보, 업무 형태, 건강 목표로 하루 목표를 정하고 캐릭터의 모습을 바꿉니다.",
+		theme: "대시보드와 캐릭터의 색조를 고릅니다.",
 		language: "영어, 번체 중국어, 한국어 중에서 전환합니다.",
 		open: "Enter로 열기",
 	},
@@ -665,7 +665,7 @@ const korean: Messages = {
 	},
 	today: {
 		title: "오늘",
-		character: "펫",
+		character: "캐릭터",
 		characterDetail: (next, missing) => `Lv ${next}까지 ${missing} XP`,
 		focus: "집중",
 		focusDetail: (count, goal) => `${count} / ${goal}회`,

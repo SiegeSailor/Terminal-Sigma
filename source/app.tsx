@@ -21,7 +21,7 @@ import {
 	menuEntriesOf,
 	menuListWidth,
 	menuOrder,
-	petStateOf,
+	moodOf,
 	profileFieldsOf,
 	quoteOptionsOf,
 	sectionsOf,
@@ -609,7 +609,7 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	const columns = size.columns || 100;
 	const rows = size.rows || 40;
 	const layout = layoutOf(columns, rows);
-	const pet = petStateOf(progress, now);
+	const mood = moodOf(progress, now);
 
 	const activity: Activity =
 		flash && flash.until > now
@@ -625,7 +625,7 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	let activityLabel = messages.activity[activity];
 
 	if (activity === "idle") {
-		activityLabel = messages.mood[pet.mood];
+		activityLabel = messages.mood[mood];
 	} else if (activity === "levelUp") {
 		activityLabel = `${messages.activity.levelUp} ${messages.level(level)}`;
 	}
@@ -933,12 +933,11 @@ export default function App({ options, file, initialProgress }: AppProps) {
 				{layout.showCharacter ? (
 					<Character
 						activity={activity}
-						badges={pet.badges}
 						label={activityLabel}
 						level={messages.level(level)}
 						levelNumber={level}
 						look={lookOf(progress.profile)}
-						mood={pet.mood}
+						mood={mood}
 						name={name}
 						width={characterWidth}
 					/>

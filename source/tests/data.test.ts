@@ -2,7 +2,7 @@ import test from "ava";
 import {
 	describeEvent,
 	describeQuoteChange,
-	petStateOf,
+	moodOf,
 	workoutCombinationsOf,
 } from "../content.js";
 import { commonFoodCount, foodSuggestions } from "../foods.js";
@@ -128,23 +128,20 @@ test("describes every logged action in the language on now", (t) => {
 	t.is(describeQuoteChange(english, "author:"), "Author: Any");
 });
 
-test("puts the pet to sleep until something is logged today", (t) => {
-	t.like(petStateOf(empty, Date.now()), {
-		mood: "sleepy",
-		badges: { meal: false, workout: false, focus: false },
-	});
-	t.like(
-		petStateOf(
+test("dozes until something is logged today, and beams once targets are met", (t) => {
+	t.is(moodOf(empty, Date.now()), "sleepy");
+	t.is(
+		moodOf(
 			{
 				...empty,
 				meals: [{ at, food: "Oatmeal", calories: 300, protein: 10 }],
 			},
 			Date.now(),
 		),
-		{ mood: "content", badges: { meal: true } },
+		"content",
 	);
-	t.like(
-		petStateOf(
+	t.is(
+		moodOf(
 			{
 				...empty,
 				meals: [{ at, food: "Steak", calories: 800, protein: 60 }],
@@ -154,6 +151,6 @@ test("puts the pet to sleep until something is logged today", (t) => {
 			},
 			Date.now(),
 		),
-		{ mood: "happy" },
+		"happy",
 	);
 });

@@ -16,7 +16,6 @@ import {
 	workoutActivities,
 	workStyles,
 } from "./i18n.js";
-import type { Badges } from "./pixel-art.js";
 import {
 	dailyGoals,
 	type Event,
@@ -40,10 +39,10 @@ import { type Palette, type ThemeName, themeNames } from "./theme.js";
 export const characterWidth = 36;
 export const menuListWidth = 24;
 
-// Header and footer take 5 rows. The pet's panel is 19 rows tall, Today 19
-// with its spacing or 16 compact, the menu 9, and Recent 7.
+// Header and footer take 5 rows. The character's panel is 21 rows tall,
+// Today 19 with its spacing or 16 compact, the menu 9, and Recent 7.
 const chromeRows = 5;
-const characterRows = 19;
+const characterRows = 21;
 const todayRows = 19;
 const compactTodayRows = 16;
 const menuRows = 9;
@@ -202,32 +201,25 @@ export function sectionsOf(
 	];
 }
 
-// Today's logs set the pet's mood: asleep until something is logged, happy
-// once the targets are met.
-export function petStateOf(
-	progress: Progress,
-	now: number,
-): Readonly<{ mood: Mood; badges: Badges }> {
+// Today's logs set the character's mood: dozing until something is logged,
+// happy once the targets are met.
+export function moodOf(progress: Progress, now: number): Mood {
 	const today = todayOf(progress, now);
 	const targets = targetsOf(progress.profile);
-	const badges = {
-		meal: today.meals > 0,
-		workout: today.workoutMinutes > 0,
-		focus: today.focusSessions > 0,
-	};
 	const isMet =
 		(today.protein >= targets.protein &&
 			today.workoutMinutes >= targets.workoutMinutes) ||
 		today.focusSessions >= dailyGoals.focusSessions;
-	let mood: Mood = "content";
 
-	if (!badges.meal && !badges.workout && !badges.focus) {
-		mood = "sleepy";
-	} else if (isMet) {
-		mood = "happy";
+	if (
+		today.meals === 0 &&
+		today.workoutMinutes === 0 &&
+		today.focusSessions === 0
+	) {
+		return "sleepy";
 	}
 
-	return { mood, badges };
+	return isMet ? "happy" : "content";
 }
 
 export const menuOrder = [
