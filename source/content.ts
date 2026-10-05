@@ -35,17 +35,18 @@ import {
 	type QuoteSettings,
 } from "./quotes.js";
 import { type Palette, type ThemeName, themeNames } from "./theme.js";
+import { isNewer, type Updater } from "./update.js";
 
 export const characterWidth = 36;
 export const menuListWidth = 24;
 
 // Header and footer take 5 rows. The character's panel is 21 rows tall,
-// Today 19 with its spacing or 16 compact, the menu 9, and Recent 7.
+// Today 19 with its spacing or 16 compact, the menu 10, and Recent 7.
 const chromeRows = 5;
 const characterRows = 21;
 const todayRows = 19;
 const compactTodayRows = 16;
-const menuRows = 9;
+const menuRows = 10;
 const recentRows = 7;
 // The description beside the menu list needs at least this many columns.
 const descriptionColumns = 36;
@@ -230,6 +231,7 @@ export const menuOrder = [
 	"profile",
 	"theme",
 	"language",
+	"update",
 ] as const;
 export type MenuKey = (typeof menuOrder)[number];
 
@@ -251,6 +253,8 @@ export function menuEntriesOf(
 		theme: ThemeName;
 		focus: number;
 		rest: number;
+		version: string;
+		newest?: string;
 	}>,
 ): MenuEntry[] {
 	const { profile } = state.progress;
@@ -277,6 +281,10 @@ export function menuEntriesOf(
 		profile: profile?.name ?? messages.signal.setUp,
 		theme: messages.themes.names[state.theme],
 		language: messages.languageName,
+		update:
+			state.newest && isNewer(state.newest, state.version)
+				? messages.signal.updateAvailable(state.newest)
+				: messages.signal.version(state.version),
 	};
 	const descriptions: Record<MenuKey, string> = {
 		quotes: messages.describe.quotes,
@@ -286,6 +294,7 @@ export function menuEntriesOf(
 		profile: messages.describe.profile,
 		theme: messages.describe.theme,
 		language: messages.describe.language,
+		update: messages.describe.update,
 	};
 
 	return menuOrder.map((key) => ({
@@ -294,6 +303,69 @@ export function menuEntriesOf(
 		status: statuses[key],
 		description: descriptions[key],
 	}));
+}
+
+// Where an update stands: checking, ready, installing, or done.
+export type Release = Readonly<{
+	phase:
+		| "checking"
+		| "ready"
+		| "checkFailed"
+		| "installing"
+		| "installed"
+		| "installFailed";
+	newest?: string;
+	error?: string;
+}>;
+
+// The status line and the options of the Software Update view.
+export function updateViewOf(
+	messages: Messages,
+	release: Release,
+	updater: Pick<Updater, "current">,
+): Readonly<{ status: string; options: Option[] }> {
+	const { update } = messages;
+	const newest = release.newest ?? updater.current;
+	const back: Option = { label: update.back, value: "back" };
+	const check: Option = { label: update.check, value: "check" };
+	const install: Option = { label: update.install(newest), value: "install" };
+
+	switch (release.phase) {
+		case "checking": {
+			return { status: update.checking, options: [back] };
+		}
+
+		case "checkFailed": {
+			return {
+				status: update.checkFailed(release.error ?? ""),
+				options: [check, back],
+			};
+		}
+
+		case "installing": {
+			return { status: update.installing(newest), options: [] };
+		}
+
+		case "installed": {
+			return {
+				status: update.installed(newest),
+				options: [{ label: update.restart, value: "restart" }, back],
+			};
+		}
+
+		case "installFailed": {
+			return {
+				status: update.installFailed(release.error ?? ""),
+				options: [install, back],
+			};
+		}
+
+		case "ready": {
+			return isNewer(newest, updater.current)
+				? { status: update.newest(newest), options: [install, back] }
+				: { status: update.upToDate(newest), options: [check, back] };
+		}
+	}
 }
 
 const categoriesLabel = (

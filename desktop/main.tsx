@@ -10,6 +10,7 @@ import {
 	type Progress,
 	progressFile,
 } from "../source/progress.js";
+import { desktopUpdater } from "./update.js";
 
 type Size = Readonly<{ columns: number; rows: number }>;
 
@@ -90,6 +91,7 @@ async function start() {
 				file={file}
 				initialProgress={initialProgress}
 				options={optionsSchema.parse({})}
+				updater={desktopUpdater()}
 			/>,
 			{
 				stdout: stdout as unknown as NodeJS.WriteStream,

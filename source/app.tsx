@@ -24,7 +24,9 @@ import {
 	moodOf,
 	profileFieldsOf,
 	quoteOptionsOf,
+	type Release,
 	sectionsOf,
+	updateViewOf,
 	workoutFieldsOf,
 } from "./content.js";
 import { adviceOf, targetsOf } from "./health.js";
@@ -67,6 +69,7 @@ import {
 import {
 	type Palette,
 	paletteContext,
+	spinnerFrames,
 	type ThemeName,
 	themeNames,
 	themes,
@@ -79,6 +82,7 @@ import {
 	remainingOf,
 	toggleTimer,
 } from "./timer.js";
+import type { Updater } from "./update.js";
 
 export const optionsSchema = zod.object({
 	name: zod.string().min(1).optional(),
@@ -92,6 +96,7 @@ type AppProps = Readonly<{
 	options: AppOptions;
 	file: string;
 	initialProgress: Progress;
+	updater: Updater;
 }>;
 
 type View = "menu" | MenuKey | "diet" | "workout";
@@ -113,6 +118,9 @@ const languageOptions = languages.map((language) => ({
 	label: messagesOf(language).languageName,
 	value: language,
 }));
+
+const errorText = (error: unknown) =>
+	error instanceof Error ? error.message : String(error);
 
 const pick = <Value extends string>(
 	options: readonly Value[],
@@ -185,7 +193,12 @@ function Swatches({ palette }: Readonly<{ palette: Palette }>) {
 	);
 }
 
-export default function App({ options, file, initialProgress }: AppProps) {
+export default function App({
+	options,
+	file,
+	initialProgress,
+	updater,
+}: AppProps) {
 	const { exit } = useApp();
 	const { stdout } = useStdout();
 	const size = useWindowSize();
@@ -220,6 +233,41 @@ export default function App({ options, file, initialProgress }: AppProps) {
 			tone: "info",
 		}),
 	);
+
+	const [release, setRelease] = React.useState<Release>({ phase: "checking" });
+	// The latest progress, for work that finishes long after it started.
+	const latest = React.useRef(progress);
+
+	React.useEffect(() => {
+		latest.current = progress;
+	}, [progress]);
+
+	const lookUp = React.useCallback(
+		async () =>
+			updater.newest().then(
+				(newest): Release => ({ phase: "ready", newest }),
+				(error: unknown): Release => ({
+					phase: "checkFailed",
+					error: errorText(error),
+				}),
+			),
+		[updater],
+	);
+
+	// Looks for an update once on start, so the menu can say there is one.
+	React.useEffect(() => {
+		let isCurrent = true;
+
+		void lookUp().then((next) => {
+			if (isCurrent) {
+				setRelease(next);
+			}
+		});
+
+		return () => {
+			isCurrent = false;
+		};
+	}, [lookUp]);
 
 	const say = (text: string, tone: Tone = "info") => {
 		setMessage({ text, tone });
@@ -592,6 +640,48 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		}
 	};
 
+	const checkForUpdate = () => {
+		if (release.phase === "installed") {
+			return;
+		}
+
+		setRelease({ phase: "checking" });
+		void lookUp().then(setRelease);
+	};
+
+	const chooseUpdateAction = (value: string) => {
+		const { newest } = release;
+
+		if (value === "install" && newest) {
+			setRelease({ phase: "installing", newest });
+			updater.install(newest).then(
+				() => {
+					setRelease({ phase: "installed", newest });
+					const { current } = latest;
+					commit(
+						withEvent(current, "updateInstalled", newest),
+						messagesOf(current.language ?? "en").update.installed(newest),
+						"success",
+					);
+				},
+				(error: unknown) => {
+					setRelease({
+						phase: "installFailed",
+						newest,
+						error: errorText(error),
+					});
+				},
+			);
+		} else if (value === "restart") {
+			updater.restart();
+			exit();
+		} else if (value === "check") {
+			checkForUpdate();
+		} else {
+			backToMenu();
+		}
+	};
+
 	const openMenu = (value: string) => {
 		const item = pick(menuOrder, value, "quotes");
 		setFocusedMenu(item);
@@ -599,6 +689,10 @@ export default function App({ options, file, initialProgress }: AppProps) {
 
 		if (item === "theme") {
 			setPreviewTheme(themeName);
+		}
+
+		if (item === "update" && release.phase !== "installing") {
+			checkForUpdate();
 		}
 	};
 
@@ -645,6 +739,8 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		theme: themeName,
 		focus: durations.focus,
 		rest: durations.break,
+		version: updater.current,
+		newest: release.newest,
 	});
 	const focusedEntry =
 		entries.find((entry) => entry.key === focusedMenu) ?? entries[0];
@@ -750,7 +846,35 @@ export default function App({ options, file, initialProgress }: AppProps) {
 				{ label: messages.timer.stop, value: "stop" },
 			];
 
+	const updateView = updateViewOf(messages, release, updater);
+
 	const panels: Record<Exclude<View, "menu">, React.ReactNode> = {
+		update: (
+			<Titled title={messages.menu.update}>
+				<Text>{messages.update.current(updater.current)}</Text>
+				<Text
+					color={
+						release.phase.endsWith("Failed") ? palette.error : palette.soft
+					}
+				>
+					{updateView.status}
+				</Text>
+				<Text dimColor>{messages.update.via[updater.source]}</Text>
+				<Box marginTop={1}>
+					{release.phase === "installing" ? (
+						<Text color={palette.accent}>
+							{`${spinnerFrames[Math.floor(now / 1000) % spinnerFrames.length] ?? "·"} ${updateView.status}`}
+						</Text>
+					) : (
+						<Choice
+							key={release.phase}
+							options={updateView.options}
+							onSelect={chooseUpdateAction}
+						/>
+					)}
+				</Box>
+			</Titled>
+		),
 		quotes: (
 			<Titled title={messages.menu.quotes}>
 				<Text dimColor italic wrap="truncate-end">

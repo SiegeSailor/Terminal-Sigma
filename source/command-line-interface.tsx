@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import process from "node:process";
 import React from "react";
 import { render } from "ink";
@@ -6,6 +7,7 @@ import meow from "meow";
 import zod from "zod";
 import App, { optionsSchema } from "./app.js";
 import { loadProgress, progressFile } from "./progress.js";
+import { npmUpdater } from "./update.js";
 
 const cli = meow(
 	`
@@ -46,10 +48,30 @@ try {
 	process.exit(1);
 }
 
-render(
-	<App file={file} initialProgress={initialProgress} options={options.data} />,
+let isRestarting = false;
+const updater = npmUpdater(() => {
+	isRestarting = true;
+});
+
+const instance = render(
+	<App
+		file={file}
+		initialProgress={initialProgress}
+		options={options.data}
+		updater={updater}
+	/>,
 	{
 		alternateScreen: true,
 		incrementalRendering: true,
 	},
 );
+
+await instance.waitUntilExit();
+
+// After an update, the same command starts the version just installed.
+if (isRestarting) {
+	const { status } = spawnSync(process.execPath, process.argv.slice(1), {
+		stdio: "inherit",
+	});
+	process.exit(status ?? 0);
+}

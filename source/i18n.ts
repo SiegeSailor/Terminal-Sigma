@@ -1,6 +1,7 @@
 import type { EventAction } from "./progress.js";
 import type { QuoteCategory, QuoteMode } from "./quotes.js";
 import type { ThemeName } from "./theme.js";
+import type { Updater } from "./update.js";
 
 export const languages = ["en", "zh-TW", "ko"] as const;
 export type Language = (typeof languages)[number];
@@ -73,6 +74,7 @@ const en = {
 		profile: "Profile",
 		theme: "Theme",
 		language: "Language",
+		update: "Software Update",
 	},
 	describe: {
 		quotes:
@@ -86,6 +88,8 @@ const en = {
 			"Your name, body, work style, and health goal, which set your daily targets and shape your character.",
 		theme: "Pick the color tone of the dashboard and your character.",
 		language: "Switch between English, Traditional Chinese, and Korean.",
+		update:
+			"See the version you run and the newest release, and update in place: through NPM for the command line, or by swapping in the new build for the desktop app.",
 		open: "Enter to open",
 	},
 	signal: {
@@ -97,6 +101,8 @@ const en = {
 		setUp: "Set up",
 		proteinLeft: (grams: number) => `${grams} g protein left`,
 		onTrack: "On track",
+		version: (version: string) => `v${version}`,
+		updateAvailable: (version: string) => `v${version} available`,
 	},
 	today: {
 		title: "Today",
@@ -247,6 +253,26 @@ const en = {
 				"Build volume slowly, and refuel with carbohydrates after long sessions.",
 		} satisfies Record<HealthGoal, string>,
 	},
+	update: {
+		current: (version: string) => `Current version: v${version}`,
+		checking: "Checking for the newest version…",
+		newest: (version: string) => `Newest version: v${version}`,
+		upToDate: (version: string) =>
+			`Newest version: v${version}, so you are up to date`,
+		checkFailed: (error: string) => `Could not check for updates: ${error}`,
+		installing: (version: string) => `Installing v${version}…`,
+		installed: (version: string) =>
+			`Installed v${version}. Restart to start using it.`,
+		installFailed: (error: string) => `Could not update: ${error}`,
+		install: (version: string) => `Update to v${version}`,
+		restart: "Restart now",
+		check: "Check again",
+		back: "Back",
+		via: {
+			npm: "Updates with npm install --global",
+			desktop: "Downloads the new app from GitHub Releases",
+		} satisfies Record<Updater["source"], string>,
+	},
 	quotes: {
 		draw: "Draw a new quote",
 		autoRefresh: (isOn: boolean) => `Auto-refresh: ${isOn ? "On" : "Off"}`,
@@ -305,6 +331,7 @@ const en = {
 		profileSaved: () => "Updated the profile",
 		quoteDrawn: () => "Drew a new quote",
 		quoteSettingsChanged: (setting: string) => `Changed quotes: ${setting}`,
+		updateInstalled: (version: string) => `Updated to v${version}`,
 	} satisfies Record<EventAction, (detail: string) => string>,
 	themes: {
 		changed: (name: string) => `Theme set to ${name}.`,
@@ -363,6 +390,7 @@ const traditionalChinese: Messages = {
 		profile: "個人資料",
 		theme: "主題",
 		language: "語言",
+		update: "軟體更新",
 	},
 	describe: {
 		quotes: "換一則語錄，或設定語錄多久更新一次、要看哪些類型。",
@@ -374,6 +402,8 @@ const traditionalChinese: Messages = {
 			"你的名字、身體數據、工作型態與健康目標，用來計算每日目標並決定角色的樣子。",
 		theme: "選擇儀表板與角色的色調。",
 		language: "切換英文、繁體中文與韓文。",
+		update:
+			"查看目前版本與最新版本，並直接更新：命令列透過 NPM，桌面版則換上新的版本。",
 		open: "按 Enter 開啟",
 	},
 	signal: {
@@ -385,6 +415,8 @@ const traditionalChinese: Messages = {
 		setUp: "設定",
 		proteinLeft: (grams) => `還差蛋白質 ${grams} 克`,
 		onTrack: "達標",
+		version: (version) => `v${version}`,
+		updateAvailable: (version) => `可更新至 v${version}`,
 	},
 	today: {
 		title: "今日",
@@ -525,6 +557,24 @@ const traditionalChinese: Messages = {
 			endurance: "循序漸進增加訓練量，長時間訓練後補充碳水化合物。",
 		},
 	},
+	update: {
+		current: (version) => `目前版本：v${version}`,
+		checking: "正在檢查最新版本…",
+		newest: (version) => `最新版本：v${version}`,
+		upToDate: (version) => `最新版本：v${version}，已是最新`,
+		checkFailed: (error) => `無法檢查更新：${error}`,
+		installing: (version) => `正在安裝 v${version}…`,
+		installed: (version) => `已安裝 v${version}，重新啟動即可使用。`,
+		installFailed: (error) => `無法更新：${error}`,
+		install: (version) => `更新至 v${version}`,
+		restart: "立即重新啟動",
+		check: "再檢查一次",
+		back: "返回",
+		via: {
+			npm: "透過 npm install --global 更新",
+			desktop: "從 GitHub Releases 下載新版應用程式",
+		},
+	},
 	quotes: {
 		draw: "換一則語錄",
 		autoRefresh: (isOn) => `自動更新：${isOn ? "開" : "關"}`,
@@ -583,6 +633,7 @@ const traditionalChinese: Messages = {
 		profileSaved: () => "更新個人資料",
 		quoteDrawn: () => "換了一則語錄",
 		quoteSettingsChanged: (setting) => `變更語錄設定：${setting}`,
+		updateInstalled: (version) => `更新至 v${version}`,
 	},
 	themes: {
 		changed: (name) => `主題已設為${name}。`,
@@ -638,6 +689,7 @@ const korean: Messages = {
 		profile: "프로필",
 		theme: "테마",
 		language: "언어",
+		update: "앱 업데이트",
 	},
 	describe: {
 		quotes:
@@ -651,6 +703,8 @@ const korean: Messages = {
 			"이름, 신체 정보, 업무 형태, 건강 목표로 하루 목표를 정하고 캐릭터의 모습을 바꿉니다.",
 		theme: "대시보드와 캐릭터의 색조를 고릅니다.",
 		language: "영어, 번체 중국어, 한국어 중에서 전환합니다.",
+		update:
+			"지금 쓰는 버전과 최신 버전을 보고 바로 업데이트합니다. 명령줄은 NPM으로, 데스크톱 앱은 새 빌드로 바꿉니다.",
 		open: "Enter로 열기",
 	},
 	signal: {
@@ -662,6 +716,8 @@ const korean: Messages = {
 		setUp: "설정",
 		proteinLeft: (grams) => `단백질 ${grams}g 남음`,
 		onTrack: "달성",
+		version: (version) => `v${version}`,
+		updateAvailable: (version) => `v${version} 업데이트 가능`,
 	},
 	today: {
 		title: "오늘",
@@ -808,6 +864,25 @@ const korean: Messages = {
 				"훈련량은 천천히 늘리고, 긴 운동 후에는 탄수화물로 보충하세요.",
 		},
 	},
+	update: {
+		current: (version) => `현재 버전: v${version}`,
+		checking: "최신 버전을 확인하는 중…",
+		newest: (version) => `최신 버전: v${version}`,
+		upToDate: (version) => `최신 버전: v${version}, 이미 최신입니다`,
+		checkFailed: (error) => `업데이트를 확인하지 못했습니다: ${error}`,
+		installing: (version) => `v${version} 설치 중…`,
+		installed: (version) =>
+			`v${version}을(를) 설치했습니다. 다시 시작하면 적용됩니다.`,
+		installFailed: (error) => `업데이트하지 못했습니다: ${error}`,
+		install: (version) => `v${version}(으)로 업데이트`,
+		restart: "지금 다시 시작",
+		check: "다시 확인",
+		back: "뒤로",
+		via: {
+			npm: "npm install --global로 업데이트합니다",
+			desktop: "GitHub Releases에서 새 앱을 내려받습니다",
+		},
+	},
 	quotes: {
 		draw: "새 명언 뽑기",
 		autoRefresh: (isOn) => `자동 새로고침: ${isOn ? "켬" : "끔"}`,
@@ -866,6 +941,7 @@ const korean: Messages = {
 		profileSaved: () => "프로필 갱신",
 		quoteDrawn: () => "새 명언 뽑기",
 		quoteSettingsChanged: (setting) => `명언 설정 변경: ${setting}`,
+		updateInstalled: (version) => `v${version}(으)로 업데이트`,
 	},
 	themes: {
 		changed: (name) => `테마를 ${name}(으)로 설정했습니다.`,

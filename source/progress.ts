@@ -59,6 +59,7 @@ export const eventActions = [
 	"profileSaved",
 	"quoteDrawn",
 	"quoteSettingsChanged",
+	"updateInstalled",
 ] as const;
 export type EventAction = (typeof eventActions)[number];
 

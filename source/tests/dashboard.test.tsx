@@ -6,6 +6,7 @@ import React from "react";
 import { render } from "ink-testing-library";
 import App from "../app.js";
 import { loadProgress, type Progress } from "../progress.js";
+import type { Updater } from "../update.js";
 
 const options = { name: "Nova", focus: 25, break: 5 };
 const empty: Progress = {
@@ -45,10 +46,37 @@ const type = async (
 	await settle();
 };
 
-const start = (initialProgress: Progress = empty, file = temporaryFile()) => ({
+// Stands in for NPM: v1.1.0 is out, and installing it always works.
+const fakeUpdater = () => {
+	const calls: string[] = [];
+	const updater: Updater = {
+		source: "npm",
+		current: "1.0.0",
+		newest: async () => "1.1.0",
+		async install(version) {
+			calls.push(`install ${version}`);
+		},
+		restart() {
+			calls.push("restart");
+		},
+	};
+
+	return { calls, updater };
+};
+
+const start = (
+	initialProgress: Progress = empty,
+	file = temporaryFile(),
+	{ updater } = fakeUpdater(),
+) => ({
 	file,
 	...render(
-		<App file={file} initialProgress={initialProgress} options={options} />,
+		<App
+			file={file}
+			initialProgress={initialProgress}
+			options={options}
+			updater={updater}
+		/>,
 	),
 });
 
@@ -67,6 +95,7 @@ test("renders the dashboard with the menu in order", async (t) => {
 		"5. Profile",
 		"6. Theme",
 		"7. Language",
+		"8. Software Update",
 	].map((label) => frame.indexOf(label));
 
 	t.true(order.every((index, position) => index > (order[position - 1] ?? -1)));
@@ -293,6 +322,32 @@ test("shows recent logs and every action in the logs view", async (t) => {
 
 	await type(stdin, ["4", "\r"]);
 	t.true((lastFrame() ?? "").includes("Opened Terminal Sigma"));
+
+	unmount();
+});
+
+test("updates to the newest version and restarts into it", async (t) => {
+	const fake = fakeUpdater();
+	const { file, stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fake,
+	);
+
+	await type(stdin, ["8"]);
+	t.true((lastFrame() ?? "").includes("v1.1.0 available"));
+
+	await type(stdin, ["\r"]);
+	const frame = lastFrame() ?? "";
+	t.true(frame.includes("Current version: v1.0.0"));
+	t.true(frame.includes("Newest version: v1.1.0"));
+
+	await type(stdin, ["\r"]);
+	t.true((lastFrame() ?? "").includes("Installed v1.1.0"));
+	t.true(actionsIn(file).includes("updateInstalled"));
+
+	await type(stdin, ["\r"]);
+	t.deepEqual(fake.calls, ["install 1.1.0", "restart"]);
 
 	unmount();
 });

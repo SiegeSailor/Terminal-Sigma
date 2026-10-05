@@ -3,6 +3,7 @@ import {
 	describeEvent,
 	describeQuoteChange,
 	moodOf,
+	updateViewOf,
 	workoutCombinationsOf,
 } from "../content.js";
 import { commonFoodCount, foodSuggestions } from "../foods.js";
@@ -16,6 +17,7 @@ import {
 	quoteCategories,
 	quoteRequestOf,
 } from "../quotes.js";
+import { isNewer } from "../update.js";
 
 const english = messagesOf("en");
 const at = new Date().toISOString();
@@ -152,5 +154,35 @@ test("dozes until something is logged today, and beams once targets are met", (t
 			Date.now(),
 		),
 		"happy",
+	);
+});
+
+test("compares versions part by part", (t) => {
+	t.true(isNewer("1.10.0", "1.9.2"));
+	t.true(isNewer("2.0.0", "1.99.99"));
+	t.false(isNewer("1.4.1", "1.4.1"));
+	t.false(isNewer("1.4.0", "1.4.1"));
+	t.false(isNewer("not a version", "1.0.0"));
+});
+
+test("offers an update only when a newer version is out", (t) => {
+	const current = { current: "1.4.1" };
+	const values = (phase: Parameters<typeof updateViewOf>[1]) =>
+		updateViewOf(english, phase, current).options.map((option) => option.value);
+
+	t.deepEqual(values({ phase: "ready", newest: "1.5.0" }), ["install", "back"]);
+	t.deepEqual(values({ phase: "ready", newest: "1.4.1" }), ["check", "back"]);
+	t.deepEqual(values({ phase: "checkFailed", error: "offline" }), [
+		"check",
+		"back",
+	]);
+	t.deepEqual(values({ phase: "installing", newest: "1.5.0" }), []);
+	t.deepEqual(values({ phase: "installed", newest: "1.5.0" }), [
+		"restart",
+		"back",
+	]);
+	t.is(
+		updateViewOf(english, { phase: "ready", newest: "1.4.1" }, current).status,
+		"Newest version: v1.4.1, so you are up to date",
 	);
 });
