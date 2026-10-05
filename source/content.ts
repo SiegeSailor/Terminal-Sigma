@@ -38,7 +38,7 @@ import { type Palette, type ThemeName, themeNames } from "./theme.js";
 import { isNewer, type Updater } from "./update.js";
 
 export const characterWidth = 36;
-export const menuListWidth = 24;
+export const menuListWidth = 26;
 
 // Header and footer take 5 rows. The character's panel is 21 rows tall,
 // Today 19 with its spacing or 16 compact, the menu 10, and Recent 7.
