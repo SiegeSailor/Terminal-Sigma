@@ -10,10 +10,10 @@ Terminal-Sigma is a terminal-based application that gives game-style feedback on
 
 | Component             | What It Does                                                                                                  |
 | --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Character Progression | A pixel-art you, shaped by your profile and dressed by your level, who walks around and acts out what you do  |
-| Everyday Quotes       | An inspiring quote that refreshes every 30 minutes, on restart, or on demand                                  |
+| Character Progression | A pixel-art pet, shaped by your profile, dressed by your level, and woken up by what you log today            |
+| Everyday Quotes       | An inspiring quote that refreshes on your schedule, filtered by category, author, or work                     |
 | Health                | Your meals and workouts against daily targets worked out from your profile, with advice for the rest of today |
-| Logs                  | Every focus, meal, and workout you logged, with the latest 4 in a Recent block next to the menu               |
+| Logs                  | Every focus, meal, workout, and action you took, with the latest 4 in a Recent block under the menu           |
 | Tomato Timer          | A Pomodoro timer: 25 minutes of focus, then a 5-minute break, against a daily goal of 4 focus sessions        |
 
 Underneath, your journey and your settings are written to the local file `~/.terminal-sigma/progress.json`. There is no plan to support logging at this point, and we chose JSON as a readable format, so that you can port it easily.
@@ -70,28 +70,49 @@ On the first run, it asks for your language and saves the answer in `progress.js
 
 ### Menu
 
-The menu drives everything, and Enter opens an item:
+The menu drives everything. It sits in 2 boxes: the items on the left, and on the right what the focused item does, which turns into its options once you press Enter:
 
-| Item            | Enter Does                                                                                         |
-| --------------- | -------------------------------------------------------------------------------------------------- |
-| Everyday Quotes | Draws a new quote                                                                                  |
-| Health          | Shows today's targets and advice, then logs a meal or a workout                                    |
-| Language        | Switches between English, Traditional Chinese, and Korean                                          |
-| Logs            | Lists every focus, meal, and workout, newest first, with a filter per kind                         |
-| Profile         | Asks for your name, age, height, weight, gender, work style, and health goal, showing saved values |
-| Theme           | Picks the color tone of the dashboard and your character, previewing each one as the cursor moves  |
-| Tomato Timer    | Starts a focus, or pauses, resumes, or stops the running one                                       |
+| Key | Item            | Enter Opens                                                                               |
+| --- | --------------- | ----------------------------------------------------------------------------------------- |
+| `1` | Everyday Quotes | A new quote, and the settings below                                                       |
+| `2` | Tomato Timer    | Start a focus, or pause, resume, or stop the running one                                  |
+| `3` | Health          | Today's targets and advice, then log a meal or a workout                                  |
+| `4` | Logs            | Every log and action, newest first, with a filter per kind                                |
+| `5` | Profile         | Your name, age, height, weight, gender, work style, and health goal, showing saved values |
+| `6` | Theme           | The color tone of the dashboard and your pet, previewing each one as the cursor moves     |
+| `7` | Language        | English, Traditional Chinese, or Korean                                                   |
 
-A meal asks for the food, its calories, and its protein; a workout asks for the activity, its minutes, and its intensity, one at a time. A stopped focus earns nothing. While you log, the character eats, runs, lifts, or stretches to match, and it celebrates when you level up.
+A meal asks for the food, its calories, and its protein; a workout asks for the activity, its minutes, and its intensity, one at a time. The food field suggests as you type, your past meals first and then 112 common foods matched in any of the 3 languages, and picking one fills in its calories and protein. The activity offers your 3 latest workouts to repeat in 1 step. A stopped focus earns nothing.
 
-### Character
+Everything else you do is logged too, without experience: opening the app, starting, pausing, resuming, or stopping a tomato, finishing a break, leveling up, drawing a quote, and changing the language, the theme, the profile, or a quote setting.
 
-Your character is a pixel-art you that walks around its panel, pauses to look about, and switches to typing, eating, sipping coffee, running, lifting, or stretching to match what you do. 2 things shape it:
+### Everyday Quotes
 
-| Shaped By | What Changes                                                                                                                       |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Level     | 1 piece of equipment per level up to level 9: headphones, a smartwatch, a hoodie, a jacket, a cap, a crown, a backpack, and a cape |
-| Profile   | The height follows yours, the build follows your weight for that height, and the hair and silhouette follow your gender            |
+Each setting is saved as soon as you choose it:
+
+| Setting      | Values                                                             | Default       |
+| ------------ | ------------------------------------------------------------------ | ------------- |
+| Author       | Any, or a name, suggested from the bundled quotes as you type      | Any           |
+| Auto-refresh | On or off                                                          | On            |
+| Categories   | Any of the 20 API Ninjas categories, from Art to Writing           | All           |
+| Exclude      | Categories never to show                                           | None          |
+| Interval     | 15 seconds, 1 minute, 5 minutes, 15 minutes, 25 minutes, or 1 hour | 25 minutes    |
+| Source       | Random quotes, or the quote of the day                             | Random quotes |
+| Work         | Any, or the title of a book, speech, or play                       | Any           |
+
+Without an API key, the settings filter the 28 bundled quotes, which cover every category in all 3 languages, and fall back to all of them when nothing matches. With `API_NINJAS_KEY`, they become the query to API Ninjas.
+
+### Pet
+
+Your character is a pixel-art pet in the spirit of Claude Code's mascot. It wanders around its panel and switches to typing at a laptop, sipping from a cup, eating, running, lifting, or stretching to match what you do. 3 things shape it:
+
+| Shaped By    | What Changes                                                                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Level        | It grows at levels 4 and 7, and gains 1 piece of gear per level up to level 9: headphones, a scarf, a cap, an orb, an antenna, a cape, a crown, and sparkles                   |
+| Profile      | Its size follows your height and its width your weight for that height; a bow, a tuft, or a sprout follows your gender                                                         |
+| Today's Logs | It naps until you log something, and beams once you meet your protein and exercise targets or finish 4 focus sessions; a tomato, an apple, and a dumbbell show what you logged |
+
+Your health goal adds a sweatband to lose fat, a heart to maintain, bigger arms to build muscle, or sneakers for endurance.
 
 ### Health Targets
 
@@ -109,13 +130,15 @@ The targets are general guidance for healthy adults, not medical advice.
 
 Every view shows its keys at the bottom right:
 
-| Key                       | Action                                                    |
-| ------------------------- | --------------------------------------------------------- |
-| `1` to `7`                | Jump to a menu item                                       |
-| Arrows or `h` `j` `k` `l` | Move through the menu, a list, or the log filters         |
-| Enter                     | Open the item, choose the option, or go to the next field |
-| Esc                       | Go back to the menu without logging anything              |
-| `q` or Ctrl+C             | Quit from the menu                                        |
+| Key                       | Action                                                                   |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `1` to `7`                | Jump to a menu item                                                      |
+| Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters          |
+| Enter                     | Open the item, choose the option, or go to the next field                |
+| Esc                       | Go back to the menu, or out of a quote setting, without logging anything |
+| `q` or Ctrl+C             | Quit from the menu                                                       |
+| Space                     | Tick a category                                                          |
+| Tab                       | Copy the picked suggestion into the field                                |
 
 When a focus or break ends, the terminal rings its bell.
 
@@ -161,28 +184,49 @@ Both are optional:
 			"minutes": 30,
 			"intensity": "moderate"
 		}
+	],
+	"quotes": {
+		"autoRefresh": true,
+		"interval": 1500,
+		"mode": "random",
+		"categories": ["wisdom"],
+		"excluded": [],
+		"author": "",
+		"work": ""
+	},
+	"events": [
+		{
+			"at": "2026-10-03T09:30:00.000Z",
+			"action": "themeChanged",
+			"detail": "ember"
+		}
 	]
 }
 ```
 
 Each setting takes 1 of a fixed set of values:
 
-| Field                | Values                                                                      |
-| -------------------- | --------------------------------------------------------------------------- |
-| `language`           | `en`, `ko`, or `zh-TW`                                                      |
-| `profile.gender`     | `female`, `male`, or `other`                                                |
-| `profile.goal`       | `buildMuscle`, `endurance`, `loseFat`, or `maintain`                        |
-| `profile.workStyle`  | `active`, `athlete`, `desk`, or `standing`                                  |
-| `theme`              | `dusk`, `ember`, `frost`, `mono`, or `moss`                                 |
-| `workouts.activity`  | `cycling`, `other`, `running`, `strength`, `swimming`, `walking`, or `yoga` |
-| `workouts.intensity` | `light`, `moderate`, or `vigorous`                                          |
+| Field                                  | Values                                                                                                                                                                                                                  |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `events.action`                        | `appOpened`, `breakOver`, `languageChanged`, `levelUp`, `profileSaved`, `quoteDrawn`, `quoteSettingsChanged`, `themeChanged`, `timerPaused`, `timerResumed`, `timerStarted`, or `timerStopped`                          |
+| `language`                             | `en`, `ko`, or `zh-TW`                                                                                                                                                                                                  |
+| `profile.gender`                       | `female`, `male`, or `other`                                                                                                                                                                                            |
+| `profile.goal`                         | `buildMuscle`, `endurance`, `loseFat`, or `maintain`                                                                                                                                                                    |
+| `profile.workStyle`                    | `active`, `athlete`, `desk`, or `standing`                                                                                                                                                                              |
+| `quotes.categories`, `quotes.excluded` | `art`, `courage`, `death`, `faith`, `fear`, `freedom`, `happiness`, `humor`, `inspirational`, `leadership`, `life`, `love`, `nature`, `philosophy`, `relationships`, `success`, `time`, `truth`, `wisdom`, or `writing` |
+| `quotes.interval`                      | Seconds: `15`, `60`, `300`, `900`, `1500`, or `3600`                                                                                                                                                                    |
+| `quotes.mode`                          | `daily` or `random`                                                                                                                                                                                                     |
+| `theme`                                | `dusk`, `ember`, `frost`, `mono`, or `moss`                                                                                                                                                                             |
+| `workouts.activity`                    | `cycling`, `other`, `running`, `strength`, `swimming`, `walking`, or `yoga`                                                                                                                                             |
+| `workouts.intensity`                   | `light`, `moderate`, or `vigorous`                                                                                                                                                                                      |
 
 Every setting is optional, and files written by version 1 still load as they are.
 
-Every 100 XP is a level, and every level from level 2 to level 9 upgrades 1 piece of your character's gear. Experience is earned as follows:
+Every 100 XP is a level, and every level from level 2 to level 9 gives your pet 1 piece of gear. Experience is earned as follows:
 
 | Entry          | Experience                                                            |
 | -------------- | --------------------------------------------------------------------- |
+| Action         | None                                                                  |
 | Finished focus | 1 XP per minute                                                       |
 | Meal           | 5 XP                                                                  |
 | Workout        | Per minute: 1 XP when light, 1.5 XP when moderate, 2 XP when vigorous |
