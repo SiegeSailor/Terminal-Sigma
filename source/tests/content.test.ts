@@ -10,6 +10,9 @@ test("keeps the menu and adds panels as the terminal grows", (t) => {
 		isTodayCompact: true,
 	});
 	t.like(layoutOf(160, 40), { isTodayCompact: false, showRecent: true });
+	// The group headings give way to Recent on a short terminal.
+	t.like(layoutOf(100, 27), { isMenuGrouped: true, showRecent: true });
+	t.like(layoutOf(100, 24), { isMenuGrouped: false, showRecent: true });
 	t.like(layoutOf(120, 32), { todayBeside: true, isMenuSplit: false });
 	t.like(layoutOf(138, 32), { todayBeside: true, isMenuSplit: true });
 	t.like(layoutOf(100, 24), {

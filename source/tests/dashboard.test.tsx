@@ -102,14 +102,15 @@ test("renders the dashboard with the menu in order", async (t) => {
 	await settle();
 	const frame = lastFrame() ?? "";
 	const order = [
-		"1. Everyday Quotes",
-		"2. Tomato Timer",
-		"3. Health",
-		"4. Logs",
+		"1. Tomato Timer",
+		"2. Log a Meal",
+		"3. Log a Workout",
+		"4. Everyday Quotes",
 		"5. Profile",
 		"6. Theme",
 		"7. Language",
-		"8. Software Update",
+		"8. Logs",
+		"9. Software Update",
 	].map((label) => frame.indexOf(label));
 
 	t.true(order.every((index, position) => index > (order[position - 1] ?? -1)));
@@ -152,7 +153,7 @@ test("switches to Korean from the menu", async (t) => {
 test("logs a typed meal, rejecting a bad number", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["3", "\r", down, "\r", "Oatmeal", "\r", "lots", "\r"]);
+	await type(stdin, ["2", "\r", "Oatmeal", "\r", "lots", "\r"]);
 	t.true((lastFrame() ?? "").includes("Enter a whole number"));
 
 	await type(stdin, [backspace.repeat(4), "350", "\r", "12", "\r"]);
@@ -169,7 +170,7 @@ test("logs a typed meal, rejecting a bad number", async (t) => {
 test("autocompletes a common food and its nutrition", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["3", "\r", down, "\r", "chick"]);
+	await type(stdin, ["2", "\r", "chick"]);
 	t.true((lastFrame() ?? "").includes("Chicken breast"));
 
 	await type(stdin, [down, "\r", "\r", "\r"]);
@@ -185,19 +186,7 @@ test("autocompletes a common food and its nutrition", async (t) => {
 test("logs a workout and scales its experience", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, [
-		"3",
-		"\r",
-		down,
-		down,
-		"\r",
-		"\r",
-		"30",
-		"\r",
-		down,
-		down,
-		"\r",
-	]);
+	await type(stdin, ["3", "\r", "\r", "30", "\r", down, down, "\r"]);
 	t.like(loadProgress(file).workouts[0], {
 		activity: "running",
 		minutes: 30,
@@ -221,7 +210,7 @@ test("repeats a past workout in 1 step", async (t) => {
 		],
 	});
 
-	await type(stdin, ["3", "\r", down, down, "\r", "\r"]);
+	await type(stdin, ["3", "\r", "\r"]);
 	t.like(loadProgress(file).workouts[1], {
 		activity: "cycling",
 		minutes: 45,
@@ -263,7 +252,7 @@ test("saves a profile and turns it into targets", async (t) => {
 	});
 	t.true(actionsIn(file).includes("profileSaved"));
 
-	await type(stdin, ["3"]);
+	await type(stdin, ["2"]);
 	t.true((lastFrame() ?? "").includes("140 g protein left"));
 
 	unmount();
@@ -290,7 +279,7 @@ test("previews a theme while browsing and saves the chosen one", async (t) => {
 test("starts and stops a tomato, logging both", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["2", "\r", "\r"]);
+	await type(stdin, ["1", "\r", "\r"]);
 	t.true((lastFrame() ?? "").includes("Focus started."));
 
 	await type(stdin, ["\r", down, "\r"]);
@@ -305,7 +294,7 @@ test("configures everyday quotes", async (t) => {
 	const { file, stdin, unmount } = start();
 
 	// Auto-refresh off, then the interval to 1 hour.
-	await type(stdin, ["1", "\r", down, "\r", down, "\r", down, "\r"]);
+	await type(stdin, ["4", "\r", down, "\r", down, "\r", down, "\r"]);
 	t.like(loadProgress(file).quotes, { autoRefresh: false, interval: 3600 });
 
 	// The cursor comes back on Interval; 2 down is Categories. Tick Art, then
@@ -337,7 +326,7 @@ test("shows recent logs and every action in the logs view", async (t) => {
 	await settle();
 	t.true((lastFrame() ?? "").includes("Oatmeal · 350 kcal"));
 
-	await type(stdin, ["4", "\r"]);
+	await type(stdin, ["8", "\r"]);
 	t.true((lastFrame() ?? "").includes("Opened Terminal Sigma"));
 
 	unmount();
@@ -352,7 +341,7 @@ test("updates to the newest version and restarts into it", async (t) => {
 	);
 	t.teardown(unmount);
 
-	await type(stdin, ["8"]);
+	await type(stdin, ["9"]);
 	t.true(await shows(lastFrame, "v1.1.0 available"));
 
 	await type(stdin, ["\r"]);

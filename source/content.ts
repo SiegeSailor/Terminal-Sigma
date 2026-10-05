@@ -41,12 +41,14 @@ export const characterWidth = 36;
 export const menuListWidth = 26;
 
 // Header and footer take 5 rows. The character's panel is 25 rows tall,
-// Today 19 with its spacing or 16 compact, the menu 10, and Recent 7.
+// Today 19 with its spacing or 16 compact, the menu 15 with its 4 headings,
+// and Recent 7.
 const chromeRows = 5;
 const characterRows = 25;
 const todayRows = 19;
 const compactTodayRows = 16;
-const menuRows = 10;
+const menuRows = 15;
+const compactMenuRows = 11;
 const recentRows = 7;
 // The description beside the menu list needs at least this many columns.
 const descriptionColumns = 36;
@@ -55,6 +57,7 @@ export type Layout = Readonly<{
 	panelWidth: number;
 	todayWidth: number;
 	isMenuSplit: boolean;
+	isMenuGrouped: boolean;
 	showCharacter: boolean;
 	showRecent: boolean;
 	showToday: boolean;
@@ -68,6 +71,9 @@ export type Layout = Readonly<{
 export function layoutOf(columns: number, rows: number): Layout {
 	const isSplitAt = (panelWidth: number) =>
 		panelWidth >= menuListWidth + descriptionColumns;
+	// Short terminals drop the group headings to keep Recent in view.
+	const isMenuGrouped = rows >= chromeRows + menuRows + recentRows;
+	const listRows = isMenuGrouped ? menuRows : compactMenuRows;
 
 	if (columns >= 120) {
 		const todayWidth = Math.min(
@@ -79,8 +85,9 @@ export function layoutOf(columns: number, rows: number): Layout {
 			panelWidth,
 			todayWidth,
 			isMenuSplit: isSplitAt(panelWidth),
+			isMenuGrouped,
 			showCharacter: true,
-			showRecent: rows >= chromeRows + menuRows + recentRows,
+			showRecent: rows >= chromeRows + listRows + recentRows,
 			showToday: true,
 			isTodayCompact: rows < chromeRows + todayRows,
 			todayBeside: true,
@@ -91,11 +98,12 @@ export function layoutOf(columns: number, rows: number): Layout {
 	if (columns >= 80) {
 		const panelWidth = columns - characterWidth;
 		const isMenuSplit = isSplitAt(panelWidth);
-		const menuHeight = isMenuSplit ? menuRows : menuRows * 2;
+		const menuHeight = isMenuSplit ? listRows : listRows * 2;
 		return {
 			panelWidth,
 			todayWidth: columns,
 			isMenuSplit,
+			isMenuGrouped,
 			showCharacter: true,
 			showRecent: rows >= chromeRows + menuHeight + recentRows,
 			showToday: rows >= chromeRows + characterRows + compactTodayRows,
@@ -106,12 +114,13 @@ export function layoutOf(columns: number, rows: number): Layout {
 	}
 
 	const isMenuSplit = isSplitAt(columns);
-	const menuHeight = isMenuSplit ? menuRows : menuRows * 2;
+	const menuHeight = isMenuSplit ? listRows : listRows * 2;
 	const aboveToday = chromeRows + menuHeight + recentRows + characterRows;
 	return {
 		panelWidth: columns,
 		todayWidth: columns,
 		isMenuSplit,
+		isMenuGrouped,
 		showCharacter: rows >= aboveToday,
 		showRecent: rows >= chromeRows + menuHeight + recentRows,
 		showToday: rows >= aboveToday + compactTodayRows,
@@ -224,19 +233,34 @@ export function moodOf(progress: Progress, now: number): Mood {
 }
 
 export const menuOrder = [
-	"quotes",
 	"timer",
-	"health",
-	"logs",
+	"diet",
+	"workout",
+	"quotes",
 	"profile",
 	"theme",
 	"language",
+	"logs",
 	"update",
 ] as const;
 export type MenuKey = (typeof menuOrder)[number];
 
+// The headings the menu is grouped under; they only label, never open.
+export const menuGroups = {
+	timer: "actions",
+	diet: "health",
+	workout: "health",
+	quotes: "settings",
+	profile: "settings",
+	theme: "settings",
+	language: "settings",
+	logs: "system",
+	update: "system",
+} as const satisfies Record<MenuKey, string>;
+
 export type MenuEntry = Readonly<{
 	key: MenuKey;
+	group: string;
 	label: string;
 	status: string;
 	description: string;
@@ -258,16 +282,10 @@ export function menuEntriesOf(
 	}>,
 ): MenuEntry[] {
 	const { profile } = state.progress;
-	const proteinLeft =
-		targetsOf(profile).protein - todayOf(state.progress, state.now).protein;
-	let healthStatus = messages.signal.setUp;
-
-	if (profile) {
-		healthStatus =
-			proteinLeft > 0
-				? messages.signal.proteinLeft(proteinLeft)
-				: messages.signal.onTrack;
-	}
+	const targets = targetsOf(profile);
+	const today = todayOf(state.progress, state.now);
+	const proteinLeft = targets.protein - today.protein;
+	const minutesLeft = targets.workoutMinutes - today.workoutMinutes;
 
 	const statuses: Record<MenuKey, string> = {
 		quotes: state.quotes.autoRefresh
@@ -276,7 +294,14 @@ export function menuEntriesOf(
 				)
 			: messages.signal.quotesManual,
 		timer: state.timerSignal,
-		health: healthStatus,
+		diet:
+			proteinLeft > 0
+				? messages.signal.proteinLeft(proteinLeft)
+				: messages.signal.onTrack,
+		workout:
+			minutesLeft > 0
+				? messages.signal.minutesLeft(minutesLeft)
+				: messages.signal.onTrack,
 		logs: messages.signal.entries(state.logs),
 		profile: profile?.name ?? messages.signal.setUp,
 		theme: messages.themes.names[state.theme],
@@ -289,7 +314,8 @@ export function menuEntriesOf(
 	const descriptions: Record<MenuKey, string> = {
 		quotes: messages.describe.quotes,
 		timer: messages.describe.timer(state.focus, state.rest),
-		health: messages.describe.health,
+		diet: messages.describe.diet,
+		workout: messages.describe.workout,
 		logs: messages.describe.logs,
 		profile: messages.describe.profile,
 		theme: messages.describe.theme,
@@ -299,6 +325,7 @@ export function menuEntriesOf(
 
 	return menuOrder.map((key) => ({
 		key,
+		group: messages.groups[menuGroups[key]],
 		label: messages.menu[key],
 		status: statuses[key],
 		description: descriptions[key],

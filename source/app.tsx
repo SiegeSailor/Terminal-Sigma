@@ -99,7 +99,7 @@ type AppProps = Readonly<{
 	updater: Updater;
 }>;
 
-type View = "menu" | MenuKey | "diet" | "workout";
+type View = "menu" | MenuKey;
 type QuoteEditor = "interval" | "categories" | "excluded" | "author" | "work";
 type Flash = Readonly<{ activity: Activity; until: number }>;
 
@@ -214,7 +214,7 @@ export default function App({
 		pickBundled(quoteSettings, Date.now()),
 	);
 	const [view, setView] = React.useState<View>("menu");
-	const [focusedMenu, setFocusedMenu] = React.useState<MenuKey>("quotes");
+	const [focusedMenu, setFocusedMenu] = React.useState<MenuKey>("timer");
 	const [quoteEditor, setQuoteEditor] = React.useState<QuoteEditor>();
 	const [quoteOption, setQuoteOption] = React.useState("draw");
 	const [flash, setFlash] = React.useState<Flash>();
@@ -500,14 +500,6 @@ export default function App({
 		}
 	};
 
-	const chooseHealthAction = (action: string) => {
-		if (action === "diet" || action === "workout" || action === "profile") {
-			setView(action);
-		} else {
-			backToMenu();
-		}
-	};
-
 	const submitMeal = (values: Record<string, string>) => {
 		const food = values.food ?? "";
 		backToMenu();
@@ -684,7 +676,7 @@ export default function App({
 	};
 
 	const openMenu = (value: string) => {
-		const item = pick(menuOrder, value, "quotes");
+		const item = pick(menuOrder, value, "timer");
 		setFocusedMenu(item);
 		setView(item);
 
@@ -906,16 +898,6 @@ export default function App({
 				/>
 			</Titled>
 		),
-		health: (
-			<HealthPanel
-				language={language}
-				messages={messages}
-				palette={palette}
-				progress={progress}
-				today={today}
-				onSelect={chooseHealthAction}
-			/>
-		),
 		logs: (
 			<LogsView
 				height={Math.max(rows - 9, 6)}
@@ -986,6 +968,15 @@ export default function App({
 			<Box marginTop={1}>
 				<Text dimColor>{focusedEntry.description}</Text>
 			</Box>
+			{focusedEntry.key === "diet" || focusedEntry.key === "workout" ? (
+				<HealthSummary
+					language={language}
+					messages={messages}
+					palette={palette}
+					progress={progress}
+					today={today}
+				/>
+			) : null}
 			<Box marginTop={1}>
 				<Text dimColor italic>
 					{messages.describe.open}
@@ -1086,11 +1077,12 @@ export default function App({
 								initialValue={focusedMenu}
 								isActive={view === "menu"}
 								options={entries.map((entry) => ({
+									group: layout.isMenuGrouped ? entry.group : undefined,
 									label: entry.label,
 									value: entry.key,
 								}))}
 								onFocus={(value) => {
-									setFocusedMenu(pick(menuOrder, value, "quotes"));
+									setFocusedMenu(pick(menuOrder, value, "timer"));
 								}}
 								onSelect={openMenu}
 							/>
@@ -1125,39 +1117,30 @@ export default function App({
 	);
 }
 
-type HealthPanelProps = Readonly<{
+type HealthSummaryProps = Readonly<{
 	language: Language;
 	messages: Messages;
 	palette: Palette;
 	progress: Progress;
 	today: ReturnType<typeof todayOf>;
-	onSelect: (action: string) => void;
 }>;
 
-function HealthPanel({
+// Today's targets and what is left of them, under the meal and workout items.
+function HealthSummary({
 	language,
 	messages,
 	palette,
 	progress,
 	today,
-	onSelect,
-}: HealthPanelProps) {
+}: HealthSummaryProps) {
 	const { profile } = progress;
 	const targets = targetsOf(profile);
 	const { health } = messages;
-	const options = [
-		...(profile ? [] : [{ label: health.setUp, value: "profile" }]),
-		{ label: health.logMeal, value: "diet" },
-		{ label: health.logWorkout, value: "workout" },
-		{ label: health.back, value: "back" },
-	];
 
 	return (
-		<Box flexDirection="column">
-			<Text bold color={palette.accent}>
-				{profile
-					? health.title(messages.goal[profile.goal])
-					: messages.menu.health}
+		<Box flexDirection="column" marginTop={1}>
+			<Text bold color={palette.soft}>
+				{profile ? health.title(messages.goal[profile.goal]) : health.noProfile}
 			</Text>
 			<Text dimColor>
 				{health.targets(
@@ -1166,23 +1149,14 @@ function HealthPanel({
 					targets.workoutMinutes,
 				)}
 			</Text>
-			<Box flexDirection="column" marginY={1}>
-				{profile ? null : <Text dimColor>{health.noProfile}</Text>}
-				{adviceOf(profile, today, language, messages).map((advice) => (
-					<Text key={advice.text}>
-						<Text color={advice.isDone ? palette.success : palette.accent}>
-							{"⏺ "}
-						</Text>
-						<Text>{advice.text}</Text>
+			{adviceOf(profile, today, language, messages).map((advice) => (
+				<Text key={advice.text}>
+					<Text color={advice.isDone ? palette.success : palette.accent}>
+						{"⏺ "}
 					</Text>
-				))}
-				{profile ? (
-					<Text dimColor italic>
-						{health.tip[profile.goal]}
-					</Text>
-				) : null}
-			</Box>
-			<Choice options={options} onSelect={onSelect} />
+					<Text>{advice.text}</Text>
+				</Text>
+			))}
 		</Box>
 	);
 }

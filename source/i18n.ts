@@ -66,10 +66,17 @@ const en = {
 		suggest: "↑↓ pick · tab fill · enter next · esc cancel",
 		logs: "←→ filter · ↑↓ scroll · esc back",
 	},
+	groups: {
+		actions: "Actions",
+		health: "Health",
+		settings: "Settings",
+		system: "System",
+	},
 	menu: {
 		quotes: "Everyday Quotes",
 		timer: "Tomato Timer",
-		health: "Health",
+		diet: "Log a Meal",
+		workout: "Log a Workout",
 		logs: "Logs",
 		profile: "Profile",
 		theme: "Theme",
@@ -81,8 +88,9 @@ const en = {
 			"Draw a new quote, or choose how often quotes refresh and which kinds you see.",
 		timer: (focus: number, rest: number) =>
 			`A ${focus}-minute focus earns ${focus} XP, then a ${rest}-minute break begins. Start, pause, resume, or stop it here.`,
-		health:
-			"Your diet and workouts against targets from your profile, with advice for the rest of today.",
+		diet: "Log what you ate. Your past meals and 112 common foods are suggested as you type, with their calories and protein.",
+		workout:
+			"Log an activity, its minutes, and its intensity, or repeat 1 of your latest workouts in 1 step.",
 		logs: "Browse every focus, meal, workout, and action you have taken.",
 		profile:
 			"Your name, body, work style, and health goal, which set your daily targets and shape your character.",
@@ -100,6 +108,7 @@ const en = {
 		quotesManual: "Manual refresh",
 		setUp: "Set up",
 		proteinLeft: (grams: number) => `${grams} g protein left`,
+		minutesLeft: (minutes: number) => `${minutes} min of exercise left`,
 		onTrack: "On track",
 		version: (version: string) => `v${version}`,
 		updateAvailable: (version: string) => `v${version} available`,
@@ -224,10 +233,6 @@ const en = {
 			"Set up your profile to get targets for your body, work style, and goal.",
 		targets: (calories: string, protein: number, minutes: number) =>
 			`Daily targets: ${calories} kcal, ${protein} g protein, ${minutes} minutes of exercise.`,
-		logMeal: "Log a meal",
-		logWorkout: "Log a workout",
-		setUp: "Set up my profile",
-		back: "Back",
 		proteinLeft: (grams: number) =>
 			`${grams} g of protein to go today, e.g. a chicken breast has about 30 g.`,
 		proteinDone: "Protein target met for today.",
@@ -243,15 +248,6 @@ const en = {
 			maintain: "a walk or a bike ride",
 			buildMuscle: "a strength session",
 			endurance: "a run, a ride, or a swim",
-		} satisfies Record<HealthGoal, string>,
-		tip: {
-			loseFat:
-				"Protein and fiber keep you full; a steady deficit beats a crash diet.",
-			maintain: "Move a little every day, and eat protein at every meal.",
-			buildMuscle:
-				"Train each muscle twice a week, and spread protein across meals.",
-			endurance:
-				"Build volume slowly, and refuel with carbohydrates after long sessions.",
 		} satisfies Record<HealthGoal, string>,
 	},
 	update: {
@@ -383,10 +379,17 @@ const traditionalChinese: Messages = {
 		suggest: "↑↓ 挑選 · tab 填入 · enter 下一步 · esc 取消",
 		logs: "←→ 篩選 · ↑↓ 捲動 · esc 返回",
 	},
+	groups: {
+		actions: "動作",
+		health: "健康",
+		settings: "設定",
+		system: "系統",
+	},
 	menu: {
 		quotes: "每日語錄",
 		timer: "番茄鐘",
-		health: "健康",
+		diet: "記錄飲食",
+		workout: "記錄運動",
 		logs: "所有紀錄",
 		profile: "個人資料",
 		theme: "主題",
@@ -397,7 +400,8 @@ const traditionalChinese: Messages = {
 		quotes: "換一則語錄，或設定語錄多久更新一次、要看哪些類型。",
 		timer: (focus, rest) =>
 			`完成 ${focus} 分鐘專注可獲得 ${focus} XP，接著休息 ${rest} 分鐘。在這裡開始、暫停、繼續或停止。`,
-		health: "依個人資料設定的目標檢視飲食與運動，並提供今天剩餘時間的建議。",
+		diet: "記錄吃了什麼。輸入時會建議你吃過的餐點與 112 種常見食物，並附上熱量與蛋白質。",
+		workout: "記錄運動項目、分鐘數與強度，或一步重複最近的運動。",
 		logs: "瀏覽所有專注、飲食、運動與操作紀錄。",
 		profile:
 			"你的名字、身體數據、工作型態與健康目標，用來計算每日目標並決定角色的樣子。",
@@ -415,6 +419,7 @@ const traditionalChinese: Messages = {
 		quotesManual: "手動更新",
 		setUp: "設定",
 		proteinLeft: (grams) => `還差蛋白質 ${grams} 克`,
+		minutesLeft: (minutes) => `還差運動 ${minutes} 分鐘`,
 		onTrack: "達標",
 		version: (version) => `v${version}`,
 		updateAvailable: (version) => `可更新至 v${version}`,
@@ -533,10 +538,6 @@ const traditionalChinese: Messages = {
 		noProfile: "設定個人資料，即可依身體、工作型態與目標取得專屬目標。",
 		targets: (calories, protein, minutes) =>
 			`每日目標：${calories} 大卡、蛋白質 ${protein} 克、運動 ${minutes} 分鐘。`,
-		logMeal: "記錄一餐",
-		logWorkout: "記錄運動",
-		setUp: "設定個人資料",
-		back: "返回",
 		proteinLeft: (grams) =>
 			`今天還需要 ${grams} 克蛋白質，例如一塊雞胸肉約 30 克。`,
 		proteinDone: "今天的蛋白質已達標。",
@@ -551,12 +552,6 @@ const traditionalChinese: Messages = {
 			maintain: "散步或騎單車",
 			buildMuscle: "一次重量訓練",
 			endurance: "跑步、騎車或游泳",
-		},
-		tip: {
-			loseFat: "蛋白質與纖維讓人有飽足感；穩定的熱量赤字勝過激烈節食。",
-			maintain: "每天都動一動，每餐都吃到蛋白質。",
-			buildMuscle: "每個肌群一週訓練兩次，蛋白質分散在各餐攝取。",
-			endurance: "循序漸進增加訓練量，長時間訓練後補充碳水化合物。",
 		},
 	},
 	update: {
@@ -683,10 +678,17 @@ const korean: Messages = {
 		suggest: "↑↓ 고르기 · tab 채우기 · enter 다음 · esc 취소",
 		logs: "←→ 필터 · ↑↓ 스크롤 · esc 뒤로",
 	},
+	groups: {
+		actions: "활동",
+		health: "건강",
+		settings: "설정",
+		system: "시스템",
+	},
 	menu: {
 		quotes: "오늘의 명언",
 		timer: "토마토 타이머",
-		health: "건강",
+		diet: "식사 기록",
+		workout: "운동 기록",
 		logs: "전체 기록",
 		profile: "프로필",
 		theme: "테마",
@@ -698,8 +700,9 @@ const korean: Messages = {
 			"새 명언을 뽑거나, 명언이 얼마나 자주 바뀌고 어떤 종류를 볼지 정합니다.",
 		timer: (focus, rest) =>
 			`${focus}분 집중을 마치면 ${focus} XP를 얻고 ${rest}분 휴식이 시작됩니다. 여기서 시작, 일시정지, 재개, 중지합니다.`,
-		health:
-			"프로필로 정한 목표에 맞춰 식단과 운동을 확인하고, 남은 하루에 대한 조언을 받습니다.",
+		diet: "먹은 것을 기록합니다. 입력하는 동안 지난 식사와 흔한 음식 112가지를 열량, 단백질과 함께 제안합니다.",
+		workout:
+			"운동 종목, 시간, 강도를 기록하거나 최근 운동을 한 번에 반복합니다.",
 		logs: "기록한 모든 집중, 식사, 운동, 활동을 봅니다.",
 		profile:
 			"이름, 신체 정보, 업무 형태, 건강 목표로 하루 목표를 정하고 캐릭터의 모습을 바꿉니다.",
@@ -717,6 +720,7 @@ const korean: Messages = {
 		quotesManual: "수동 새로고침",
 		setUp: "설정",
 		proteinLeft: (grams) => `단백질 ${grams}g 남음`,
+		minutesLeft: (minutes) => `운동 ${minutes}분 남음`,
 		onTrack: "달성",
 		version: (version) => `v${version}`,
 		updateAvailable: (version) => `v${version} 업데이트 가능`,
@@ -837,10 +841,6 @@ const korean: Messages = {
 			"프로필을 설정하면 신체, 업무 형태, 목표에 맞는 목표를 받을 수 있습니다.",
 		targets: (calories, protein, minutes) =>
 			`하루 목표: ${calories} kcal, 단백질 ${protein}g, 운동 ${minutes}분.`,
-		logMeal: "식사 기록",
-		logWorkout: "운동 기록",
-		setUp: "프로필 설정",
-		back: "뒤로",
 		proteinLeft: (grams) =>
 			`오늘 단백질이 ${grams}g 더 필요합니다. 닭가슴살 하나에 약 30g이 들어 있습니다.`,
 		proteinDone: "오늘 단백질 목표를 달성했습니다.",
@@ -856,15 +856,6 @@ const korean: Messages = {
 			maintain: "산책이나 자전거 타기",
 			buildMuscle: "근력 운동 한 세션",
 			endurance: "달리기, 자전거, 또는 수영",
-		},
-		tip: {
-			loseFat:
-				"단백질과 식이섬유가 포만감을 줍니다. 꾸준한 적자가 급격한 다이어트보다 낫습니다.",
-			maintain: "매일 조금씩 움직이고, 끼니마다 단백질을 드세요.",
-			buildMuscle:
-				"각 근육을 일주일에 두 번 훈련하고, 단백질을 여러 끼니에 나눠 드세요.",
-			endurance:
-				"훈련량은 천천히 늘리고, 긴 운동 후에는 탄수화물로 보충하세요.",
 		},
 	},
 	update: {

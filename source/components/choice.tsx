@@ -6,6 +6,8 @@ export type Option = Readonly<{
 	label: string;
 	value: string;
 	hint?: React.ReactNode;
+	// A heading shown above the first option of each group; never selectable.
+	group?: string;
 }>;
 
 type ChoiceProps = Readonly<{
@@ -70,19 +72,30 @@ export default function Choice({
 		<Box flexDirection="column">
 			{options.map((option, optionIndex) => {
 				const isFocused = optionIndex === index;
+				const heading =
+					option.group && option.group !== options[optionIndex - 1]?.group
+						? option.group
+						: undefined;
 
 				return (
-					<Box key={option.value} gap={1}>
-						<Text color={palette.accent}>{isFocused ? "❯" : " "}</Text>
-						<Text
-							bold={isFocused}
-							color={isFocused ? palette.accent : undefined}
-						>
-							{isNumbered
-								? `${optionIndex + 1}. ${option.label}`
-								: option.label}
-						</Text>
-						{option.hint}
+					<Box key={option.value} flexDirection="column">
+						{heading ? (
+							<Text bold color={palette.soft}>
+								{heading}
+							</Text>
+						) : null}
+						<Box gap={1}>
+							<Text color={palette.accent}>{isFocused ? "❯" : " "}</Text>
+							<Text
+								bold={isFocused}
+								color={isFocused ? palette.accent : undefined}
+							>
+								{isNumbered
+									? `${optionIndex + 1}. ${option.label}`
+									: option.label}
+							</Text>
+							{option.hint}
+						</Box>
 					</Box>
 				);
 			})}
