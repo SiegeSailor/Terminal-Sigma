@@ -14,6 +14,7 @@ type ChoiceProps = Readonly<{
 	onFocus?: (value: string) => void;
 	initialValue?: string;
 	isActive?: boolean;
+	isNumbered?: boolean;
 }>;
 
 // A vertical list in Claude Code's style. Unlike @inkjs/ui's Select, Enter on
@@ -24,6 +25,7 @@ export default function Choice({
 	onFocus,
 	initialValue,
 	isActive = true,
+	isNumbered = false,
 }: ChoiceProps) {
 	const palette = usePalette();
 	const [index, setIndex] = React.useState(() =>
@@ -35,8 +37,7 @@ export default function Choice({
 
 	useInput(
 		(input, key) => {
-			const move = (step: number) => {
-				const next = (index + step + options.length) % options.length;
+			const focus = (next: number) => {
 				setIndex(next);
 
 				const option = options[next];
@@ -46,10 +47,14 @@ export default function Choice({
 				}
 			};
 
+			const count = options.length;
+
 			if (key.upArrow || input === "k") {
-				move(-1);
+				focus((index - 1 + count) % count);
 			} else if (key.downArrow || input === "j") {
-				move(1);
+				focus((index + 1) % count);
+			} else if (isNumbered && /^[1-9]$/v.test(input)) {
+				focus(Math.min(Number(input), count) - 1);
 			} else if (key.return) {
 				const option = options[index];
 
@@ -73,7 +78,9 @@ export default function Choice({
 							bold={isFocused}
 							color={isFocused ? palette.accent : undefined}
 						>
-							{option.label}
+							{isNumbered
+								? `${optionIndex + 1}. ${option.label}`
+								: option.label}
 						</Text>
 						{option.hint}
 					</Box>

@@ -3,20 +3,27 @@ import zod from "zod";
 import React from "react";
 import { ThemeProvider } from "@inkjs/ui";
 import { Box, Text, useApp, useInput, useStdout, useWindowSize } from "ink";
+import AutocompleteInput from "./components/autocomplete-input.js";
 import Character from "./components/character.js";
 import Choice from "./components/choice.js";
 import EntryForm from "./components/entry-form.js";
 import Footer, { type Tone } from "./components/footer.js";
 import LogsView, { LogRow } from "./components/logs-view.js";
-import MenuGrid from "./components/menu-grid.js";
+import MultiChoice from "./components/multi-choice.js";
 import TodayPanel from "./components/today-panel.js";
 import {
+	categoryOptionsOf,
 	characterWidth,
 	dietFieldsOf,
+	intervalOptionsOf,
 	layoutOf,
-	menuItemsOf,
+	type MenuKey,
+	menuEntriesOf,
+	menuListWidth,
 	menuOrder,
+	petStateOf,
 	profileFieldsOf,
+	quoteOptionsOf,
 	sectionsOf,
 	workoutFieldsOf,
 } from "./content.js";
@@ -33,8 +40,9 @@ import {
 	workoutActivities,
 	workStyles,
 } from "./i18n.js";
-import { type Activity, bodyOf } from "./pixel-art.js";
+import { type Activity, lookOf } from "./pixel-art.js";
 import {
+	type EventAction,
 	experienceOf,
 	experiencePerMeal,
 	levelOf,
@@ -45,12 +53,16 @@ import {
 	workoutExperience,
 } from "./progress.js";
 import {
+	bundledQuotes,
+	defaultQuoteSettings,
 	fetchQuote,
 	hasQuoteApi,
 	localizedQuote,
+	pickBundled,
 	type Quote,
-	quoteRefreshMinutes,
-	randomBundledQuote,
+	quoteCategories,
+	quoteIntervals,
+	type QuoteSettings,
 } from "./quotes.js";
 import {
 	type Palette,
@@ -82,16 +94,8 @@ type AppProps = Readonly<{
 	initialProgress: Progress;
 }>;
 
-type View =
-	| "menu"
-	| "timer"
-	| "health"
-	| "diet"
-	| "workout"
-	| "logs"
-	| "profile"
-	| "theme"
-	| "language";
+type View = "menu" | MenuKey | "diet" | "workout";
+type QuoteEditor = "interval" | "categories" | "excluded" | "author" | "work";
 type Flash = Readonly<{ activity: Activity; until: number }>;
 
 const flashMilliseconds = 6000;
@@ -115,6 +119,41 @@ const pick = <Value extends string>(
 	value: string | undefined,
 	fallback: Value,
 ): Value => options.find((option) => option === value) ?? fallback;
+
+// Appends an event, so every action lands in the logs with the change it made.
+const withEvent = (
+	progress: Progress,
+	action: EventAction,
+	detail?: string,
+): Progress => ({
+	...progress,
+	events: [
+		...progress.events,
+		{
+			at: new Date().toISOString(),
+			action,
+			...(detail === undefined ? {} : { detail }),
+		},
+	],
+});
+
+// Names to suggest for the author and work filters.
+const quoteNames = (field: "author" | "work") => [
+	...new Set(
+		bundledQuotes.flatMap((quote) =>
+			field === "author"
+				? [
+						quote.author,
+						...Object.values(quote.translations ?? {}).map(
+							(text) => text.author,
+						),
+					]
+				: quote.work
+					? [quote.work]
+					: [],
+		),
+	),
+];
 
 function Titled({
 	title,
@@ -157,8 +196,14 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		[options.focus, options.break],
 	);
 	const [timer, setTimer] = React.useState(() => idleTimer(durations));
-	const [quote, setQuote] = React.useState<Quote>(randomBundledQuote);
+	const quoteSettings: QuoteSettings = progress.quotes ?? defaultQuoteSettings;
+	const [quote, setQuote] = React.useState<Quote>(() =>
+		pickBundled(quoteSettings, Date.now()),
+	);
 	const [view, setView] = React.useState<View>("menu");
+	const [focusedMenu, setFocusedMenu] = React.useState<MenuKey>("quotes");
+	const [quoteEditor, setQuoteEditor] = React.useState<QuoteEditor>();
+	const [quoteOption, setQuoteOption] = React.useState("draw");
 	const [flash, setFlash] = React.useState<Flash>();
 	const [draftActivity, setDraftActivity] = React.useState<string>();
 	const language = progress.language ?? "en";
@@ -182,11 +227,10 @@ export default function App({ options, file, initialProgress }: AppProps) {
 
 	// Saves first and only then shows the change, so the screen never claims
 	// something the file does not hold.
-	const save = React.useCallback(
-		(next: Progress) => {
+	const commit = React.useCallback(
+		(next: Progress, text?: string, tone: Tone = "info") => {
 			try {
 				saveProgress(file, next);
-				return true;
 			} catch (error) {
 				setMessage({
 					text: messagesOf(next.language ?? "en").notSaved(String(error)),
@@ -194,6 +238,14 @@ export default function App({ options, file, initialProgress }: AppProps) {
 				});
 				return false;
 			}
+
+			setProgress(next);
+
+			if (text) {
+				setMessage({ text, tone });
+			}
+
+			return true;
 		},
 		[file],
 	);
@@ -204,27 +256,30 @@ export default function App({ options, file, initialProgress }: AppProps) {
 			text: string,
 			activity: Activity,
 		) => {
-			const next = update(progress);
-
-			if (!save(next)) {
-				return;
-			}
-
+			let next = update(progress);
 			const after = levelOf(experienceOf(next));
 			const leveledUp = after > levelOf(experienceOf(progress));
-			setProgress(next);
-			setMessage({
-				text: leveledUp
-					? `${text} ${messagesOf(next.language ?? "en").form.levelUp(after)}`
-					: text,
-				tone: "success",
-			});
-			setFlash({
-				activity: leveledUp ? "levelUp" : activity,
-				until: Date.now() + flashMilliseconds,
-			});
+
+			if (leveledUp) {
+				next = withEvent(next, "levelUp", String(after));
+			}
+
+			const { form } = messagesOf(next.language ?? "en");
+
+			if (
+				commit(
+					next,
+					leveledUp ? `${text} ${form.levelUp(after)}` : text,
+					"success",
+				)
+			) {
+				setFlash({
+					activity: leveledUp ? "levelUp" : activity,
+					until: Date.now() + flashMilliseconds,
+				});
+			}
 		},
-		[progress, save],
+		[progress, commit],
 	);
 
 	React.useEffect(() => {
@@ -236,6 +291,16 @@ export default function App({ options, file, initialProgress }: AppProps) {
 			clearInterval(interval);
 		};
 	}, []);
+
+	// Opening the app is an action too.
+	const hasOpened = React.useRef(false);
+
+	React.useEffect(() => {
+		if (!hasOpened.current) {
+			hasOpened.current = true;
+			commit(withEvent(progress, "appOpened"));
+		}
+	}, [commit, progress]);
 
 	React.useEffect(() => {
 		const { timer: next, finished } = advanceTimer(timer, now, durations);
@@ -249,7 +314,7 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		stdout.write("\u0007");
 
 		if (finished === "break") {
-			setMessage({ text: words.breakOver, tone: "info" });
+			commit(withEvent(progress, "breakOver"), words.breakOver);
 			return;
 		}
 
@@ -264,12 +329,12 @@ export default function App({ options, file, initialProgress }: AppProps) {
 			words.focusComplete(durations.focus, durations.break),
 			"idle",
 		);
-	}, [now, timer, durations, record, stdout, language]);
+	}, [now, timer, durations, record, commit, progress, stdout, language]);
 
 	React.useEffect(() => {
 		let isMounted = true;
 		const refresh = async () => {
-			const next = await fetchQuote();
+			const next = await fetchQuote(quoteSettings);
 
 			if (isMounted) {
 				setQuote(next);
@@ -281,18 +346,25 @@ export default function App({ options, file, initialProgress }: AppProps) {
 			void refresh();
 		}
 
+		if (!quoteSettings.autoRefresh) {
+			return () => {
+				isMounted = false;
+			};
+		}
+
 		const interval = setInterval(() => {
 			void refresh();
-		}, quoteRefreshMinutes * 60_000);
+		}, quoteSettings.interval * 1000);
 
 		return () => {
 			isMounted = false;
 			clearInterval(interval);
 		};
-	}, []);
+	}, [quoteSettings]);
 
 	const backToMenu = (text?: string) => {
 		setView("menu");
+		setQuoteEditor(undefined);
 		setDraftActivity(undefined);
 		setPreviewTheme(undefined);
 
@@ -305,6 +377,8 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		(input, key) => {
 			if (view === "menu" && input === "q") {
 				exit();
+			} else if (view === "quotes" && quoteEditor && key.escape) {
+				setQuoteEditor(undefined);
 			} else if (view !== "menu" && key.escape) {
 				const isForm = ["diet", "workout", "profile"].includes(view);
 				backToMenu(isForm ? messages.form.cancelled : undefined);
@@ -313,19 +387,16 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		{ isActive: progress.language !== undefined },
 	);
 
-	const saveSetting = (next: Progress, text: string) => {
-		if (save(next)) {
-			setProgress(next);
-			backToMenu(text);
-		}
-	};
-
 	const chooseLanguage = (value: string) => {
 		const next = pick(languages, value, "en");
-		saveSetting(
-			{ ...progress, language: next },
-			messagesOf(next).languageChanged,
-		);
+
+		if (
+			commit(
+				withEvent({ ...progress, language: next }, "languageChanged", next),
+			)
+		) {
+			backToMenu(messagesOf(next).languageChanged);
+		}
 	};
 
 	const providers = (children: React.ReactNode) => (
@@ -361,26 +432,20 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	const clock = formatClock(remainingOf(timer, now));
 	const phaseLabel = messages.timer[timer.phase];
 
-	const selectMenu = (index: number) => {
-		const item = menuOrder[index];
-
-		if (item === "timer" && isIdle) {
-			setTimer(toggleTimer(timer, Date.now()));
-			say(messages.timer.started);
-		} else if (item === "quotes") {
-			void fetchQuote().then(setQuote);
-			say(messages.quoteDrawn);
-		} else if (item) {
-			setView(item);
-		}
-	};
-
 	const chooseTimerAction = (action: string) => {
-		if (action === "toggle") {
-			setTimer(toggleTimer(timer, Date.now()));
-			backToMenu(isRunning ? messages.timer.paused : messages.timer.resumed);
+		if (action === "start" || action === "toggle") {
+			const [event, text, detail]: [EventAction, string, string?] =
+				action === "start"
+					? ["timerStarted", messages.timer.started, String(durations.focus)]
+					: isRunning
+						? ["timerPaused", messages.timer.paused, clock]
+						: ["timerResumed", messages.timer.resumed];
+			setTimer(toggleTimer(timer, now));
+			commit(withEvent(progress, event, detail));
+			backToMenu(text);
 		} else if (action === "stop") {
 			setTimer(idleTimer(durations));
+			commit(withEvent(progress, "timerStopped", clock));
 			backToMenu(messages.timer.stopped);
 		} else {
 			backToMenu();
@@ -436,7 +501,7 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	};
 
 	const submitProfile = (values: Record<string, string>) => {
-		saveSetting(
+		const next = withEvent(
 			{
 				...progress,
 				profile: {
@@ -449,16 +514,92 @@ export default function App({ options, file, initialProgress }: AppProps) {
 					goal: pick(healthGoals, values.goal, "maintain"),
 				},
 			},
-			messages.form.profileSaved,
+			"profileSaved",
 		);
+
+		if (commit(next)) {
+			backToMenu(messages.form.profileSaved);
+		}
 	};
 
 	const chooseTheme = (value: string) => {
 		const next: ThemeName = pick(themeNames, value, "ember");
-		saveSetting(
-			{ ...progress, theme: next },
-			messages.themes.changed(messages.themes.names[next]),
+
+		if (commit(withEvent({ ...progress, theme: next }, "themeChanged", next))) {
+			backToMenu(messages.themes.changed(messages.themes.names[next]));
+		}
+	};
+
+	const drawQuote = (settings: QuoteSettings, base: Progress) => {
+		void fetchQuote(settings).then(setQuote);
+		return withEvent(base, "quoteDrawn");
+	};
+
+	// Saves 1 quote setting, logs it as "setting:value", and draws a quote that
+	// follows the new filters.
+	const updateQuotes = (patch: Partial<QuoteSettings>, detail: string) => {
+		const settings = { ...quoteSettings, ...patch };
+		const next = withEvent(
+			{ ...progress, quotes: settings },
+			"quoteSettingsChanged",
+			detail,
 		);
+
+		if (commit(next, messages.quotes.changed)) {
+			setQuoteEditor(undefined);
+			setQuote(pickBundled(settings, Date.now()));
+		}
+	};
+
+	const chooseQuoteOption = (value: string) => {
+		setQuoteOption(value);
+
+		switch (value) {
+			case "draw": {
+				commit(drawQuote(quoteSettings, progress), messages.quoteDrawn);
+				break;
+			}
+
+			case "autoRefresh": {
+				const isOn = !quoteSettings.autoRefresh;
+				updateQuotes(
+					{ autoRefresh: isOn },
+					`autoRefresh:${isOn ? "on" : "off"}`,
+				);
+				break;
+			}
+
+			case "mode": {
+				const mode = quoteSettings.mode === "random" ? "daily" : "random";
+				updateQuotes({ mode }, `mode:${mode}`);
+				break;
+			}
+
+			case "back": {
+				backToMenu();
+				break;
+			}
+
+			default: {
+				setQuoteEditor(
+					pick(
+						["interval", "categories", "excluded", "author", "work"] as const,
+						value,
+						"interval",
+					),
+				);
+			}
+		}
+	};
+
+	const openMenu = (value: string) => {
+		const item = pick(menuOrder, value, "quotes");
+		setFocusedMenu(item);
+		setView(item);
+
+		if (item === "theme") {
+			setPreviewTheme(themeName);
+		}
 	};
 
 	const experience = experienceOf(progress);
@@ -468,6 +609,7 @@ export default function App({ options, file, initialProgress }: AppProps) {
 	const columns = size.columns || 100;
 	const rows = size.rows || 40;
 	const layout = layoutOf(columns, rows);
+	const pet = petStateOf(progress, now);
 
 	const activity: Activity =
 		flash && flash.until > now
@@ -480,50 +622,159 @@ export default function App({ options, file, initialProgress }: AppProps) {
 						? ({ focus: "focus", break: "break" } as const)[timer.phase]
 						: "idle";
 
+	let activityLabel = messages.activity[activity];
+
+	if (activity === "idle") {
+		activityLabel = messages.mood[pet.mood];
+	} else if (activity === "levelUp") {
+		activityLabel = `${messages.activity.levelUp} ${messages.level(level)}`;
+	}
+
 	let timerSignal = isRunning ? clock : messages.signal.paused;
 
 	if (isIdle) {
 		timerSignal = messages.signal.ready;
 	}
 
-	const hints: Record<View, string> = {
-		menu: messages.hints.menu,
-		logs: messages.hints.logs,
-		diet: messages.hints.form,
-		workout: messages.hints.form,
-		profile: messages.hints.form,
-		timer: messages.hints.select,
-		health: messages.hints.select,
-		theme: messages.hints.select,
-		language: messages.hints.select,
+	const entries = menuEntriesOf(messages, {
+		timerSignal,
+		progress,
+		quotes: quoteSettings,
+		now,
+		logs: logs.length,
+		theme: themeName,
+		focus: durations.focus,
+		rest: durations.break,
+	});
+	const focusedEntry =
+		entries.find((entry) => entry.key === focusedMenu) ?? entries[0];
+
+	const isTyping =
+		view === "diet" ||
+		(view === "quotes" && (quoteEditor === "author" || quoteEditor === "work"));
+	let hint = messages.hints.select;
+
+	if (view === "menu") {
+		hint = messages.hints.menu;
+	} else if (view === "logs") {
+		hint = messages.hints.logs;
+	} else if (isTyping) {
+		hint = messages.hints.suggest;
+	} else if (view === "workout" || view === "profile") {
+		hint = messages.hints.form;
+	}
+
+	const shownQuote = localizedQuote(quote, language);
+
+	const quoteEditors: Record<QuoteEditor, React.ReactNode> = {
+		interval: (
+			<Choice
+				initialValue={String(quoteSettings.interval)}
+				options={intervalOptionsOf(messages)}
+				onSelect={(value) => {
+					const interval =
+						quoteIntervals.find((option) => String(option) === value) ?? 1500;
+					updateQuotes({ interval }, `interval:${interval}`);
+				}}
+			/>
+		),
+		categories: (
+			<MultiChoice
+				doneLabel={messages.quotes.done}
+				initial={quoteSettings.categories}
+				options={categoryOptionsOf(messages)}
+				onDone={(selected) => {
+					const categories = quoteCategories.filter((category) =>
+						selected.includes(category),
+					);
+					updateQuotes({ categories }, `categories:${categories.join(",")}`);
+				}}
+			/>
+		),
+		excluded: (
+			<MultiChoice
+				doneLabel={messages.quotes.done}
+				initial={quoteSettings.excluded}
+				options={categoryOptionsOf(messages)}
+				onDone={(selected) => {
+					const excluded = quoteCategories.filter((category) =>
+						selected.includes(category),
+					);
+					updateQuotes({ excluded }, `excluded:${excluded.join(",")}`);
+				}}
+			/>
+		),
+		author: (
+			<AutocompleteInput
+				initialValue={quoteSettings.author}
+				placeholder={messages.quotes.authorPrompt}
+				suggest={(text) =>
+					quoteNames("author")
+						.filter((author) =>
+							author.toLowerCase().includes(text.trim().toLowerCase()),
+						)
+						.slice(0, 5)
+						.map((label) => ({ label }))
+				}
+				onSubmit={(text) => {
+					updateQuotes({ author: text.trim() }, `author:${text.trim()}`);
+				}}
+			/>
+		),
+		work: (
+			<AutocompleteInput
+				initialValue={quoteSettings.work}
+				placeholder={messages.quotes.workPrompt}
+				suggest={(text) =>
+					quoteNames("work")
+						.filter((work) =>
+							work.toLowerCase().includes(text.trim().toLowerCase()),
+						)
+						.slice(0, 5)
+						.map((label) => ({ label }))
+				}
+				onSubmit={(text) => {
+					updateQuotes({ work: text.trim() }, `work:${text.trim()}`);
+				}}
+			/>
+		),
 	};
 
-	const panels: Record<Exclude<View, "logs">, React.ReactNode> = {
-		menu: (
-			<MenuGrid
-				columns={layout.menuColumns}
-				isActive={view === "menu"}
-				items={menuItemsOf(messages, language, {
-					timerSignal,
-					progress,
-					now,
-					logs: logs.length,
-					theme: themeName,
-					focus: durations.focus,
-					rest: durations.break,
-				})}
-				onSelect={selectMenu}
-			/>
+	const timerOptions = isIdle
+		? [{ label: messages.timer.start, value: "start" }]
+		: [
+				{
+					label: isRunning ? messages.timer.pause : messages.timer.resume,
+					value: "toggle",
+				},
+				{ label: messages.timer.stop, value: "stop" },
+			];
+
+	const panels: Record<Exclude<View, "menu">, React.ReactNode> = {
+		quotes: (
+			<Titled title={messages.menu.quotes}>
+				<Text dimColor italic wrap="truncate-end">
+					{`“${shownQuote.quote}” — ${shownQuote.author}`}
+				</Text>
+				<Box marginTop={1}>
+					{quoteEditor ? (
+						<Box key={quoteEditor}>{quoteEditors[quoteEditor]}</Box>
+					) : (
+						<Choice
+							key="options"
+							initialValue={quoteOption}
+							options={quoteOptionsOf(messages, quoteSettings)}
+							onSelect={chooseQuoteOption}
+						/>
+					)}
+				</Box>
+			</Titled>
 		),
 		timer: (
 			<Titled title={messages.menu.timer}>
 				<Choice
 					options={[
-						{
-							label: isRunning ? messages.timer.pause : messages.timer.resume,
-							value: "toggle",
-						},
-						{ label: messages.timer.stop, value: "stop" },
+						...timerOptions,
 						{ label: messages.timer.back, value: "back" },
 					]}
 					onSelect={chooseTimerAction}
@@ -540,9 +791,17 @@ export default function App({ options, file, initialProgress }: AppProps) {
 				onSelect={chooseHealthAction}
 			/>
 		),
+		logs: (
+			<LogsView
+				height={Math.max(rows - 9, 6)}
+				language={language}
+				logs={logs}
+				messages={messages}
+			/>
+		),
 		diet: (
 			<EntryForm
-				fields={dietFieldsOf(messages)}
+				fields={dietFieldsOf(messages, language, progress.meals)}
 				messages={messages}
 				title={messages.form.dietTitle}
 				onSubmit={submitMeal}
@@ -550,7 +809,7 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		),
 		workout: (
 			<EntryForm
-				fields={workoutFieldsOf(messages)}
+				fields={workoutFieldsOf(messages, progress.workouts)}
 				messages={messages}
 				title={messages.form.workoutTitle}
 				onSubmit={submitWorkout}
@@ -594,11 +853,26 @@ export default function App({ options, file, initialProgress }: AppProps) {
 		),
 	};
 
-	const shownQuote = localizedQuote(quote, language);
+	const preview = focusedEntry ? (
+		<Box flexDirection="column">
+			<Text bold color={palette.soft}>
+				{focusedEntry.status}
+			</Text>
+			<Box marginTop={1}>
+				<Text dimColor>{focusedEntry.description}</Text>
+			</Box>
+			<Box marginTop={1}>
+				<Text dimColor italic>
+					{messages.describe.open}
+				</Text>
+			</Box>
+		</Box>
+	) : null;
+
 	const todayPanel = (
 		<TodayPanel
-			sections={sectionsOf(language, palette, progress, now)}
 			isCompact={layout.isTodayCompact}
+			sections={sectionsOf(language, palette, progress, now)}
 			title={messages.today.title}
 			width={layout.todayWidth}
 		/>
@@ -652,61 +926,69 @@ export default function App({ options, file, initialProgress }: AppProps) {
 				</Text>
 			</Box>
 
-			{view === "logs" ? (
-				<Box
-					borderColor={palette.accent}
-					borderStyle="round"
-					flexGrow={1}
-					paddingX={1}
-				>
-					<LogsView
-						height={rows - 7}
-						language={language}
-						logs={logs}
-						messages={messages}
+			<Box
+				flexDirection={layout.stacked ? "column-reverse" : "row"}
+				flexGrow={1}
+			>
+				{layout.showCharacter ? (
+					<Character
+						activity={activity}
+						badges={pet.badges}
+						label={activityLabel}
+						level={messages.level(level)}
+						levelNumber={level}
+						look={lookOf(progress.profile)}
+						mood={pet.mood}
+						name={name}
+						width={characterWidth}
 					/>
-				</Box>
-			) : (
-				<>
+				) : null}
+				{layout.showToday && layout.todayBeside ? todayPanel : null}
+				<Box flexDirection="column" width={layout.panelWidth}>
 					<Box
-						flexDirection={layout.stacked ? "column-reverse" : "row"}
+						flexDirection={layout.isMenuSplit ? "row" : "column"}
 						flexGrow={1}
 					>
-						{layout.showCharacter ? (
-							<Character
-								activity={activity}
-								label={
-									activity === "levelUp"
-										? `${messages.activity.levelUp} ${messages.level(level)}`
-										: messages.activity[activity]
-								}
-								body={bodyOf(progress.profile)}
-								level={messages.level(level)}
-								levelNumber={level}
-								name={name}
-								width={characterWidth}
+						<Box
+							borderColor={view === "menu" ? palette.accent : palette.border}
+							borderStyle="round"
+							display={view === "logs" ? "none" : "flex"}
+							flexShrink={0}
+							paddingX={1}
+							width={layout.isMenuSplit ? menuListWidth : undefined}
+						>
+							<Choice
+								isNumbered
+								initialValue={focusedMenu}
+								isActive={view === "menu"}
+								options={entries.map((entry) => ({
+									label: entry.label,
+									value: entry.key,
+								}))}
+								onFocus={(value) => {
+									setFocusedMenu(pick(menuOrder, value, "quotes"));
+								}}
+								onSelect={openMenu}
 							/>
-						) : null}
-						{layout.showToday && layout.todayBeside ? todayPanel : null}
-						<Box flexDirection="column" width={layout.panelWidth}>
-							<Box
-								borderColor={view === "menu" ? palette.border : palette.accent}
-								borderStyle="round"
-								flexDirection="column"
-								flexGrow={1}
-								paddingX={1}
-							>
-								{view === "menu" ? panels.menu : panels[view]}
-							</Box>
-							{layout.showRecent ? recentBlock : null}
+						</Box>
+						<Box
+							borderColor={view === "menu" ? palette.border : palette.accent}
+							borderStyle="round"
+							flexDirection="column"
+							flexGrow={1}
+							overflow="hidden"
+							paddingX={1}
+						>
+							{view === "menu" ? preview : panels[view]}
 						</Box>
 					</Box>
-					{layout.showToday && !layout.todayBeside ? todayPanel : null}
-				</>
-			)}
+					{layout.showRecent && view !== "logs" ? recentBlock : null}
+				</Box>
+			</Box>
+			{layout.showToday && !layout.todayBeside ? todayPanel : null}
 
 			<Footer
-				hint={hints[view]}
+				hint={hint}
 				message={
 					isIdle || isRunning
 						? message.text

@@ -17,6 +17,12 @@ import {
 	languages,
 	workStyles,
 } from "./i18n.js";
+import {
+	defaultQuoteSettings,
+	quoteCategories,
+	quoteIntervals,
+	quoteModes,
+} from "./quotes.js";
 import { themeNames } from "./theme.js";
 
 const timestamp = zod.iso.datetime({ offset: true });
@@ -39,6 +45,39 @@ const workoutSchema = zod.object({
 	intensity: zod.enum(intensities).optional(),
 });
 
+// Every action that changes something is logged too, not only the entries.
+export const eventActions = [
+	"appOpened",
+	"timerStarted",
+	"timerPaused",
+	"timerResumed",
+	"timerStopped",
+	"breakOver",
+	"levelUp",
+	"languageChanged",
+	"themeChanged",
+	"profileSaved",
+	"quoteDrawn",
+	"quoteSettingsChanged",
+] as const;
+export type EventAction = (typeof eventActions)[number];
+
+const eventSchema = zod.object({
+	at: timestamp,
+	action: zod.enum(eventActions),
+	detail: zod.string().optional(),
+});
+
+const quotesSchema = zod.object({
+	autoRefresh: zod.boolean().default(defaultQuoteSettings.autoRefresh),
+	interval: zod.literal(quoteIntervals).default(defaultQuoteSettings.interval),
+	mode: zod.enum(quoteModes).default(defaultQuoteSettings.mode),
+	categories: zod.array(zod.enum(quoteCategories)).default([]),
+	excluded: zod.array(zod.enum(quoteCategories)).default([]),
+	author: zod.string().default(""),
+	work: zod.string().default(""),
+});
+
 const profileSchema = zod.object({
 	name: zod.string().min(1),
 	age: zod.number().int().min(10).max(100),
@@ -53,9 +92,11 @@ const progressSchema = zod.object({
 	language: zod.enum(languages).optional(),
 	theme: zod.enum(themeNames).optional(),
 	profile: profileSchema.optional(),
+	quotes: quotesSchema.optional(),
 	focus: zod.array(focusSchema).default([]),
 	meals: zod.array(mealSchema).default([]),
 	workouts: zod.array(workoutSchema).default([]),
+	events: zod.array(eventSchema).default([]),
 });
 
 export type Progress = zod.infer<typeof progressSchema>;
@@ -63,6 +104,7 @@ export type Profile = zod.infer<typeof profileSchema>;
 export type Focus = zod.infer<typeof focusSchema>;
 export type Meal = zod.infer<typeof mealSchema>;
 export type Workout = zod.infer<typeof workoutSchema>;
+export type Event = zod.infer<typeof eventSchema>;
 
 export const experiencePerLevel = 100;
 export const experiencePerMeal = 5;
@@ -115,7 +157,8 @@ export function saveProgress(file: string, progress: Progress) {
 export type Log =
 	| { kind: "focus"; at: string; experience: number; entry: Focus }
 	| { kind: "meal"; at: string; experience: number; entry: Meal }
-	| { kind: "workout"; at: string; experience: number; entry: Workout };
+	| { kind: "workout"; at: string; experience: number; entry: Workout }
+	| { kind: "event"; at: string; experience: number; entry: Event };
 
 // Every entry, newest first, with the experience it earned.
 export const logsOf = (progress: Progress): Log[] =>
@@ -143,6 +186,9 @@ export const logsOf = (progress: Progress): Log[] =>
 				experience: workoutExperience(entry),
 				entry,
 			}),
+		),
+		...progress.events.map(
+			(entry): Log => ({ kind: "event", at: entry.at, experience: 0, entry }),
 		),
 	].toSorted((left, right) => Date.parse(right.at) - Date.parse(left.at));
 

@@ -4,13 +4,28 @@ import { Box, Text } from "ink";
 import type { Messages } from "../i18n.js";
 import { parseWholeNumber } from "../progress.js";
 import { usePalette } from "../theme.js";
+import AutocompleteInput, { type Suggestion } from "./autocomplete-input.js";
 import Choice, { type Option } from "./choice.js";
+
+// A combination fills several fields at once, such as a past workout.
+export type Combination = Readonly<{
+	label: string;
+	values: Readonly<Record<string, string>>;
+}>;
 
 export type Field = Readonly<
 	{ key: string; label: string; defaultValue?: string } & (
-		| { kind: "text"; placeholder?: string }
+		| {
+				kind: "text";
+				placeholder?: string;
+				suggest?: (text: string) => readonly Suggestion[];
+		  }
 		| { kind: "number"; minimum: number; maximum: number }
-		| { kind: "select"; options: readonly Option[] }
+		| {
+				kind: "select";
+				options: readonly Option[];
+				combinations?: readonly Combination[];
+		  }
 	)
 >;
 
@@ -22,6 +37,8 @@ type EntryFormProps = Readonly<{
 	onValues?: (values: Record<string, string>) => void;
 }>;
 
+const combinationPrefix = "combination:";
+
 export default function EntryForm({
 	title,
 	fields,
@@ -31,11 +48,30 @@ export default function EntryForm({
 }: EntryFormProps) {
 	const palette = usePalette();
 	const [values, setValues] = React.useState<Record<string, string>>({});
+	// A picked suggestion pre-fills the fields after it.
+	const [defaults, setDefaults] = React.useState<Record<string, string>>({});
 	const [error, setError] = React.useState<string>();
-	const field = fields[Object.keys(values).length];
+	const field = fields.find((candidate) => !(candidate.key in values));
 
-	const accept = (value: string) => {
+	const commit = (next: Record<string, string>) => {
+		setError(undefined);
+		setValues(next);
+		onValues?.(next);
+
+		if (fields.every((candidate) => candidate.key in next)) {
+			onSubmit(next);
+		}
+	};
+
+	const accept = (value: string, suggestion?: Suggestion) => {
 		if (!field) {
+			return;
+		}
+
+		if (field.kind === "select" && value.startsWith(combinationPrefix)) {
+			const combination =
+				field.combinations?.[Number(value.slice(combinationPrefix.length))];
+			commit({ ...values, ...combination?.values });
 			return;
 		}
 
@@ -52,14 +88,11 @@ export default function EntryForm({
 			return;
 		}
 
-		const next = { ...values, [field.key]: value.trim() };
-		setError(undefined);
-		setValues(next);
-		onValues?.(next);
-
-		if (Object.keys(next).length === fields.length) {
-			onSubmit(next);
+		if (suggestion?.values) {
+			setDefaults((current) => ({ ...current, ...suggestion.values }));
 		}
+
+		commit({ ...values, [field.key]: value.trim() });
 	};
 
 	const shown = (done: Field) => {
@@ -67,6 +100,55 @@ export default function EntryForm({
 		return done.kind === "select"
 			? (done.options.find((option) => option.value === value)?.label ?? value)
 			: value;
+	};
+
+	const defaultOf = (current: Field) =>
+		defaults[current.key] ?? current.defaultValue;
+
+	const input = (current: Field) => {
+		if (current.kind === "select") {
+			return (
+				<Choice
+					key={current.key}
+					initialValue={defaultOf(current)}
+					options={[
+						...(current.combinations ?? []).map((combination, index) => ({
+							label: `↺ ${combination.label}`,
+							value: `${combinationPrefix}${index}`,
+						})),
+						...current.options,
+					]}
+					onSelect={accept}
+				/>
+			);
+		}
+
+		if (current.kind === "text" && current.suggest) {
+			return (
+				<AutocompleteInput
+					key={current.key}
+					initialValue={defaultOf(current)}
+					placeholder={current.placeholder}
+					suggest={current.suggest}
+					onSubmit={accept}
+				/>
+			);
+		}
+
+		return (
+			<TextInput
+				key={`${current.key}-${defaultOf(current) ?? ""}`}
+				defaultValue={defaultOf(current)}
+				placeholder={
+					current.kind === "text"
+						? current.placeholder
+						: `${current.minimum} - ${current.maximum}`
+				}
+				onSubmit={(value) => {
+					accept(value);
+				}}
+			/>
+		);
 	};
 
 	return (
@@ -86,27 +168,7 @@ export default function EntryForm({
 			{field ? (
 				<Box flexDirection="column">
 					<Text bold>{`❯ ${field.label}`}</Text>
-					<Box paddingLeft={2}>
-						{field.kind === "select" ? (
-							<Choice
-								key={field.key}
-								initialValue={field.defaultValue}
-								options={field.options}
-								onSelect={accept}
-							/>
-						) : (
-							<TextInput
-								key={field.key}
-								defaultValue={field.defaultValue}
-								placeholder={
-									field.kind === "text"
-										? field.placeholder
-										: `${field.minimum} - ${field.maximum}`
-								}
-								onSubmit={accept}
-							/>
-						)}
-					</Box>
+					<Box paddingLeft={2}>{input(field)}</Box>
 				</Box>
 			) : null}
 			{error ? <Text color={palette.error}>{error}</Text> : null}

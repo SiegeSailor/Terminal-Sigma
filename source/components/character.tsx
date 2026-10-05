@@ -1,10 +1,12 @@
 import React from "react";
 import { Box, Text, useAnimation } from "ink";
+import type { Mood } from "../i18n.js";
 import {
 	type Activity,
-	type Body,
+	type Badges,
 	composeScene,
 	intervalOf,
+	type Look,
 	paletteOf,
 	toSegments,
 } from "../pixel-art.js";
@@ -15,7 +17,9 @@ type CharacterProps = Readonly<{
 	level: string;
 	levelNumber: number;
 	activity: Activity;
-	body: Body;
+	look: Look;
+	mood: Mood;
+	badges: Badges;
 	label: string;
 	width: number;
 }>;
@@ -25,19 +29,23 @@ export default function Character({
 	level,
 	levelNumber,
 	activity,
-	body,
+	look,
+	mood,
+	badges,
 	label,
 	width,
 }: CharacterProps) {
 	const palette = usePalette();
 	const { frame } = useAnimation({ interval: intervalOf(activity) });
-	// Border and padding take 4 columns; the rest is the stage it walks on.
+	// Border and padding take 4 columns; the rest is the stage it roams.
 	const lines = toSegments(
 		composeScene({
 			activity,
 			counter: frame,
 			level: levelNumber,
-			body,
+			look,
+			mood,
+			badges,
 			width: width - 4,
 		}),
 		paletteOf(palette),
@@ -76,9 +84,11 @@ export default function Character({
 					</Box>
 				))}
 			</Box>
-			<Text color={palette.accent} wrap="truncate-end">
-				{`${spinnerFrames[frame % spinnerFrames.length] ?? "·"} ${label}`}
-			</Text>
+			<Box marginTop={1}>
+				<Text color={palette.accent} wrap="truncate-end">
+					{`${spinnerFrames[frame % spinnerFrames.length] ?? "·"} ${label}`}
+				</Text>
+			</Box>
 		</Box>
 	);
 }

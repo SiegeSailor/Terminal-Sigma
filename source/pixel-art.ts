@@ -1,10 +1,10 @@
-import type { Gender } from "./i18n.js";
+import type { Gender, HealthGoal, Mood } from "./i18n.js";
 import type { Palette } from "./theme.js";
 
-// The character stands on a stage as wide as its panel and 30 pixels tall.
-// Each terminal cell draws 2 stacked pixels with "▀", foreground for the top
-// and background for the bottom, so the stage takes 15 rows.
-export const stageHeight = 30;
+// The pet lives on a stage as wide as its panel and 28 pixels tall. Each
+// terminal cell draws 2 stacked pixels with "▀", foreground for the top and
+// background for the bottom, so the stage takes 14 rows.
+export const stageHeight = 28;
 
 export type Activity =
 	| "idle"
@@ -17,22 +17,30 @@ export type Activity =
 	| "levelUp";
 
 export type Build = "slim" | "average" | "broad";
-export type Body = Readonly<{ height: number; build: Build; gender: Gender }>;
 
-export const defaultBody: Body = {
-	height: 23,
-	build: "average",
-	gender: "other",
-};
+// What the profile decides: how tall and wide the pet is, what it wears on its
+// head for the gender, and the accessory for the health goal.
+export type Look = Readonly<{
+	size: number;
+	build: Build;
+	gender: Gender;
+	goal?: HealthGoal;
+}>;
 
-// 145 cm draws 20 pixels tall and 205 cm 26; the build follows the BMI.
-export function bodyOf(
+export const defaultLook: Look = { size: 1, build: "average", gender: "other" };
+
+export function lookOf(
 	profile:
-		| Readonly<{ height: number; weight: number; gender: Gender }>
+		| Readonly<{
+				height: number;
+				weight: number;
+				gender: Gender;
+				goal: HealthGoal;
+		  }>
 		| undefined,
-): Body {
+): Look {
 	if (!profile) {
-		return defaultBody;
+		return defaultLook;
 	}
 
 	const bmi = profile.weight / (profile.height / 100) ** 2;
@@ -45,14 +53,21 @@ export function bodyOf(
 	}
 
 	return {
-		height: Math.min(
-			Math.max(Math.round(20 + (profile.height - 145) / 10), 20),
-			26,
-		),
+		size: Math.min(Math.max(Math.floor((profile.height - 150) / 12), 0), 3),
 		build,
 		gender: profile.gender,
+		goal: profile.goal,
 	};
 }
+
+// What today's logs decide: a badge for each kind logged today.
+export type Badges = Readonly<{
+	meal: boolean;
+	workout: boolean;
+	focus: boolean;
+}>;
+
+export const noBadges: Badges = { meal: false, workout: false, focus: false };
 
 // Each equipment slot upgrades once from level 2 and again 4 levels later,
 // staggered so every level from 2 to 9 changes exactly 1 piece.
@@ -60,323 +75,205 @@ export const gearOf = (level: number) => {
 	const tier = (slot: number) =>
 		Math.min(Math.max(Math.floor((level - 2 - slot) / 4) + 1, 0), 2);
 
-	return { gadget: tier(0), top: tier(1), headwear: tier(2), back: tier(3) };
+	return { gadget: tier(0), wear: tier(1), headwear: tier(2), aura: tier(3) };
 };
+
+// The pet grows twice: a hatchling below level 4, an adult from level 7.
+export const growthOf = (level: number) =>
+	level >= 7 ? 2 : level >= 4 ? 1 : 0;
 
 type Gear = ReturnType<typeof gearOf>;
-type Point = readonly [number, number];
+type ArmPose = "down" | "mid" | "up" | "forward";
 
-type Dims = Readonly<{
-	legWidth: number;
-	frontHip: number;
-	backHip: number;
-	legs: number;
-	torso: number;
-	left: number;
-	right: number;
-	shoulder: number;
-	neck: number;
-	arm: number;
-}>;
-
-const widthOf: Record<Build, number> = { slim: 4, average: 5, broad: 6 };
-
-const dimsOf = (body: Body): Dims => {
-	// Shoes, neck, a 4-row head, and its top row take 7 of the height.
-	const span = body.height - 7;
-	const torso = Math.round(span * 0.4);
-	const legs = span - torso;
-	const width = widthOf[body.build];
-	const legWidth = body.build === "broad" ? 3 : 2;
-	const right = Math.floor(width / 2) - 1;
-
-	return {
-		legWidth,
-		frontHip: right - legWidth + 1,
-		backHip: -Math.ceil(width / 2),
-		legs,
-		torso,
-		left: -Math.ceil(width / 2),
-		right: Math.floor(width / 2) - 1,
-		shoulder: legs + torso,
-		neck: legs + torso + 1,
-		arm: torso - 1,
-	};
-};
-
-// A pose in local coordinates: x grows toward where the character faces, y
-// grows up from the ground. Hands are relative to their shoulders.
 type Pose = Readonly<{
-	front: Point;
-	back: Point;
-	frontHand: Point;
-	backHand: Point;
+	step?: 0 | 1 | 2;
+	arms?: readonly [ArmPose, ArmPose];
 	lift?: number;
-	bob?: number;
-	blink?: boolean;
+	squash?: number;
+	eyes?: "open" | "closed" | "happy";
+	look?: number;
 }>;
 
-type Draw = (put: (x: number, y: number, key: string) => void, d: Dims) => void;
+type Put = (x: number, y: number, key: string) => void;
+
+type Shape = Readonly<{ width: number; height: number; top: number }>;
+
+type Draw = (put: Put, shape: Shape, counter: number) => void;
 
 type Scene = Readonly<{
 	x: number;
 	facing: 1 | -1;
-	pose: (d: Dims) => Pose;
+	pose: Pose;
 	props?: Draw[];
 }>;
 
-const pointsOf = ([x0, y0]: Point, [x1, y1]: Point): Point[] => {
-	const points: Point[] = [];
-	const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+const widthOf: Record<Build, number> = { slim: 13, average: 15, broad: 18 };
 
-	for (let step = 0; step <= steps; step++) {
-		points.push([
-			Math.round(x0 + ((x1 - x0) * step) / steps),
-			Math.round(y0 + ((y1 - y0) * step) / steps),
-		]);
+const shapeOf = (look: Look, level: number, squash = 0): Shape => {
+	const growth = growthOf(level) - 1;
+	const width = widthOf[look.build] + growth * 2 - squash;
+	const height = 9 + look.size + growth * 2 + squash;
+
+	return { width, height, top: height + 1 };
+};
+
+const span = (put: Put, from: number, to: number, y: number, key: string) => {
+	for (let x = from; x <= to; x++) {
+		put(x, y, key);
 	}
-
-	return points;
 };
 
-// Feet are relative to their own hip.
-const standing = (d: Dims, hand: Point = [0, -d.arm]): Pose => ({
-	front: [0, 0],
-	back: [0, 0],
-	frontHand: hand,
-	backHand: [-1, -d.arm],
-});
-
-const walkFeet: ReadonlyArray<[Point, Point]> = [
-	[
-		[2, 0],
-		[-1, 0],
-	],
-	[
-		[0, 0],
-		[0, 1],
-	],
-	[
-		[-3, 0],
-		[4, 0],
-	],
-	[
-		[-2, 1],
-		[2, 0],
-	],
-];
-const runFeet: ReadonlyArray<[Point, Point]> = [
-	[
-		[3, 1],
-		[-2, 2],
-	],
-	[
-		[0, 0],
-		[0, 3],
-	],
-	[
-		[-4, 2],
-		[5, 1],
-	],
-	[
-		[-2, 3],
-		[2, 0],
-	],
-];
-
-const stride = (
-	d: Dims,
-	feet: ReadonlyArray<[Point, Point]>,
-	step: number,
-	swing: number,
-	lift = 0,
-): Pose => {
-	const [front, back] = feet[step % feet.length] ?? [
-		[0, 0],
-		[0, 0],
-	];
-	const sway = step % 2 === 0 ? swing : 0;
-	const direction = step % 4 < 2 ? -1 : 1;
-
-	return {
-		front,
-		back,
-		frontHand: [direction * sway, -d.arm + (sway ? 1 : 0)],
-		backHand: [-direction * sway, -d.arm + (sway ? 1 : 0)],
-		lift: step % 2 === 1 ? lift : 0,
-	};
-};
-
-const sparkle =
-	(points: Point[]): Draw =>
+const icon =
+	(rows: readonly string[], x: number, y: number): Draw =>
 	(put) => {
-		for (const [x, y] of points) {
-			put(x, y, "y");
+		for (const [offset, row] of rows.entries()) {
+			for (const [index, key] of [...row].entries()) {
+				put(x + index, y - offset, key);
+			}
 		}
 	};
 
-const desk: Draw = (put, d) => {
-	const top = d.legs + 1;
+const sparkles =
+	(points: ReadonlyArray<readonly [number, number]>): Draw =>
+	(put, shape) => {
+		for (const [x, y] of points) {
+			put(x < 0 ? x : shape.width - 1 + x, y + shape.top, "y");
+		}
+	};
 
-	for (let x = 3; x <= 9; x++) {
-		put(x, top, "x");
+const laptop: Draw = (put, { width }) => {
+	span(put, width + 3, width + 8, 0, "x");
+
+	for (let y = 1; y <= 2; y++) {
+		put(width + 7, y, "x");
 	}
 
-	for (let y = 0; y < top; y++) {
-		put(8, y, "x");
-	}
+	span(put, width + 3, width + 7, 3, "L");
 
-	for (let x = 4; x <= 7; x++) {
-		put(x, top + 1, "L");
-	}
-
-	for (let y = top + 2; y <= top + 5; y++) {
-		put(6, y, "l");
-		put(7, y, "L");
+	for (let y = 4; y <= 7; y++) {
+		put(width + 6, y, "l");
+		put(width + 7, y, "L");
 	}
 };
 
-const cup =
-	(at: (d: Dims) => Point, steamStep?: number): Draw =>
-	(put, d) => {
-		const [x, y] = at(d);
-		put(x, y, "Q");
-		put(x + 1, y, "Q");
-		put(x, y + 1, "o");
-		put(x + 1, y + 1, "Q");
-
-		if (steamStep !== undefined) {
-			const sway = steamStep % 2;
-			put(x + sway, y + 3, "v");
-			put(x + 1 - sway, y + 4, "v");
-		}
+const held =
+	(rows: readonly string[], dy: (shape: Shape) => number): Draw =>
+	(put, shape) => {
+		icon(rows, shape.width + 2, dy(shape))(put, shape, 0);
 	};
 
-const apple =
-	(at: (d: Dims) => Point, bitten = false): Draw =>
-	(put, d) => {
-		const [x, y] = at(d);
-		put(x, y, "F");
-		put(x + 1, y, bitten ? "." : "F");
-		put(x, y + 1, "F");
-		put(x + 1, y + 1, "F");
-		put(x + 1, y + 2, "G");
-	};
+// Where the pet stands and what it does on every tick of `counter`.
+function sceneOf(
+	activity: Activity,
+	counter: number,
+	width: number,
+	shape: Shape,
+	mood: Mood,
+): Scene {
+	const home = 3;
+	const minimum = 3;
+	const maximum = Math.max(width - shape.width - 3, minimum + 1);
+	const travel = maximum - minimum;
+	const tick = counter % 4;
 
-const dumbbell =
-	(at: (d: Dims) => Point): Draw =>
-	(put, d) => {
-		const [x, y] = at(d);
-		put(x, y - 1, "D");
-		put(x, y, "d");
-		put(x, y + 1, "D");
-	};
+	if (activity === "idle" && mood === "sleepy") {
+		// Napping in place: breathing, with Zs drifting up.
+		return {
+			x: Math.floor((width - shape.width) / 2),
+			facing: 1,
+			pose: { squash: tick < 2 ? 0 : 1, eyes: "closed" },
+			props: [
+				(put, { width: body, top }) => {
+					const rise = counter % 6;
+					icon(
+						["zzzz", "..z.", ".z..", "zzzz"],
+						body - 2 + rise,
+						top + 4 + rise,
+					)(put, shape, 0);
+				},
+			],
+		};
+	}
 
-const shoulderOf = (d: Dims): Point => [d.right, d.shoulder];
-const handAt = (d: Dims, [dx, dy]: Point): Point => [
-	d.right + dx,
-	d.shoulder + dy,
-];
+	if (activity === "idle") {
+		// Wander: pause, walk across, pause and look about, walk back.
+		const pause = 6;
+		const cycle = 2 * (pause + travel);
+		const at = counter % cycle;
+		const isHappy = mood === "happy";
+		const walk = (step: number): Pose => ({
+			step: step % 2 === 0 ? 1 : 2,
+			look: 1,
+			lift: isHappy && step % 2 === 1 ? 1 : 0,
+			eyes: isHappy ? "happy" : "open",
+		});
+		const rest = (moment: number): Pose => ({
+			squash: Math.floor(moment / 2) % 2,
+			eyes: isHappy ? "happy" : moment === 4 ? "closed" : "open",
+			arms: isHappy && moment % 2 === 0 ? ["up", "up"] : undefined,
+		});
 
-// Where the character stands and what it does on every tick of `counter`.
-function sceneOf(activity: Activity, counter: number, width: number): Scene {
-	const home = 6;
-	const minimum = 5;
-	const maximum = Math.max(width - 7, minimum + 1);
-	const span = maximum - minimum;
-
-	switch (activity) {
-		case "idle": {
-			// Wander: pause, walk across, pause and look around, walk back.
-			const pause = 8;
-			const cycle = 2 * (pause + span);
-			const tick = counter % cycle;
-			const breathe = (d: Dims, at: number): Pose => ({
-				...standing(d),
-				bob: Math.floor(at / 2) % 2,
-				blink: at % pause === 5,
-			});
-
-			if (tick < pause) {
-				return {
-					x: minimum,
-					facing: tick === 3 || tick === 4 ? -1 : 1,
-					pose: (d) => breathe(d, tick),
-				};
-			}
-
-			if (tick < pause + span) {
-				const step = tick - pause;
-				return {
-					x: minimum + step,
-					facing: 1,
-					pose: (d) => stride(d, walkFeet, step, 1),
-				};
-			}
-
-			if (tick < 2 * pause + span) {
-				const at = tick - pause - span;
-				return {
-					x: maximum,
-					facing: at === 3 || at === 4 ? 1 : -1,
-					pose: (d) => breathe(d, at),
-				};
-			}
-
-			const step = tick - 2 * pause - span;
+		if (at < pause) {
 			return {
-				x: maximum - step,
-				facing: -1,
-				pose: (d) => stride(d, walkFeet, step, 1),
+				x: minimum,
+				facing: at === 2 || at === 3 ? -1 : 1,
+				pose: rest(at),
 			};
 		}
 
+		if (at < pause + travel) {
+			return { x: minimum + at - pause, facing: 1, pose: walk(at - pause) };
+		}
+
+		if (at < 2 * pause + travel) {
+			const moment = at - pause - travel;
+			return {
+				x: maximum,
+				facing: moment === 2 || moment === 3 ? 1 : -1,
+				pose: rest(moment),
+			};
+		}
+
+		const step = at - 2 * pause - travel;
+		return { x: maximum - step, facing: -1, pose: walk(step) };
+	}
+
+	switch (activity) {
 		case "run": {
-			// Laps across the panel, 2 pixels a tick.
-			const lap = Math.max(Math.ceil(span / 2), 1);
-			const tick = counter % (2 * lap);
-			const forward = tick < lap;
-			const step = forward ? tick : tick - lap;
+			const lap = Math.max(Math.ceil(travel / 2), 1);
+			const at = counter % (2 * lap);
+			const forward = at < lap;
+			const step = forward ? at : at - lap;
 
 			return {
 				x: forward
 					? Math.min(minimum + step * 2, maximum)
 					: Math.max(maximum - step * 2, minimum),
 				facing: forward ? 1 : -1,
-				pose: (d) => stride(d, runFeet, counter, 2, 1),
-				props: [
-					sparkle(
-						counter % 2 === 0
-							? [
-									[-6, 6],
-									[-7, 9],
-								]
-							: [
-									[-7, 7],
-									[-6, 10],
-								],
-					),
-				],
+				pose: {
+					step: counter % 2 === 0 ? 1 : 2,
+					lift: counter % 2,
+					look: 1,
+					arms: counter % 2 === 0 ? ["up", "down"] : ["down", "up"],
+				},
+				props: [icon(["vv.", "...", ".vv"], -6, 6)],
 			};
 		}
 
 		case "focus": {
-			const step = counter % 4;
 			return {
 				x: home,
 				facing: 1,
-				pose: (d) => ({
-					...standing(d),
-					frontHand: [4 - d.right + (step % 2), d.legs + 2 - d.shoulder],
-					backHand: [3 - d.right, d.legs + 2 - d.shoulder],
-					bob: step < 2 ? 0 : 1,
-				}),
+				pose: {
+					look: 1,
+					squash: tick < 2 ? 0 : 1,
+					arms: ["down", tick % 2 === 0 ? "forward" : "mid"],
+				},
 				props: [
-					desk,
-					(put, d) => {
-						const top = d.legs + 7;
-						put(6 + (step % 3), top + step, "y");
-						put(8 - (step % 2), top + ((step + 2) % 4), "y");
+					laptop,
+					(put, { width: body }) => {
+						put(body + 5 + (tick % 2), 9 + tick, "y");
+						put(body + 7 - (tick % 2), 9 + ((tick + 2) % 4), "y");
 					},
 				],
 			};
@@ -385,102 +282,109 @@ function sceneOf(activity: Activity, counter: number, width: number): Scene {
 		case "break": {
 			const step = counter % 6;
 			const sipping = step >= 4;
-			const hand = (d: Dims): Point =>
-				sipping ? [2, d.neck + 1 - d.shoulder] : [2, -d.arm + 2];
 
 			return {
 				x: home,
 				facing: 1,
-				pose: (d) => ({
-					...standing(d, hand(d)),
-					bob: step % 2,
-					blink: sipping,
-				}),
+				pose: {
+					look: 1,
+					squash: step % 2,
+					eyes: sipping ? "closed" : "open",
+					arms: ["down", sipping ? "up" : "mid"],
+				},
 				props: [
-					cup(
-						(d) => {
-							const [x, y] = handAt(d, hand(d));
-							return [x + 1, y];
-						},
-						sipping ? undefined : step,
+					held(["QQ", "Qc"], (shape) =>
+						sipping ? shape.top - 1 : Math.ceil(shape.height / 2) + 2,
 					),
+					...(sipping
+						? []
+						: [
+								held(
+									step % 2 === 0 ? [".v", "v."] : ["v.", ".v"],
+									(shape) => Math.ceil(shape.height / 2) + 5,
+								),
+							]),
 				],
 			};
 		}
 
 		case "eat": {
-			const step = counter % 4;
-			const atMouth = step === 1 || step === 2;
-			const hand = (d: Dims): Point =>
-				atMouth ? [2, d.neck + 1 - d.shoulder] : [2, -d.arm + 2];
+			const atMouth = tick === 1 || tick === 2;
 
 			return {
 				x: home,
 				facing: 1,
-				pose: (d) => ({ ...standing(d, hand(d)), bob: step === 2 ? 1 : 0 }),
+				pose: {
+					look: 1,
+					squash: tick === 2 ? 1 : 0,
+					eyes: tick === 2 ? "happy" : "open",
+					arms: ["down", atMouth ? "up" : "mid"],
+				},
 				props: [
-					apple((d) => {
-						const [x, y] = handAt(d, hand(d));
-						return [x + 1, y];
-					}, step === 3),
+					held(tick === 3 ? [".G", "F.", "FF"] : [".G", "FF", "FF"], (shape) =>
+						atMouth ? shape.top - 2 : Math.ceil(shape.height / 2) + 2,
+					),
 				],
 			};
 		}
 
 		case "lift": {
-			const step = counter % 4;
-			const hand = (d: Dims): Point =>
-				step === 2 ? [1, d.arm] : [2, step === 0 ? -d.arm + 3 : 1];
+			const up = tick === 1 || tick === 2;
 
 			return {
 				x: home,
 				facing: 1,
-				pose: (d) => ({
-					...standing(d, hand(d)),
-					backHand: [-1, -d.arm],
-					bob: step % 2,
-				}),
-				props: [dumbbell((d) => handAt(d, hand(d)))],
+				pose: {
+					arms: up ? ["up", "up"] : ["mid", "mid"],
+					lift: tick === 2 ? 1 : 0,
+					squash: up ? 0 : 1,
+				},
+				props: [
+					(put, shape) => {
+						const y = up ? shape.top + 3 : Math.ceil(shape.height / 2) + 4;
+						span(put, -3, shape.width + 2, y, "d");
+						icon(["DD", "DD", "DD"], -4, y + 1)(put, shape, 0);
+						icon(["DD", "DD", "DD"], shape.width + 2, y + 1)(put, shape, 0);
+					},
+				],
 			};
 		}
 
 		case "stretch": {
-			const step = counter % 4;
-			const up = step < 2;
-
 			return {
 				x: home,
 				facing: 1,
-				pose: (d) => ({
-					...standing(d, up ? [step, d.arm] : [d.arm, step - 2]),
-					backHand: up ? [-step, d.arm] : [d.arm - 1, step - 3],
-					bob: step % 2,
-				}),
+				pose: {
+					arms: tick < 2 ? ["up", "up"] : ["mid", "mid"],
+					squash: tick < 2 ? -1 : 1,
+					eyes: tick === 1 ? "closed" : "open",
+				},
 			};
 		}
 
 		case "levelUp": {
-			const step = counter % 4;
-			const lift = [0, 2, 3, 1][step] ?? 0;
-
 			return {
 				x: home,
 				facing: 1,
-				pose: (d) => ({ ...standing(d, [1, d.arm]), lift }),
+				pose: {
+					arms: ["up", "up"],
+					lift: [0, 2, 3, 1][tick] ?? 0,
+					eyes: "happy",
+				},
 				props: [
-					sparkle(
-						step % 2 === 0
+					sparkles(
+						tick % 2 === 0
 							? [
-									[-5, 20],
-									[5, 22],
-									[-6, 12],
-									[6, 14],
+									[-3, 2],
+									[3, 4],
+									[-4, -3],
+									[4, -1],
 								]
 							: [
-									[-6, 22],
-									[6, 20],
-									[-5, 14],
-									[5, 12],
+									[-4, 4],
+									[4, 2],
+									[-3, -1],
+									[3, -3],
 								],
 					),
 				],
@@ -491,7 +395,7 @@ function sceneOf(activity: Activity, counter: number, width: number): Scene {
 
 export const intervalOf = (activity: Activity): number =>
 	({
-		idle: 200,
+		idle: 220,
 		focus: 180,
 		break: 380,
 		eat: 300,
@@ -503,219 +407,221 @@ export const intervalOf = (activity: Activity): number =>
 
 // How many ticks one loop of an activity takes on a stage of `width`.
 export function cycleOf(activity: Activity, width: number): number {
-	const walk = Math.max(width - 7, 6) - 5;
+	const travel = Math.max(width - 21, 4);
 
 	if (activity === "idle") {
-		return 2 * (8 + walk);
+		return 2 * (6 + travel);
 	}
 
 	if (activity === "run") {
-		return 2 * Math.max(Math.ceil(walk / 2), 1);
+		return 2 * Math.max(Math.ceil(travel / 2), 1);
 	}
 
 	return activity === "break" ? 6 : 4;
 }
 
-type Put = (x: number, y: number, key: string) => void;
-
-// Everything a painter needs; `upper` follows the breathing, `put` stays planted.
 type Paint = Readonly<{
 	put: Put;
-	upper: Put;
-	d: Dims;
-	body: Body;
+	shape: Shape;
+	look: Look;
 	gear: Gear;
 	pose: Pose;
 	counter: number;
 }>;
 
-const span = (put: Put, from: number, to: number, y: number, key: string) => {
-	for (let x = from; x <= to; x++) {
-		put(x, y, key);
-	}
-};
-
-function paintArm(
-	{ upper, gear }: Paint,
-	shoulder: Point,
-	hand: Point,
-	isFront: boolean,
-) {
-	const points = pointsOf(shoulder, [
-		shoulder[0] + hand[0],
-		shoulder[1] + hand[1],
-	]);
-	const sleeve = gear.top === 0 ? "U" : "c";
-	const skin = isFront ? "s" : "q";
-
-	for (const [index, [x, y]] of points.entries()) {
-		const isHand = index === points.length - 1;
-		const isBare = gear.top === 0 && index >= 2;
-		upper(x, y, isHand || isBare ? skin : sleeve);
+// Behind the body: a cape that flares and ripples, or sparkles of the aura.
+function paintBehind({ put, shape, gear, counter }: Paint) {
+	if (gear.wear === 2) {
+		for (let y = 2; y <= shape.top - 2; y++) {
+			const flare =
+				Math.floor((shape.top - y) / 3) + ((counter + y) % 4 < 2 ? 0 : 1);
+			span(put, -1 - flare, -1, y, y === 2 ? "s" : "S");
+		}
 	}
 
-	const wrist = points.at(-2);
-
-	if (isFront && gear.gadget === 2 && wrist && points.length > 2) {
-		upper(wrist[0], wrist[1], "t");
+	if (gear.aura === 2) {
+		const sway = counter % 2;
+		put(-3 - sway, shape.top - 1, "y");
+		put(shape.width + 2 + sway, shape.top - 3, "y");
+		put(-2, 3 + sway, "y");
 	}
 }
 
-// Behind the body: a cape that flares and ripples, or a backpack.
-function paintBack({ upper, d, gear, counter }: Paint) {
-	if (gear.back === 2) {
-		for (let row = 0; row <= d.torso + 3; row++) {
-			const flare = Math.floor(row / 3) + ((counter + row) % 4 < 2 ? 0 : 1);
-			upper(d.left - 1 - flare, d.shoulder - row, "z");
-			span(upper, d.left - flare, d.left, d.shoulder - row, "S");
+// 4 short legs, like the Claude Code mascot; sneakers for an endurance goal.
+function paintLegs({ put, shape, look, pose }: Paint) {
+	const columns = [1, 3, shape.width - 4, shape.width - 2];
+	const foot = look.goal === "endurance" ? "w" : "o";
+
+	for (const [index, x] of columns.entries()) {
+		const isLifted =
+			(pose.step === 1 && index % 2 === 0) ||
+			(pose.step === 2 && index % 2 === 1);
+
+		if (!isLifted) {
+			put(x, 0, foot);
 		}
-	} else if (gear.back === 1) {
-		for (let row = 1; row <= 5; row++) {
-			upper(d.left - 1, d.shoulder - row, row === 1 ? "B" : "b");
-			upper(d.left - 2, d.shoulder - row, "b");
+
+		put(x, 1, "o");
+	}
+}
+
+function paintBody({ put, shape, look, gear }: Paint) {
+	const { width, top } = shape;
+
+	for (let y = 2; y <= top; y++) {
+		const isEdge = y === 2 || y === top;
+		span(
+			put,
+			isEdge ? 1 : 0,
+			isEdge ? width - 2 : width - 1,
+			y,
+			y === 2 ? "o" : "O",
+		);
+	}
+
+	span(put, 1, 2, top - 1, "h");
+
+	if (look.goal === "loseFat") {
+		span(put, 0, width - 1, top - 1, "w");
+	} else if (look.goal === "maintain") {
+		const middle = Math.floor(width / 2);
+		icon(["r.r", "rrr", ".r."], middle - 1, 6)(put, shape, 0);
+	}
+
+	if (gear.wear === 1) {
+		span(put, 0, width - 1, top - 5, "S");
+		put(-1, top - 5, "S");
+		put(-2, top - 6, "s");
+	}
+}
+
+function paintFace({ put, shape, pose, counter }: Paint) {
+	const look = pose.look ?? 0;
+	const eyeY = shape.top - 3;
+	const eyes = [
+		Math.round(shape.width * 0.3) + look,
+		Math.round(shape.width * 0.7) - 1 + look,
+	];
+
+	for (const x of eyes) {
+		if (pose.eyes === "closed") {
+			span(put, x, x + 1, eyeY, "e");
+		} else if (pose.eyes === "happy") {
+			put(x - 1, eyeY, "e");
+			put(x, eyeY + 1, "e");
+			put(x + 1, eyeY, "e");
+			put(x, eyeY - 2, "r");
+		} else {
+			put(x, eyeY, "e");
+			put(x, eyeY + 1, counter % 23 === 0 ? "O" : "e");
 		}
 	}
 }
 
-function paintLegs({ put, d, pose }: Paint) {
-	const leg = (hip: number, foot: Point, pants: string, shoe: string) => {
-		const footX = hip + foot[0];
+// Side nubs; a muscle goal makes them bigger.
+function paintArms({ put, shape, look, pose }: Paint) {
+	const size = look.goal === "buildMuscle" ? 3 : 2;
+	const [back, front] = pose.arms ?? ["down", "down"];
+	const rowOf = (arm: ArmPose) =>
+		({
+			down: 3 + size - 1,
+			mid: Math.ceil(shape.height / 2) + size,
+			up: shape.top + size - 1,
+			forward: Math.ceil(shape.height / 2) + size,
+		})[arm];
 
-		for (const [x, y] of pointsOf([hip, d.legs], [footX, foot[1] + 1])) {
-			span(put, x, x + d.legWidth - 1, y, pants);
+	const nub = (x: number, arm: ArmPose) => {
+		const reach = arm === "forward" ? 1 : 0;
+
+		for (let row = 0; row < size; row++) {
+			span(
+				put,
+				x + reach,
+				x + reach + size - 1,
+				rowOf(arm) - row,
+				row === size - 1 ? "o" : "O",
+			);
 		}
-
-		span(put, footX, footX + d.legWidth, foot[1], shoe);
 	};
 
-	leg(d.backHip, pose.back, "P", "W");
-	leg(d.frontHip, pose.front, "p", "w");
+	nub(-size, back);
+	nub(shape.width, front);
 }
 
-// Men carry width at the shoulders, women at the hips.
-function paintTorso({ upper, d, body, gear }: Paint) {
-	const [coat, shade] = gear.top === 0 ? ["T", "U"] : ["C", "c"];
+// Gender sets an ornament at the back of the head, level the gear on top.
+function paintHead({ put, shape, look, gear, counter }: Paint) {
+	const { width, top } = shape;
 
-	for (let row = 0; row < d.torso; row++) {
-		const narrowed =
-			(body.gender === "female" && row >= d.torso - 2) ||
-			(body.gender === "male" && row < 2);
-		const left = d.left + (narrowed ? 1 : 0);
-		upper(left, d.legs + 1 + row, shade);
-		span(upper, left + 1, d.right, d.legs + 1 + row, coat);
+	if (look.gender === "female") {
+		icon(["r.r", "rrr", "r.r"], 0, top + 3)(put, shape, 0);
+	} else if (look.gender === "male") {
+		put(1, top + 1, "O");
+		put(2, top + 2, "O");
+		put(3, top + 1, "O");
+	} else {
+		put(2, top + 1, "G");
+		put(1, top + 2, "G");
+		put(3, top + 3, "G");
 	}
 
-	if (gear.top === 1) {
-		span(upper, d.left, d.left + 1, d.shoulder + 1, shade);
-	} else if (gear.top === 2) {
-		for (let row = 0; row < d.torso; row++) {
-			upper(d.right, d.legs + 1 + row, "S");
-		}
-
-		upper(d.right - 1, d.shoulder, "S");
-	}
-}
-
-// Facing forward, with the hair at the back of the head.
-function paintHead({ upper, d, body, pose }: Paint) {
-	const n = d.neck;
-	span(upper, -1, 0, n, "q");
-
-	for (let row = 1; row <= 4; row++) {
-		span(upper, -1, 1, n + row, "s");
-		upper(-2, n + row, "h");
+	if (gear.gadget >= 1) {
+		span(put, 5, width - 2, top + 1, "k");
+		icon(["S", "S"], -1, top - 1)(put, shape, 0);
+		icon(["S", "S"], width, top - 1)(put, shape, 0);
 	}
 
-	upper(2, n + 2, "s");
-	upper(1, n + 3, pose.blink ? "s" : "e");
-	span(upper, -2, 1, n + 5, "h");
-	upper(-1, n + 4, "h");
-
-	if (body.gender === "female") {
-		for (let y = n - 2; y <= n + 4; y++) {
-			upper(-3, y, "h");
-		}
-
-		span(upper, -2, -2, n - 1, "h");
-		upper(-2, n, "h");
-		upper(0, n + 4, "h");
-	} else if (body.gender === "other") {
-		for (let y = n + 1; y <= n + 3; y++) {
-			upper(-3, y, "h");
-		}
-	}
-}
-
-// Headphones go on first, so a cap or a crown sits over their band.
-function paintHeadgear({ upper, d, gear }: Paint) {
-	const n = d.neck;
-
-	if (gear.gadget === 1) {
-		upper(-2, n, "S");
-		upper(1, n, "S");
-	} else if (gear.gadget === 2) {
-		span(upper, -2, 1, n + 5, "k");
-		upper(-1, n + 2, "S");
-		upper(-1, n + 3, "S");
+	if (gear.gadget === 2) {
+		put(width - 3, top + 2, "k");
+		put(width - 3, top + 3, counter % 2 === 0 ? "t" : "y");
 	}
 
 	if (gear.headwear === 1) {
-		span(upper, -2, 1, n + 5, "S");
-		span(upper, -2, 0, n + 6, "S");
-		span(upper, 2, 3, n + 5, "z");
+		span(put, 5, width - 3, top + 1, "S");
+		span(put, 6, width - 4, top + 2, "S");
+		span(put, width - 2, width, top + 1, "s");
 	} else if (gear.headwear === 2) {
-		span(upper, -2, 1, n + 6, "g");
-		upper(-2, n + 7, "g");
-		upper(0, n + 7, "g");
-		upper(-1, n + 6, "t");
+		span(put, 6, width - 3, top + 1, "g");
+		put(6, top + 2, "g");
+		put(Math.floor((width + 3) / 2), top + 2, "g");
+		put(width - 3, top + 2, "g");
+		put(Math.floor((width + 3) / 2), top + 1, "t");
+	}
+
+	if (gear.aura >= 1) {
+		const bob = counter % 4 < 2 ? 0 : 1;
+		put(width + 4, top + 2 + bob, "t");
+		put(width + 4, top + 3 + bob, "y");
 	}
 }
 
-function drawCharacter(paint: Paint) {
-	const { d, pose } = paint;
-	paintBack(paint);
-	paintArm(paint, [d.left + 1, d.shoulder], pose.backHand, false);
-	paintLegs(paint);
-	paintTorso(paint);
-	paintHead(paint);
-	paintHeadgear(paint);
-	paintArm(paint, shoulderOf(d), pose.frontHand, true);
-}
-
 export function paletteOf(palette: Palette): ReadonlyMap<string, string> {
-	const { cloak, cloakShade, scarf, scarfShade, glow } = palette.sprite;
+	const { cloak, cloakShade, glow } = palette.sprite;
 
 	return new Map([
-		["B", "#3E3226"],
-		["b", "#5A4632"],
-		["C", cloak],
-		["c", cloakShade],
+		["c", "#5A3A25"],
 		["D", "#50555F"],
 		["d", "#8A8F99"],
-		["e", "#2B2B2B"],
+		["e", "#1E1E1E"],
 		["F", "#C8473F"],
-		["G", "#5F8F4E"],
+		["G", "#6FA35A"],
 		["g", "#D9B45A"],
-		["h", "#6B4A2E"],
+		["h", palette.soft],
 		["k", "#2B2B2B"],
 		["L", "#4A505B"],
 		["l", glow],
-		["o", "#5A3A25"],
-		["P", "#3E6870"],
-		["p", "#4F8189"],
+		["O", palette.accent],
+		["o", palette.deep],
 		["Q", "#E6E0D4"],
-		["q", "#C99872"],
-		["S", scarf],
-		["s", "#E2B48C"],
-		["T", "#DCD7CC"],
+		["r", "#E87A90"],
+		["S", cloak],
+		["s", cloakShade],
+		["T", "#E5533D"],
 		["t", glow],
-		["U", "#B4AE9F"],
 		["v", "#9AA0A8"],
-		["W", "#C8C8C8"],
 		["w", "#F2F2F2"],
 		["x", "#3D414B"],
 		["y", palette.soft],
-		["z", scarfShade],
+		["z", "#C8C8C8"],
 	]);
 }
 
@@ -723,7 +629,9 @@ export type SceneInput = Readonly<{
 	activity: Activity;
 	counter: number;
 	level: number;
-	body: Body;
+	look: Look;
+	mood: Mood;
+	badges: Badges;
 	width: number;
 }>;
 
@@ -732,39 +640,62 @@ export function composeScene({
 	activity,
 	counter,
 	level,
-	body,
+	look,
+	mood,
+	badges,
 	width,
 }: SceneInput): string[] {
 	const canvas = Array.from({ length: stageHeight }, () =>
 		Array.from({ length: width }, () => "."),
 	);
-	const scene = sceneOf(activity, counter, width);
-	const d = dimsOf(body);
-	const pose = scene.pose(d);
-	const lift = pose.lift ?? 0;
-	const put = (x: number, y: number, key: string) => {
-		const column = scene.x + scene.facing * x;
-		const row = canvas[stageHeight - 1 - (y + lift)];
+	const plain = (column: number, y: number, key: string) => {
+		const row = canvas[stageHeight - 1 - y];
 
 		if (row && column >= 0 && column < width && key !== ".") {
 			row[column] = key;
 		}
 	};
 
-	drawCharacter({
+	const baseShape = shapeOf(look, level);
+	const scene = sceneOf(activity, counter, width, baseShape, mood);
+	const shape = shapeOf(look, level, scene.pose.squash ?? 0);
+	const lift = scene.pose.lift ?? 0;
+	// Local x runs from the body's left edge toward where the pet faces.
+	const put: Put = (x, y, key) => {
+		const column =
+			scene.facing === 1 ? scene.x + x : scene.x + baseShape.width - 1 - x;
+		plain(column, y + lift, key);
+	};
+
+	const paint: Paint = {
 		put,
-		upper(x, y, key) {
-			put(x, y - (pose.bob ?? 0), key);
-		},
-		d,
-		body,
+		shape,
+		look,
 		gear: gearOf(level),
-		pose,
+		pose: scene.pose,
 		counter,
-	});
+	};
+
+	paintBehind(paint);
+	paintLegs(paint);
+	paintBody(paint);
+	paintFace(paint);
+	paintArms(paint);
+	paintHead(paint);
 
 	for (const draw of scene.props ?? []) {
-		draw(put, d);
+		draw(put, shape, counter);
+	}
+
+	// Today's badges float in the top right corner, whatever the pet does.
+	const icons = [
+		badges.focus ? ["GGG", "TTT", "TTT"] : undefined,
+		badges.meal ? [".G.", "FFF", ".F."] : undefined,
+		badges.workout ? ["D.D", "DdD", "D.D"] : undefined,
+	].filter((rows) => rows !== undefined);
+
+	for (const [index, rows] of icons.entries()) {
+		icon(rows, width - 4 - index * 4, stageHeight - 2)(plain, shape, 0);
 	}
 
 	return canvas.map((row) => row.join(""));

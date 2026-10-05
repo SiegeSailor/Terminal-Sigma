@@ -1,12 +1,15 @@
 import test from "ava";
+import type { Mood } from "../i18n.js";
 import {
 	type Activity,
-	type Body,
-	bodyOf,
+	type Badges,
 	composeScene,
 	cycleOf,
-	defaultBody,
+	defaultLook,
 	gearOf,
+	type Look,
+	lookOf,
+	noBadges,
 	paletteOf,
 	stageHeight,
 	toSegments,
@@ -23,42 +26,67 @@ const activities: Activity[] = [
 	"stretch",
 	"levelUp",
 ];
-const width = 24;
-const bodies: Body[] = [
-	defaultBody,
-	bodyOf({ height: 150, weight: 42, gender: "female" }),
-	bodyOf({ height: 205, weight: 120, gender: "male" }),
+const moods: Mood[] = ["sleepy", "content", "happy"];
+const width = 32;
+const looks: Look[] = [
+	defaultLook,
+	lookOf({ height: 150, weight: 42, gender: "female", goal: "loseFat" }),
+	lookOf({ height: 195, weight: 110, gender: "male", goal: "buildMuscle" }),
 ];
+const all: Badges = { meal: true, workout: true, focus: true };
 
-const scene = (activity: Activity, counter: number, body = defaultBody) =>
-	composeScene({ activity, counter, level: 1, body, width });
+type Scene = Partial<{
+	activity: Activity;
+	counter: number;
+	level: number;
+	look: Look;
+	mood: Mood;
+	badges: Badges;
+}>;
 
-// The rows and columns the character covers in a frame.
+const scene = (input: Scene = {}) =>
+	composeScene({
+		activity: "idle",
+		counter: 0,
+		level: 1,
+		look: defaultLook,
+		mood: "content",
+		badges: noBadges,
+		width,
+		...input,
+	});
+
+// The rows and columns the pet covers, ignoring the badge corner.
 const extentOf = (frame: string[]) => {
-	const rows = frame.filter((row) => /[^.]/v.test(row)).length;
-	const columns = new Set(
-		frame.flatMap((row) =>
-			[...row].flatMap((key, column) => (key === "." ? [] : [column])),
+	const cells = frame.flatMap((row, y) =>
+		[...row].flatMap((key, x) =>
+			key === "." || y < 4 ? [] : [[x, y] as const],
 		),
 	);
+	const xs = cells.map(([x]) => x);
+	const ys = cells.map(([, y]) => y);
 
-	return { rows, columns: columns.size, left: Math.min(...columns) };
+	return {
+		rows: Math.max(...ys) - Math.min(...ys) + 1,
+		columns: Math.max(...xs) - Math.min(...xs) + 1,
+		left: Math.min(...xs),
+	};
 };
 
 test("every scene fits its stage and uses only known colors", (t) => {
 	for (const theme of themeNames) {
 		const palette = paletteOf(themes[theme]);
 
-		for (const body of bodies) {
+		for (const look of looks) {
 			for (const level of [1, 5, 10]) {
 				for (const activity of activities) {
 					for (let counter = 0; counter < cycleOf(activity, width); counter++) {
-						const frame = composeScene({
+						const frame = scene({
 							activity,
 							counter,
 							level,
-							body,
-							width,
+							look,
+							badges: all,
 						});
 						const unknown = [...frame.join("").replaceAll(".", "")].filter(
 							(key) => !palette.has(key),
@@ -78,22 +106,22 @@ test("every scene fits its stage and uses only known colors", (t) => {
 	}
 });
 
-// The character must never look stuck: no frame survives 3 ticks in a row.
-test("every animation keeps moving", (t) => {
-	for (const activity of activities) {
-		const cycle = cycleOf(activity, width);
+// The pet must never look stuck: no frame survives 3 ticks in a row.
+test("every animation keeps moving, in every mood", (t) => {
+	for (const mood of moods) {
+		for (const activity of activities) {
+			const cycle = cycleOf(activity, width);
 
-		t.true(cycle >= 4, `${activity} loops over at least 4 frames`);
+			for (let counter = 0; counter < cycle; counter++) {
+				const [first, second, third] = [0, 1, 2].map((offset) =>
+					scene({ activity, mood, counter: counter + offset }).join("\n"),
+				);
 
-		for (let counter = 0; counter < cycle; counter++) {
-			const frames = [0, 1, 2].map((offset) =>
-				scene(activity, counter + offset).join("\n"),
-			);
-
-			t.false(
-				frames[0] === frames[1] && frames[1] === frames[2],
-				`${activity} holds still from frame ${counter}`,
-			);
+				t.false(
+					first === second && second === third,
+					`${activity} holds still while ${mood} from frame ${counter}`,
+				);
+			}
 		}
 	}
 });
@@ -102,32 +130,45 @@ test("wanders across the stage while idle", (t) => {
 	const lefts = new Set(
 		Array.from(
 			{ length: cycleOf("idle", width) },
-			(_, counter) => extentOf(scene("idle", counter)).left,
+			(_, counter) => extentOf(scene({ counter })).left,
 		),
 	);
 
 	t.true(lefts.size >= 8);
 });
 
-test("draws the body from the profile", (t) => {
-	t.deepEqual(bodyOf(undefined), defaultBody);
-	t.like(bodyOf({ height: 145, weight: 40, gender: "female" }), {
-		height: 20,
-		build: "slim",
-	});
-	t.like(bodyOf({ height: 205, weight: 130, gender: "male" }), {
-		height: 26,
-		build: "broad",
-	});
+test("grows with the profile and the level", (t) => {
+	t.deepEqual(lookOf(undefined), defaultLook);
 
-	const short = extentOf(scene("idle", 0, bodies[1]));
-	const tall = extentOf(scene("idle", 0, bodies[2]));
-	t.true(tall.rows > short.rows);
-	t.true(tall.columns > short.columns);
+	const small = extentOf(scene({ look: looks[1] }));
+	const big = extentOf(scene({ look: looks[2] }));
+	t.true(big.rows > small.rows, "taller for a taller profile");
+	t.true(big.columns > small.columns, "wider for a heavier profile");
+
+	const young = extentOf(scene({ level: 1 }));
+	const grown = extentOf(scene({ level: 9 }));
+	t.true(grown.rows > young.rows && grown.columns > young.columns);
+});
+
+test("shows the mood and today's badges", (t) => {
+	const sleepy = scene({ mood: "sleepy" }).join("");
+	const happy = scene({ mood: "happy" }).join("");
+
+	t.true(sleepy.includes("z"), "Zs while asleep");
+	t.false(happy.includes("z"));
+	t.notDeepEqual(scene({ mood: "content" }), scene({ mood: "happy" }));
+
+	const corner = (frame: string[]) => frame.slice(0, 4).join("");
+	t.notRegex(corner(scene()), /[TFD]/v);
+	t.true(corner(scene({ badges: { ...noBadges, focus: true } })).includes("T"));
+	t.true(corner(scene({ badges: { ...noBadges, meal: true } })).includes("F"));
+	t.true(
+		corner(scene({ badges: { ...noBadges, workout: true } })).includes("D"),
+	);
 });
 
 test("renders 2 pixel rows per terminal row at full width", (t) => {
-	const lines = toSegments(scene("idle", 0), paletteOf(themes.ember));
+	const lines = toSegments(scene(), paletteOf(themes.ember));
 
 	t.is(lines.length, stageHeight / 2);
 
@@ -145,6 +186,6 @@ test("upgrades exactly 1 piece of equipment on each level from 2 to 9", (t) => {
 		t.is(changed.length, 1, `level ${level}`);
 	}
 
-	t.deepEqual(gearOf(1), { gadget: 0, top: 0, headwear: 0, back: 0 });
-	t.deepEqual(gearOf(20), { gadget: 2, top: 2, headwear: 2, back: 2 });
+	t.deepEqual(gearOf(1), { gadget: 0, wear: 0, headwear: 0, aura: 0 });
+	t.deepEqual(gearOf(20), { gadget: 2, wear: 2, headwear: 2, aura: 2 });
 });

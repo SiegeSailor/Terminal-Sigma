@@ -1,6 +1,7 @@
-import type { Field } from "./components/entry-form.js";
-import type { MenuItem } from "./components/menu-grid.js";
+import type { Option } from "./components/choice.js";
+import type { Combination, Field } from "./components/entry-form.js";
 import type { Section } from "./components/today-panel.js";
+import { foodSuggestions } from "./foods.js";
 import { adviceOf, targetsOf } from "./health.js";
 import {
 	formatNumber,
@@ -8,37 +9,52 @@ import {
 	healthGoals,
 	intensities,
 	type Language,
+	languages,
 	type Messages,
 	messagesOf,
+	type Mood,
 	workoutActivities,
 	workStyles,
 } from "./i18n.js";
+import type { Badges } from "./pixel-art.js";
 import {
 	dailyGoals,
+	type Event,
 	experienceOf,
 	experiencePerLevel,
+	type Meal,
 	type Profile,
 	type Progress,
 	todayOf,
+	type Workout,
 } from "./progress.js";
-import { quoteRefreshMinutes } from "./quotes.js";
-import type { Palette, ThemeName } from "./theme.js";
+import {
+	type QuoteCategory,
+	quoteCategories,
+	quoteIntervals,
+	quoteModes,
+	type QuoteSettings,
+} from "./quotes.js";
+import { type Palette, type ThemeName, themeNames } from "./theme.js";
 
-export const characterWidth = 28;
+export const characterWidth = 36;
+export const menuListWidth = 24;
 
-// Header and footer take 5 rows. The character panel is 19 rows tall, Today
-// 25 with its spacing or 16 compact, the menu about 11, and Recent 7.
+// Header and footer take 5 rows. The pet's panel is 19 rows tall, Today 19
+// with its spacing or 16 compact, the menu 9, and Recent 7.
 const chromeRows = 5;
 const characterRows = 19;
-const todayRows = 25;
+const todayRows = 19;
 const compactTodayRows = 16;
-const menuRows = 11;
+const menuRows = 9;
 const recentRows = 7;
+// The description beside the menu list needs at least this many columns.
+const descriptionColumns = 36;
 
 export type Layout = Readonly<{
 	panelWidth: number;
 	todayWidth: number;
-	menuColumns: number;
+	isMenuSplit: boolean;
 	showCharacter: boolean;
 	showRecent: boolean;
 	showToday: boolean;
@@ -47,28 +63,24 @@ export type Layout = Readonly<{
 	stacked: boolean;
 }>;
 
-// The panel that takes input always shows; the rest appears as space allows.
+// The menu always shows, because it takes the input; the rest appears as
+// space allows.
 export function layoutOf(columns: number, rows: number): Layout {
-	const menuColumnsOf = (panelWidth: number) => {
-		const inner = panelWidth - 4;
-
-		if (inner >= 96) {
-			return 3;
-		}
-
-		return inner >= 60 ? 2 : 1;
-	};
-
-	const showRecent = rows >= chromeRows + menuRows + recentRows;
+	const isSplitAt = (panelWidth: number) =>
+		panelWidth >= menuListWidth + descriptionColumns;
 
 	if (columns >= 120) {
-		const panelWidth = Math.floor((columns - characterWidth) / 2);
+		const todayWidth = Math.min(
+			Math.max(Math.floor((columns - characterWidth) * 0.4), 40),
+			56,
+		);
+		const panelWidth = columns - characterWidth - todayWidth;
 		return {
 			panelWidth,
-			todayWidth: columns - characterWidth - panelWidth,
-			menuColumns: menuColumnsOf(panelWidth),
+			todayWidth,
+			isMenuSplit: isSplitAt(panelWidth),
 			showCharacter: true,
-			showRecent,
+			showRecent: rows >= chromeRows + menuRows + recentRows,
 			showToday: true,
 			isTodayCompact: rows < chromeRows + todayRows,
 			todayBeside: true,
@@ -76,14 +88,16 @@ export function layoutOf(columns: number, rows: number): Layout {
 		};
 	}
 
-	if (columns >= 76) {
+	if (columns >= 80) {
 		const panelWidth = columns - characterWidth;
+		const isMenuSplit = isSplitAt(panelWidth);
+		const menuHeight = isMenuSplit ? menuRows : menuRows * 2;
 		return {
 			panelWidth,
 			todayWidth: columns,
-			menuColumns: menuColumnsOf(panelWidth),
+			isMenuSplit,
 			showCharacter: true,
-			showRecent,
+			showRecent: rows >= chromeRows + menuHeight + recentRows,
 			showToday: rows >= chromeRows + characterRows + compactTodayRows,
 			isTodayCompact: rows < chromeRows + characterRows + todayRows,
 			todayBeside: false,
@@ -91,13 +105,15 @@ export function layoutOf(columns: number, rows: number): Layout {
 		};
 	}
 
-	const aboveToday = chromeRows + menuRows + recentRows + characterRows;
+	const isMenuSplit = isSplitAt(columns);
+	const menuHeight = isMenuSplit ? menuRows : menuRows * 2;
+	const aboveToday = chromeRows + menuHeight + recentRows + characterRows;
 	return {
 		panelWidth: columns,
 		todayWidth: columns,
-		menuColumns: menuColumnsOf(columns),
+		isMenuSplit,
 		showCharacter: rows >= aboveToday,
-		showRecent,
+		showRecent: rows >= chromeRows + menuHeight + recentRows,
 		showToday: rows >= aboveToday + compactTodayRows,
 		isTodayCompact: rows < aboveToday + todayRows,
 		todayBeside: false,
@@ -186,92 +202,258 @@ export function sectionsOf(
 	];
 }
 
+// Today's logs set the pet's mood: asleep until something is logged, happy
+// once the targets are met.
+export function petStateOf(
+	progress: Progress,
+	now: number,
+): Readonly<{ mood: Mood; badges: Badges }> {
+	const today = todayOf(progress, now);
+	const targets = targetsOf(progress.profile);
+	const badges = {
+		meal: today.meals > 0,
+		workout: today.workoutMinutes > 0,
+		focus: today.focusSessions > 0,
+	};
+	const isMet =
+		(today.protein >= targets.protein &&
+			today.workoutMinutes >= targets.workoutMinutes) ||
+		today.focusSessions >= dailyGoals.focusSessions;
+	let mood: Mood = "content";
+
+	if (!badges.meal && !badges.workout && !badges.focus) {
+		mood = "sleepy";
+	} else if (isMet) {
+		mood = "happy";
+	}
+
+	return { mood, badges };
+}
+
 export const menuOrder = [
+	"quotes",
 	"timer",
 	"health",
 	"logs",
-	"quotes",
 	"profile",
 	"theme",
 	"language",
 ] as const;
+export type MenuKey = (typeof menuOrder)[number];
 
-const languageSignal: Record<Language, string> = {
-	en: "EN",
-	"zh-TW": "繁中",
-	ko: "한국어",
-};
+export type MenuEntry = Readonly<{
+	key: MenuKey;
+	label: string;
+	status: string;
+	description: string;
+}>;
 
-export function menuItemsOf(
+export function menuEntriesOf(
 	messages: Messages,
-	language: Language,
 	state: Readonly<{
 		timerSignal: string;
 		progress: Progress;
+		quotes: QuoteSettings;
 		now: number;
 		logs: number;
 		theme: ThemeName;
 		focus: number;
 		rest: number;
 	}>,
-): MenuItem[] {
+): MenuEntry[] {
 	const { profile } = state.progress;
 	const proteinLeft =
 		targetsOf(profile).protein - todayOf(state.progress, state.now).protein;
-	let healthSignal = messages.signal.setUp;
+	let healthStatus = messages.signal.setUp;
 
 	if (profile) {
-		healthSignal =
+		healthStatus =
 			proteinLeft > 0
 				? messages.signal.proteinLeft(proteinLeft)
 				: messages.signal.onTrack;
 	}
 
+	const statuses: Record<MenuKey, string> = {
+		quotes: state.quotes.autoRefresh
+			? messages.signal.quotesAuto(
+					messages.quotes.intervals(state.quotes.interval),
+				)
+			: messages.signal.quotesManual,
+		timer: state.timerSignal,
+		health: healthStatus,
+		logs: messages.signal.entries(state.logs),
+		profile: profile?.name ?? messages.signal.setUp,
+		theme: messages.themes.names[state.theme],
+		language: messages.languageName,
+	};
+	const descriptions: Record<MenuKey, string> = {
+		quotes: messages.describe.quotes,
+		timer: messages.describe.timer(state.focus, state.rest),
+		health: messages.describe.health,
+		logs: messages.describe.logs,
+		profile: messages.describe.profile,
+		theme: messages.describe.theme,
+		language: messages.describe.language,
+	};
+
+	return menuOrder.map((key) => ({
+		key,
+		label: messages.menu[key],
+		status: statuses[key],
+		description: descriptions[key],
+	}));
+}
+
+const categoriesLabel = (
+	messages: Messages,
+	categories: readonly QuoteCategory[],
+	empty: string,
+) =>
+	categories.length === 0
+		? empty
+		: categories
+				.map((category) => messages.quotes.categoryNames[category])
+				.join(", ");
+
+// The quote settings as options; values name the setting to change.
+export function quoteOptionsOf(
+	messages: Messages,
+	settings: QuoteSettings,
+): Option[] {
+	const { quotes } = messages;
+
 	return [
+		{ label: quotes.draw, value: "draw" },
+		{ label: quotes.autoRefresh(settings.autoRefresh), value: "autoRefresh" },
 		{
-			label: messages.menu.timer,
-			signal: state.timerSignal,
-			description: messages.describe.timer(state.focus, state.rest),
+			label: quotes.interval(quotes.intervals(settings.interval)),
+			value: "interval",
+		},
+		{ label: quotes.mode(quotes.modes[settings.mode]), value: "mode" },
+		{
+			label: quotes.categories(
+				categoriesLabel(messages, settings.categories, quotes.all),
+			),
+			value: "categories",
 		},
 		{
-			label: messages.menu.health,
-			signal: healthSignal,
-			description: messages.describe.health,
+			label: quotes.excluded(
+				categoriesLabel(messages, settings.excluded, quotes.none),
+			),
+			value: "excluded",
 		},
-		{
-			label: messages.menu.logs,
-			signal: messages.signal.entries(state.logs),
-			description: messages.describe.logs,
-		},
-		{
-			label: messages.menu.quotes,
-			signal: messages.signal.newQuote,
-			description: messages.describe.quotes(quoteRefreshMinutes),
-		},
-		{
-			label: messages.menu.profile,
-			signal: profile?.name ?? messages.signal.setUp,
-			description: messages.describe.profile,
-		},
-		{
-			label: messages.menu.theme,
-			signal: messages.themes.names[state.theme],
-			description: messages.describe.theme,
-		},
-		{
-			label: messages.menu.language,
-			signal: languageSignal[language],
-			description: messages.describe.language,
-		},
+		{ label: quotes.author(settings.author || quotes.any), value: "author" },
+		{ label: quotes.work(settings.work || quotes.any), value: "work" },
+		{ label: quotes.back, value: "back" },
 	];
 }
 
-export const dietFieldsOf = (messages: Messages): Field[] => [
+export const intervalOptionsOf = (messages: Messages): Option[] =>
+	quoteIntervals.map((interval) => ({
+		label: messages.quotes.intervals(interval),
+		value: String(interval),
+	}));
+
+export const categoryOptionsOf = (messages: Messages): Option[] =>
+	quoteCategories.map((category) => ({
+		label: messages.quotes.categoryNames[category],
+		value: category,
+	}));
+
+// A quote setting change is logged as "setting:value", so it can be shown in
+// whatever language is on later.
+export function describeQuoteChange(messages: Messages, detail: string) {
+	const [setting = "", value = ""] = detail.split(/:(.*)/sv);
+	const { quotes } = messages;
+	const list = value
+		.split(",")
+		.filter((category): category is QuoteCategory =>
+			(quoteCategories as readonly string[]).includes(category),
+		);
+
+	switch (setting) {
+		case "autoRefresh": {
+			return quotes.autoRefresh(value === "on");
+		}
+
+		case "interval": {
+			const interval = quoteIntervals.find(
+				(option) => String(option) === value,
+			);
+			return quotes.interval(interval ? quotes.intervals(interval) : value);
+		}
+
+		case "mode": {
+			const mode = quoteModes.find((option) => option === value);
+			return quotes.mode(mode ? quotes.modes[mode] : value);
+		}
+
+		case "categories": {
+			return quotes.categories(categoriesLabel(messages, list, quotes.all));
+		}
+
+		case "excluded": {
+			return quotes.excluded(categoriesLabel(messages, list, quotes.none));
+		}
+
+		case "author": {
+			return quotes.author(value || quotes.any);
+		}
+
+		default: {
+			return quotes.work(value || quotes.any);
+		}
+	}
+}
+
+export function describeEvent(messages: Messages, event: Event) {
+	const detail = event.detail ?? "";
+	const { events } = messages;
+
+	if (event.action === "languageChanged") {
+		const language = languages.find((option) => option === detail);
+		return events.languageChanged(
+			language ? messagesOf(language).languageName : detail,
+		);
+	}
+
+	if (event.action === "themeChanged") {
+		const theme = themeNames.find((option) => option === detail);
+		return events.themeChanged(theme ? messages.themes.names[theme] : detail);
+	}
+
+	if (event.action === "quoteSettingsChanged") {
+		return events.quoteSettingsChanged(describeQuoteChange(messages, detail));
+	}
+
+	return events[event.action](detail);
+}
+
+export const dietFieldsOf = (
+	messages: Messages,
+	language: Language,
+	meals: readonly Meal[],
+): Field[] => [
 	{
 		key: "food",
 		label: messages.form.food,
 		kind: "text",
 		placeholder: messages.form.foodExample,
+		suggest: (text) =>
+			foodSuggestions(text, language, meals).map((suggestion) => {
+				const calories = suggestion.calories ?? 0;
+				const protein = suggestion.protein ?? 0;
+
+				return {
+					label: suggestion.label,
+					detail: messages.form.nutrition(
+						formatNumber(language, calories),
+						formatNumber(language, protein),
+					),
+					tag: suggestion.isYours ? messages.form.yours : undefined,
+					values: { calories: String(calories), protein: String(protein) },
+				};
+			}),
 	},
 	{
 		key: "calories",
@@ -289,11 +471,54 @@ export const dietFieldsOf = (messages: Messages): Field[] => [
 	},
 ];
 
-export const workoutFieldsOf = (messages: Messages): Field[] => [
+// The 3 newest distinct workouts, to log again in 1 step.
+export function workoutCombinationsOf(
+	messages: Messages,
+	workouts: readonly Workout[],
+): Combination[] {
+	const seen = new Set<string>();
+	const combinations: Combination[] = [];
+
+	for (const workout of workouts.toReversed()) {
+		const activity = workoutActivities.find(
+			(option) => option === workout.activity,
+		);
+		const key = `${workout.activity}|${workout.minutes}|${workout.intensity}`;
+
+		if (
+			activity &&
+			workout.intensity &&
+			!seen.has(key) &&
+			combinations.length < 3
+		) {
+			seen.add(key);
+			combinations.push({
+				label: messages.logs.workoutEntry(
+					messages.workoutActivity[activity],
+					workout.minutes,
+					messages.intensity[workout.intensity],
+				),
+				values: {
+					activity,
+					minutes: String(workout.minutes),
+					intensity: workout.intensity,
+				},
+			});
+		}
+	}
+
+	return combinations;
+}
+
+export const workoutFieldsOf = (
+	messages: Messages,
+	workouts: readonly Workout[],
+): Field[] => [
 	{
 		key: "activity",
 		label: messages.form.activity,
 		kind: "select",
+		combinations: workoutCombinationsOf(messages, workouts),
 		options: workoutActivities.map((option) => ({
 			label: messages.workoutActivity[option],
 			value: option,

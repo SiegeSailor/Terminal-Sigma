@@ -40,6 +40,7 @@ const sample: Progress = {
 			intensity: "vigorous",
 		},
 	],
+	events: [{ at: "2026-10-03T06:00:00.000Z", action: "appOpened" }],
 };
 
 test("accepts only whole numbers within range", (t) => {
@@ -77,6 +78,7 @@ test("lists every log newest first", (t) => {
 			["focus", 25],
 			["meal", 5],
 			["workout", 80],
+			["event", 0],
 			["meal", 5],
 		],
 	);
@@ -95,7 +97,12 @@ test("counts only today's entries", (t) => {
 test("starts empty and round-trips through the file", (t) => {
 	const file = temporaryFile();
 
-	t.deepEqual(loadProgress(file), { focus: [], meals: [], workouts: [] });
+	t.deepEqual(loadProgress(file), {
+		focus: [],
+		meals: [],
+		workouts: [],
+		events: [],
+	});
 	saveProgress(file, sample);
 	t.deepEqual(loadProgress(file), sample);
 });
@@ -117,6 +124,7 @@ test("still loads a file written by 1.0.0", (t) => {
 
 	const progress = loadProgress(file);
 	t.is(progress.language, undefined);
+	t.deepEqual(progress.events, []);
 	t.is(experienceOf(progress), 35);
 });
 

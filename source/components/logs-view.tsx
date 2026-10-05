@@ -7,10 +7,11 @@ import {
 	workoutActivities,
 	type WorkoutActivity,
 } from "../i18n.js";
+import { describeEvent } from "../content.js";
 import type { Log } from "../progress.js";
 import { usePalette } from "../theme.js";
 
-const filters = ["all", "focus", "meal", "workout"] as const;
+const filters = ["all", "focus", "meal", "workout", "event"] as const;
 type Filter = (typeof filters)[number];
 
 const isWorkoutActivity = (activity: string): activity is WorkoutActivity =>
@@ -33,6 +34,10 @@ export function describeLog(log: Log, language: Language, messages: Messages) {
 			);
 		}
 
+		case "event": {
+			return describeEvent(messages, log.entry);
+		}
+
 		case "workout": {
 			const { activity, minutes, intensity } = log.entry;
 			return messages.logs.workoutEntry(
@@ -51,6 +56,7 @@ const kindLabels = (messages: Messages): Record<Filter, string> => ({
 	focus: messages.logs.focus,
 	meal: messages.logs.diet,
 	workout: messages.logs.workout,
+	event: messages.logs.event,
 });
 
 type LogRowProps = Readonly<{
@@ -65,6 +71,7 @@ export function LogRow({ log, language, messages }: LogRowProps) {
 		focus: palette.metrics.focus,
 		meal: palette.metrics.protein,
 		workout: palette.metrics.workout,
+		event: palette.soft,
 	};
 	const formatDate = new Intl.DateTimeFormat(language, {
 		month: "2-digit",
@@ -75,7 +82,7 @@ export function LogRow({ log, language, messages }: LogRowProps) {
 	});
 
 	return (
-		<Box gap={2}>
+		<Box gap={1}>
 			<Box flexShrink={0} width={12}>
 				<Text dimColor>{formatDate.format(new Date(log.at))}</Text>
 			</Box>
@@ -88,7 +95,9 @@ export function LogRow({ log, language, messages }: LogRowProps) {
 				<Text wrap="truncate-end">{describeLog(log, language, messages)}</Text>
 			</Box>
 			<Box flexShrink={0} justifyContent="flex-end" width={8}>
-				<Text color={palette.accent}>{`+${log.experience} XP`}</Text>
+				<Text color={palette.accent}>
+					{log.experience > 0 ? `+${log.experience} XP` : ""}
+				</Text>
 			</Box>
 		</Box>
 	);

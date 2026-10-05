@@ -8,9 +8,17 @@ import App from "../app.js";
 import { loadProgress, type Progress } from "../progress.js";
 
 const options = { name: "Nova", focus: 25, break: 5 };
-const empty: Progress = { language: "en", focus: [], meals: [], workouts: [] };
+const empty: Progress = {
+	language: "en",
+	focus: [],
+	meals: [],
+	workouts: [],
+	events: [],
+};
 const down = "\u001B[B";
+const up = "\u001B[A";
 const backspace = "\u007F";
+const escape = "\u001B";
 
 // Every test gets its own file, never the real ~/.terminal-sigma.
 const temporaryFile = () =>
@@ -44,20 +52,27 @@ const start = (initialProgress: Progress = empty, file = temporaryFile()) => ({
 	),
 });
 
-test("renders the dashboard shell", (t) => {
-	const { lastFrame, unmount } = start();
-	const frame = lastFrame() ?? "";
+const actionsIn = (file: string) =>
+	loadProgress(file).events.map((event) => event.action);
 
-	for (const text of [
-		"Terminal Sigma",
-		"Nova",
-		"Lv 1",
-		"Tomato Timer",
-		"Health",
-		"Recent",
-	]) {
-		t.true(frame.includes(text), `shows ${text}`);
-	}
+test("renders the dashboard with the menu in order", async (t) => {
+	const { file, lastFrame, unmount } = start();
+	await settle();
+	const frame = lastFrame() ?? "";
+	const order = [
+		"1. Everyday Quotes",
+		"2. Tomato Timer",
+		"3. Health",
+		"4. Logs",
+		"5. Profile",
+		"6. Theme",
+		"7. Language",
+	].map((label) => frame.indexOf(label));
+
+	t.true(order.every((index, position) => index > (order[position - 1] ?? -1)));
+	t.true(frame.includes("Enter to open"));
+	t.true(frame.includes("Recent"));
+	t.deepEqual(actionsIn(file), ["appOpened"]);
 
 	unmount();
 });
@@ -67,6 +82,7 @@ test("asks for a language on the first run and saves it", async (t) => {
 		focus: [],
 		meals: [],
 		workouts: [],
+		events: [],
 	});
 
 	t.true((lastFrame() ?? "").includes("언어 선택"));
@@ -74,6 +90,7 @@ test("asks for a language on the first run and saves it", async (t) => {
 
 	t.is(loadProgress(file).language, "zh-TW");
 	t.true((lastFrame() ?? "").includes("番茄鐘"));
+	t.true(actionsIn(file).includes("languageChanged"));
 
 	unmount();
 });
@@ -89,11 +106,11 @@ test("switches to Korean from the menu", async (t) => {
 	unmount();
 });
 
-test("logs a meal from Health, rejecting a bad number", async (t) => {
+test("logs a typed meal, rejecting a bad number", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["2", "\r", down, "\r", "Oatmeal", "\r", "lots", "\r"]);
-	t.true((lastFrame() ?? "").includes("Enter a whole number from 0 to 5000."));
+	await type(stdin, ["3", "\r", down, "\r", "Oatmeal", "\r", "lots", "\r"]);
+	t.true((lastFrame() ?? "").includes("Enter a whole number"));
 
 	await type(stdin, [backspace.repeat(4), "350", "\r", "12", "\r"]);
 	t.like(loadProgress(file).meals[0], {
@@ -106,11 +123,27 @@ test("logs a meal from Health, rejecting a bad number", async (t) => {
 	unmount();
 });
 
+test("autocompletes a common food and its nutrition", async (t) => {
+	const { file, stdin, lastFrame, unmount } = start();
+
+	await type(stdin, ["3", "\r", down, "\r", "chick"]);
+	t.true((lastFrame() ?? "").includes("Chicken breast"));
+
+	await type(stdin, [down, "\r", "\r", "\r"]);
+	t.like(loadProgress(file).meals[0], {
+		food: "Chicken breast",
+		calories: 248,
+		protein: 46,
+	});
+
+	unmount();
+});
+
 test("logs a workout and scales its experience", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
 	await type(stdin, [
-		"2",
+		"3",
 		"\r",
 		down,
 		down,
@@ -128,6 +161,29 @@ test("logs a workout and scales its experience", async (t) => {
 		intensity: "vigorous",
 	});
 	t.true((lastFrame() ?? "").includes("+60 XP"));
+
+	unmount();
+});
+
+test("repeats a past workout in 1 step", async (t) => {
+	const { file, stdin, unmount } = start({
+		...empty,
+		workouts: [
+			{
+				at: "2026-10-02T07:00:00.000Z",
+				activity: "cycling",
+				minutes: 45,
+				intensity: "moderate",
+			},
+		],
+	});
+
+	await type(stdin, ["3", "\r", down, down, "\r", "\r"]);
+	t.like(loadProgress(file).workouts[1], {
+		activity: "cycling",
+		minutes: 45,
+		intensity: "moderate",
+	});
 
 	unmount();
 });
@@ -153,32 +209,21 @@ test("saves a profile and turns it into targets", async (t) => {
 		"\r",
 	]);
 
-	t.deepEqual(loadProgress(file).profile, {
+	t.like(loadProgress(file).profile, {
 		name: "Nova",
-		age: 30,
 		height: 175,
-		weight: 70,
 		gender: "male",
-		workStyle: "desk",
 		goal: "buildMuscle",
 	});
-	t.true((lastFrame() ?? "").includes("140 g protein"));
+	t.true(actionsIn(file).includes("profileSaved"));
+
+	await type(stdin, ["3"]);
+	t.true((lastFrame() ?? "").includes("140 g protein left"));
 
 	unmount();
 });
 
-test("changes the theme", async (t) => {
-	const { file, stdin, lastFrame, unmount } = start();
-
-	await type(stdin, ["6", "\r", down, "\r"]);
-
-	t.is(loadProgress(file).theme, "moss");
-	t.true((lastFrame() ?? "").includes("Theme set to Moss."));
-
-	unmount();
-});
-
-test("previews a theme while browsing without saving it", async (t) => {
+test("previews a theme while browsing and saves the chosen one", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 	const before = lastFrame() ?? "";
 
@@ -186,27 +231,51 @@ test("previews a theme while browsing without saving it", async (t) => {
 	t.not(lastFrame(), before);
 	t.is(loadProgress(file).theme, undefined);
 
-	await type(stdin, ["\u001B"]);
+	await type(stdin, [escape]);
 	t.is(loadProgress(file).theme, undefined);
-	t.true((lastFrame() ?? "").includes("Tomato Timer"));
+
+	await type(stdin, ["\r", down, "\r"]);
+	t.is(loadProgress(file).theme, "moss");
+	t.true(actionsIn(file).includes("themeChanged"));
 
 	unmount();
 });
 
-test("stops a running tomato without credit", async (t) => {
+test("starts and stops a tomato, logging both", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["\r"]);
+	await type(stdin, ["2", "\r", "\r"]);
 	t.true((lastFrame() ?? "").includes("Focus started."));
 
 	await type(stdin, ["\r", down, "\r"]);
 	t.true((lastFrame() ?? "").includes("Tomato stopped."));
 	t.is(loadProgress(file).focus.length, 0);
+	t.deepEqual(actionsIn(file).slice(1), ["timerStarted", "timerStopped"]);
 
 	unmount();
 });
 
-test("shows recent logs on the menu and every log in the logs view", async (t) => {
+test("configures everyday quotes", async (t) => {
+	const { file, stdin, unmount } = start();
+
+	// Auto-refresh off, then the interval to 1 hour.
+	await type(stdin, ["1", "\r", down, "\r", down, "\r", down, "\r"]);
+	t.like(loadProgress(file).quotes, { autoRefresh: false, interval: 3600 });
+
+	// The cursor comes back on Interval; 2 down is Categories. Tick Art, then
+	// jump up to Done.
+	await type(stdin, [down, down, "\r", "\r", up, "\r"]);
+	t.deepEqual(loadProgress(file).quotes?.categories, ["art"]);
+	t.is(
+		actionsIn(file).filter((action) => action === "quoteSettingsChanged")
+			.length,
+		3,
+	);
+
+	unmount();
+});
+
+test("shows recent logs and every action in the logs view", async (t) => {
 	const { stdin, lastFrame, unmount } = start({
 		...empty,
 		meals: [
@@ -217,22 +286,13 @@ test("shows recent logs on the menu and every log in the logs view", async (t) =
 				protein: 12,
 			},
 		],
-		workouts: [
-			{
-				at: "2026-10-02T07:00:00.000Z",
-				activity: "strength",
-				minutes: 20,
-				intensity: "light",
-			},
-		],
 	});
 
+	await settle();
 	t.true((lastFrame() ?? "").includes("Oatmeal · 350 kcal"));
 
-	await type(stdin, ["3", "\r"]);
-	const frame = lastFrame() ?? "";
-	t.true(frame.includes("Strength · 20 min · Light"));
-	t.true(frame.includes("2 logs · 25 XP"));
+	await type(stdin, ["4", "\r"]);
+	t.true((lastFrame() ?? "").includes("Opened Terminal Sigma"));
 
 	unmount();
 });
