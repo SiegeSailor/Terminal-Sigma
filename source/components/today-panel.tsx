@@ -22,20 +22,24 @@ type TodayPanelProps = Readonly<{
 	isCompact?: boolean;
 }>;
 
+// A half-height bar: "▀" fills only the top of its row, so the bottom half
+// spaces the items apart without a whole blank row.
 function Bar({ metric, width }: Readonly<{ metric: Metric; width: number }>) {
+	const palette = usePalette();
 	const value = Math.min(Math.max(Math.round(metric.value), 0), 100);
 	const filled = Math.round((value / 100) * width);
 
 	return (
 		<Text>
-			<Text color={metric.color}>{"█".repeat(filled)}</Text>
-			<Text dimColor>{"░".repeat(width - filled)}</Text>
-			<Text>{` ${String(value).padStart(3)}%`}</Text>
+			<Text color={metric.color}>{"▀".repeat(filled)}</Text>
+			<Text color={palette.border}>{"▀".repeat(width - filled)}</Text>
+			<Text dimColor>{` ${String(value).padStart(3)}%`}</Text>
 		</Text>
 	);
 }
 
-// A blank row between metrics, unless the terminal is too short for one.
+// Breathing room inside the border and between sections, unless the
+// terminal is too short for it.
 export default function TodayPanel({
 	title,
 	sections,
@@ -62,8 +66,7 @@ export default function TodayPanel({
 				<Box
 					key={section.title ?? `section-${index}`}
 					flexDirection="column"
-					gap={gap}
-					marginTop={index === 0 ? gap : gap + 1}
+					marginTop={index === 0 ? gap : 1}
 				>
 					{section.title ? (
 						<Text bold color={palette.soft}>
