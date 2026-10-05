@@ -2,14 +2,18 @@ import test from "ava";
 import type { Mood } from "../i18n.js";
 import {
 	type Activity,
+	advance,
 	composeScene,
 	cycleOf,
 	defaultLook,
 	gearOf,
 	type Look,
 	lookOf,
+	type Motion,
 	paletteOf,
+	placeOf,
 	stageHeight,
+	startMotion,
 	toSegments,
 } from "../pixel-art.js";
 import { themeNames, themes } from "../theme.js";
@@ -42,7 +46,7 @@ const looks: Look[] = [
 	defaultLook,
 	lookFor({ height: 150, weight: 42, gender: "female", workStyle: "athlete" }),
 	lookFor({
-		height: 195,
+		height: 200,
 		weight: 120,
 		gender: "male",
 		workStyle: "active",
@@ -114,19 +118,21 @@ test("every scene fits its stage and uses only known colors", (t) => {
 	}
 });
 
-// The character must never look stuck: no frame survives 3 ticks in a row.
+// The character must never look stuck: no frame survives 6 ticks in a row.
 test("every animation keeps moving, in every mood", (t) => {
 	for (const mood of moods) {
 		for (const activity of activities) {
-			const cycle = cycleOf(activity, width);
+			const cycle = cycleOf(activity, width, undefined, mood);
 
 			for (let counter = 0; counter < cycle; counter++) {
-				const [first, second, third] = [0, 1, 2].map((offset) =>
-					scene({ activity, mood, counter: counter + offset }).join("\n"),
+				const frames = new Set(
+					[0, 1, 2, 3, 4, 5].map((offset) =>
+						scene({ activity, mood, counter: counter + offset }).join("\n"),
+					),
 				);
 
-				t.false(
-					first === second && second === third,
+				t.true(
+					frames.size > 1,
 					`${activity} holds still while ${mood} from frame ${counter}`,
 				);
 			}
@@ -143,6 +149,24 @@ test("wanders across the stage while idle", (t) => {
 	);
 
 	t.true(lefts.size >= 8);
+});
+
+test("walks in profile, with the feet apart and pointing ahead", (t) => {
+	// The sole row of a stride: the shoes' grey soles, in 2 separate runs.
+	const soles = (frame: string[]) =>
+		(frame[stageHeight - 3] ?? "")
+			.replaceAll(/[^Y]/gv, " ")
+			.trim()
+			.split(/ +/v);
+	const standing = scene({ counter: 0 });
+	const striding = scene({ counter: 24 });
+
+	t.is(soles(striding).length, 2, "both feet on the ground, apart");
+	t.notDeepEqual(striding, standing);
+	t.true(
+		extentOf(scene({ counter: 24 })).columns < extentOf(standing).columns + 4,
+		"the body turns side on",
+	);
 });
 
 test("draws the body from the profile", (t) => {
@@ -181,19 +205,30 @@ test("draws the body from the profile", (t) => {
 	);
 });
 
-test("dresses up with the level", (t) => {
+test("tells muscle from fat at the same weight by body fat", (t) => {
+	const profile = { gender: "male", height: 178, weight: 82 } as const;
+
+	t.is(lookFor({ ...profile, bodyFat: 10 }).build, "athletic");
+	t.is(lookFor({ ...profile, bodyFat: 30 }).build, "heavy");
+	t.is(lookFor(profile).build, "stocky", "BMI decides without body fat");
+	t.notDeepEqual(
+		scene({ look: lookFor({ ...profile, bodyFat: 10 }) }),
+		scene({ look: lookFor({ ...profile, bodyFat: 30 }) }),
+	);
+});
+
+test("dresses up with the level, with nothing on top of the head", (t) => {
 	const frames = Array.from({ length: 9 }, (_, index) =>
 		scene({ level: index + 1 }).join(""),
 	);
 
 	t.is(new Set(frames).size, 9, "every level from 1 to 9 looks different");
-	t.true(frames[8]?.includes("g"), "a crown and a medal at level 9");
+	t.false(frames[7]?.includes("g"), "no crown at level 8");
+	t.true(frames[8]?.includes("g"), "a medal at level 9");
 });
 
 test("shows the mood on the face", (t) => {
-	const sleepy = scene({ mood: "sleepy" }).join("");
-
-	t.true(sleepy.includes("Z"), "Zs while dozing");
+	t.true(scene({ mood: "sleepy" }).join("").includes("Z"), "Zs while dozing");
 	t.false(scene().join("").includes("Z"));
 	t.true(scene({ mood: "happy" }).join("").includes("m"), "a smile");
 	t.false(scene().join("").includes("m"));
@@ -201,11 +236,10 @@ test("shows the mood on the face", (t) => {
 
 test("casts an oval shadow under the feet", (t) => {
 	const frame = scene();
-	const rowsWithShadow = frame.flatMap((row, y) =>
-		row.includes("A") ? [y] : [],
-	);
+	const rows = frame.flatMap((row, y) => (row.includes("A") ? [y] : []));
 
-	t.deepEqual(rowsWithShadow, [
+	t.deepEqual(rows, [
+		stageHeight - 4,
 		stageHeight - 3,
 		stageHeight - 2,
 		stageHeight - 1,
@@ -213,7 +247,49 @@ test("casts an oval shadow under the feet", (t) => {
 
 	const widthAt = (y: number) =>
 		[...(frame[y] ?? "")].filter((key) => key !== ".").length;
-	t.true(widthAt(stageHeight - 2) > widthAt(stageHeight - 1), "an oval");
+	t.true(widthAt(stageHeight - 3) > widthAt(stageHeight - 1), "an oval");
+});
+
+test("never jumps between animations, and comes home after a run", (t) => {
+	const plan: Array<[number, Activity, Mood]> = [
+		[37, "idle", "content"],
+		[20, "eat", "content"],
+		[45, "idle", "content"],
+		[60, "run", "happy"],
+		[30, "idle", "happy"],
+		[16, "levelUp", "happy"],
+		[10, "idle", "sleepy"],
+	];
+	let motion: Motion = startMotion("idle", "content", width);
+	let previous = placeOf("idle", 0, width, "content", motion.anchor);
+	let runHome: number | undefined;
+	const anchors: number[] = [];
+
+	for (const [ticks, activity, mood] of plan) {
+		for (let tick = 0; tick < ticks; tick++) {
+			motion = advance(motion, { activity, mood }, width);
+			const place = placeOf(
+				motion.activity,
+				motion.tick,
+				width,
+				motion.mood,
+				motion.anchor,
+			);
+
+			t.true(Math.abs(place.x - previous.x) <= 2, `jumped at ${activity}`);
+			t.true(Math.abs(place.lift - previous.lift) <= 1);
+			previous = place;
+
+			if (motion.activity === "run") {
+				runHome ??= motion.anchor;
+			}
+		}
+
+		anchors.push(motion.anchor);
+	}
+
+	// The idle after the run starts where the run began.
+	t.is(anchors[4], runHome);
 });
 
 test("renders 2 pixel rows per terminal row at full width", (t) => {

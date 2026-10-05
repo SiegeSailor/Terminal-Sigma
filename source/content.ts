@@ -40,10 +40,10 @@ import { isNewer, type Updater } from "./update.js";
 export const characterWidth = 36;
 export const menuListWidth = 26;
 
-// Header and footer take 5 rows. The character's panel is 21 rows tall,
+// Header and footer take 5 rows. The character's panel is 25 rows tall,
 // Today 19 with its spacing or 16 compact, the menu 10, and Recent 7.
 const chromeRows = 5;
-const characterRows = 21;
+const characterRows = 25;
 const todayRows = 19;
 const compactTodayRows = 16;
 const menuRows = 10;

@@ -1,15 +1,19 @@
 import React from "react";
-import { Box, Text, useAnimation } from "ink";
+import { Box, Text } from "ink";
 import type { Mood } from "../i18n.js";
 import {
 	type Activity,
+	advance,
 	composeScene,
-	intervalOf,
+	frameMilliseconds,
 	type Look,
 	paletteOf,
+	startMotion,
 	toSegments,
 } from "../pixel-art.js";
 import { spinnerFrames, usePalette } from "../theme.js";
+
+type Wanted = Readonly<{ activity: Activity; mood: Mood }>;
 
 type CharacterProps = Readonly<{
 	name: string;
@@ -33,19 +37,45 @@ export default function Character({
 	width,
 }: CharacterProps) {
 	const palette = usePalette();
-	const { frame } = useAnimation({ interval: intervalOf(activity) });
 	// Border and padding take 4 columns; the rest is the stage it roams.
+	const stage = width - 4;
+	const [motion, step] = React.useReducer(
+		(state: ReturnType<typeof startMotion>, wanted: Wanted) =>
+			advance(state, wanted, stage),
+		undefined,
+		() => startMotion(activity, mood, stage),
+	);
+	// The timer reads what is wanted now, and the motion decides when to
+	// switch, so an animation finishes where it began before the next starts.
+	const wanted = React.useRef<Wanted>({ activity, mood });
+
+	React.useEffect(() => {
+		wanted.current = { activity, mood };
+	}, [activity, mood]);
+
+	React.useEffect(() => {
+		const timer = setInterval(() => {
+			step(wanted.current);
+		}, frameMilliseconds);
+
+		return () => {
+			clearInterval(timer);
+		};
+	}, []);
+
 	const lines = toSegments(
 		composeScene({
-			activity,
-			counter: frame,
+			activity: motion.activity,
+			counter: motion.tick,
+			anchor: motion.anchor,
 			level: levelNumber,
 			look,
-			mood,
-			width: width - 4,
+			mood: motion.mood,
+			width: stage,
 		}),
 		paletteOf(palette),
 	);
+	const spinner = Math.floor(motion.tick / 2) % spinnerFrames.length;
 
 	return (
 		<Box
@@ -82,7 +112,7 @@ export default function Character({
 			</Box>
 			<Box marginTop={1}>
 				<Text color={palette.accent} wrap="truncate-end">
-					{`${spinnerFrames[frame % spinnerFrames.length] ?? "·"} ${label}`}
+					{`${spinnerFrames[spinner] ?? "·"} ${label}`}
 				</Text>
 			</Box>
 		</Box>
