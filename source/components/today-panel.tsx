@@ -22,18 +22,20 @@ type TodayPanelProps = Readonly<{
 	isCompact?: boolean;
 }>;
 
+const percentOf = (metric: Metric) =>
+	Math.min(Math.max(Math.round(metric.value), 0), 100);
+
 // A half-height bar: "▀" fills only the top of its row, so the bottom half
-// spaces the items apart without a whole blank row.
+// spaces the items apart without a whole blank row. Text centers in its row,
+// so the percentage sits on the label's row instead of beside the bar.
 function Bar({ metric, width }: Readonly<{ metric: Metric; width: number }>) {
 	const palette = usePalette();
-	const value = Math.min(Math.max(Math.round(metric.value), 0), 100);
-	const filled = Math.round((value / 100) * width);
+	const filled = Math.round((percentOf(metric) / 100) * width);
 
 	return (
 		<Text>
 			<Text color={metric.color}>{"▀".repeat(filled)}</Text>
 			<Text color={palette.border}>{"▀".repeat(width - filled)}</Text>
-			<Text dimColor>{` ${String(value).padStart(3)}%`}</Text>
 		</Text>
 	);
 }
@@ -48,8 +50,8 @@ export default function TodayPanel({
 }: TodayPanelProps) {
 	const palette = usePalette();
 	const gap = isCompact ? 0 : 1;
-	// Border and padding take 6 columns, and " 100%" takes 5.
-	const barWidth = Math.max(width - 11, 4);
+	// Border and padding take 6 columns.
+	const barWidth = Math.max(width - 6, 4);
 
 	return (
 		<Box
@@ -79,9 +81,14 @@ export default function TodayPanel({
 								<Box flexShrink={0}>
 									<Text color={metric.color}>{metric.label}</Text>
 								</Box>
-								<Text dimColor wrap="truncate-end">
-									{metric.detail}
-								</Text>
+								<Box flexGrow={1} justifyContent="flex-end">
+									<Text dimColor wrap="truncate-end">
+										{metric.detail}
+									</Text>
+								</Box>
+								<Box flexShrink={0}>
+									<Text>{`${percentOf(metric)}%`}</Text>
+								</Box>
 							</Box>
 							<Bar metric={metric} width={barWidth} />
 						</Box>
