@@ -51,6 +51,9 @@ test("works targets out of body, work style, and goal", (t) => {
 		{ calories: 1560, protein: 120, workoutMinutes: 45 },
 	);
 
+	// With body fat, Katch-McArdle: 370 + 21.6 x 59.5 kg of lean mass, x 1.2.
+	t.is(targetsOf({ ...desk, bodyFat: 15 }).calories, 1990);
+
 	// Protein stops at 2.2 g per kg, however hard the training.
 	t.is(
 		targetsOf({ ...desk, workStyle: "athlete", goal: "buildMuscle" }).protein,

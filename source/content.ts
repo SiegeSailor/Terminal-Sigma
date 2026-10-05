@@ -643,6 +643,16 @@ export const profileFieldsOf = (
 		defaultValue: profile ? String(profile.weight) : undefined,
 	},
 	{
+		key: "bodyFat",
+		label: messages.form.bodyFat,
+		kind: "number",
+		minimum: 3,
+		maximum: 60,
+		optional: true,
+		defaultValue:
+			profile?.bodyFat === undefined ? undefined : String(profile.bodyFat),
+	},
+	{
 		key: "gender",
 		label: messages.form.gender,
 		kind: "select",

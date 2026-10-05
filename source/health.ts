@@ -73,9 +73,12 @@ export function targetsOf(profile: Profile | undefined): Targets {
 		return defaultTargets;
 	}
 
-	const { weight, height, age, gender, workStyle, goal } = profile;
+	const { weight, height, age, gender, workStyle, goal, bodyFat } = profile;
+	// Katch-McArdle from lean mass when body fat is known, else Mifflin-St Jeor.
 	const restingCalories =
-		10 * weight + 6.25 * height - 5 * age + genderConstant[gender];
+		bodyFat === undefined
+			? 10 * weight + 6.25 * height - 5 * age + genderConstant[gender]
+			: 370 + 21.6 * weight * (1 - bodyFat / 100);
 	const calories =
 		restingCalories * activityFactor[workStyle] + calorieShift[goal];
 	const proteinRate = Math.min(

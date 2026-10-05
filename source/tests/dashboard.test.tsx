@@ -244,6 +244,8 @@ test("saves a profile and turns it into targets", async (t) => {
 		"\r",
 		"70",
 		"\r",
+		"15",
+		"\r",
 		down,
 		"\r",
 		"\r",
@@ -255,6 +257,7 @@ test("saves a profile and turns it into targets", async (t) => {
 	t.like(loadProgress(file).profile, {
 		name: "Nova",
 		height: 175,
+		bodyFat: 15,
 		gender: "male",
 		goal: "buildMuscle",
 	});

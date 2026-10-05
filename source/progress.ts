@@ -84,6 +84,7 @@ const profileSchema = zod.object({
 	age: zod.number().int().min(10).max(100),
 	height: zod.number().min(100).max(250),
 	weight: zod.number().min(30).max(300),
+	bodyFat: zod.number().int().min(3).max(60).optional(),
 	gender: zod.enum(genders),
 	workStyle: zod.enum(workStyles),
 	goal: zod.enum(healthGoals),

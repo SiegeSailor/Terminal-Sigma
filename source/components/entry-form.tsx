@@ -20,7 +20,7 @@ export type Field = Readonly<
 				placeholder?: string;
 				suggest?: (text: string) => readonly Suggestion[];
 		  }
-		| { kind: "number"; minimum: number; maximum: number }
+		| { kind: "number"; minimum: number; maximum: number; optional?: boolean }
 		| {
 				kind: "select";
 				options: readonly Option[];
@@ -82,6 +82,7 @@ export default function EntryForm({
 
 		if (
 			field.kind === "number" &&
+			!(field.optional && !value.trim()) &&
 			parseWholeNumber(value, field.minimum, field.maximum) === undefined
 		) {
 			setError(messages.form.wholeNumber(field.minimum, field.maximum));
@@ -97,9 +98,13 @@ export default function EntryForm({
 
 	const shown = (done: Field) => {
 		const value = values[done.key] ?? "";
-		return done.kind === "select"
-			? (done.options.find((option) => option.value === value)?.label ?? value)
-			: value;
+		if (done.kind === "select") {
+			return (
+				done.options.find((option) => option.value === value)?.label ?? value
+			);
+		}
+
+		return value || "–";
 	};
 
 	const defaultOf = (current: Field) =>

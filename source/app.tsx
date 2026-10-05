@@ -557,6 +557,7 @@ export default function App({
 					age: Number(values.age),
 					height: Number(values.height),
 					weight: Number(values.weight),
+					...(values.bodyFat ? { bodyFat: Number(values.bodyFat) } : {}),
 					gender: pick(genders, values.gender, "other"),
 					workStyle: pick(workStyles, values.workStyle, "desk"),
 					goal: pick(healthGoals, values.goal, "maintain"),
