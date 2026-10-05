@@ -70,18 +70,21 @@ On the first run, it asks for your language and saves the answer in `progress.js
 
 ### Menu
 
-The menu drives everything. It sits in 2 boxes: the items on the left, and on the right what the focused item does, which turns into its options once you press Enter:
+The menu drives everything. It sits in 2 boxes: the items on the left, grouped under headings that only label them, and on the right what the focused item does, which turns into its options once you press Enter:
 
-| Key | Item            | Enter Opens                                                                                 |
-| --- | --------------- | ------------------------------------------------------------------------------------------- |
-| `1` | Everyday Quotes | A new quote, and the settings below                                                         |
-| `2` | Tomato Timer    | Start a focus, or pause, resume, or stop the running one                                    |
-| `3` | Health          | Today's targets and advice, then log a meal or a workout                                    |
-| `4` | Logs            | Every log and action, newest first, with a filter per kind                                  |
-| `5` | Profile         | Your name, age, height, weight, gender, work style, and health goal, showing saved values   |
-| `6` | Theme           | The color tone of the dashboard and your character, previewing each one as the cursor moves |
-| `7` | Language        | English, Traditional Chinese, or Korean                                                     |
-| `8` | Software Update | The version you run and the newest one, with an update when there is one                    |
+| Key | Group    | Item            | Enter Opens                                                                                         |
+| --- | -------- | --------------- | --------------------------------------------------------------------------------------------------- |
+| `1` | Actions  | Tomato Timer    | Start a focus, or pause, resume, or stop the running one                                            |
+| `2` | Health   | Log a Meal      | The meal form; while focused, today's targets and advice show on the right                          |
+| `3` | Health   | Log a Workout   | The workout form, with the same targets and advice                                                  |
+| `4` | Settings | Everyday Quotes | A new quote, and the settings below                                                                 |
+| `5` | Settings | Profile         | Your name, age, height, weight, body fat, gender, work style, and health goal, showing saved values |
+| `6` | Settings | Theme           | The color tone of the dashboard and your character, previewing each one as the cursor moves         |
+| `7` | Settings | Language        | English, Traditional Chinese, or Korean                                                             |
+| `8` | System   | Logs            | Every log and action, newest first, with a filter per kind                                          |
+| `9` | System   | Software Update | The version you run and the newest one, with an update when there is one                            |
+
+The headings give way to Recent on a terminal shorter than 27 rows. Body fat is optional: press Enter to skip it.
 
 A meal asks for the food, its calories, and its protein; a workout asks for the activity, its minutes, and its intensity, one at a time. The food field suggests as you type, your past meals first and then 112 common foods matched in any of the 3 languages, and picking one fills in its calories and protein. The activity offers your 3 latest workouts to repeat in 1 step. A stopped focus earns nothing.
 
@@ -105,15 +108,15 @@ Without an API key, the settings filter the 28 bundled quotes, which cover every
 
 ### Character
 
-Your character is a pixel-art you, standing on its own shadow. It wanders around its panel, looks about, and switches to typing at a desk, sipping a coffee, eating, running, lifting, or stretching to match what you do. 3 things shape it:
+Your character is a pixel-art you, standing on its own oval shadow and animating at 10 frames a second. It wanders around its panel, turning side on to walk with both feet stepping the way it goes and its arms swinging, then faces you to look about, blink, and shake out its hands. It types at a desk, sips a coffee, eats, runs a lap, lifts, or stretches to match what you do, and always finishes back where it started before the next animation begins. 3 things shape it:
 
-| Shaped By    | What Changes                                                                                                                                                                                     |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Level        | 1 piece of gear per level up to level 9: headphones, a scarf, a cap, a backpack, a smartwatch, a jacket, a crown, and a medal                                                                    |
-| Profile      | The height follows yours, and the build your weight for that height, from slim to heavy; gender sets the shoulders, hips, and hair, age greys the hair, and a muscle goal broadens the shoulders |
-| Today's Logs | It dozes on its feet until you log something, and smiles and waves once you meet your protein and exercise targets or finish 4 focus sessions                                                    |
+| Shaped By    | What Changes                                                                                                                                                                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Level        | 1 piece of gear per level up to level 9: headphones, a scarf, a cap, a backpack, a smartwatch, a jacket, sunglasses in place of the cap, and a medal                                                                                          |
+| Profile      | The height follows yours; the build follows your body fat, or your weight for your height without it, from slim or athletic to heavy; gender sets the shoulders, hips, and hair, age greys the hair, and a muscle goal broadens the shoulders |
+| Today's Logs | It dozes on its feet until you log something, and smiles and waves once you meet your protein and exercise targets or finish 4 focus sessions                                                                                                 |
 
-Your work style dresses it: a hoodie and jeans at a desk, a shirt and an apron when standing, a tee and cargo pants when active, and a tank top and shorts as an athlete.
+At the same weight, a low body fat draws a lean, broad-shouldered build, and a high one a wider waist. Your work style dresses it: a hoodie and jeans at a desk, a shirt and an apron when standing, a tee and cargo pants when active, and a tank top and shorts as an athlete.
 
 ### Software Update
 
@@ -130,11 +133,11 @@ The desktop app waits until the release has its file for your system, a few minu
 
 The Health group works out 3 daily targets from your profile, in metric units, and falls back to 2,000 kcal, 50 g of protein, and 30 minutes of exercise until you fill it in:
 
-| Target   | How It Is Worked Out                                                                                                      |
-| -------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Calories | The Mifflin-St Jeor resting rate, times 1.2 to 1.725 by work style, then 500 less to lose fat or 200 to 300 more to build |
-| Exercise | 30 minutes to stay healthy, 45 to lose fat or build muscle, and 60 to build endurance                                     |
-| Protein  | 1.0 to 2.0 g per kg of body weight by goal, plus up to 0.3 g for a physical job, never above 2.2 g                        |
+| Target   | How It Is Worked Out                                                                                                                                                                                                        |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Calories | The resting rate, times 1.2 to 1.725 by work style, then 500 less to lose fat or 200 to 300 more to build; the resting rate is Katch-McArdle from your lean mass when you give your body fat, and Mifflin-St Jeor otherwise |
+| Exercise | 30 minutes to stay healthy, 45 to lose fat or build muscle, and 60 to build endurance                                                                                                                                       |
+| Protein  | 1.0 to 2.0 g per kg of body weight by goal, plus up to 0.3 g for a physical job, never above 2.2 g                                                                                                                          |
 
 The targets are general guidance for healthy adults, not medical advice.
 
@@ -144,7 +147,7 @@ Every view shows its keys at the bottom right:
 
 | Key                       | Action                                                                   |
 | ------------------------- | ------------------------------------------------------------------------ |
-| `1` to `8`                | Jump to a menu item                                                      |
+| `1` to `9`                | Jump to a menu item                                                      |
 | Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters          |
 | Enter                     | Open the item, choose the option, or go to the next field                |
 | Esc                       | Go back to the menu, or out of a quote setting, without logging anything |
@@ -176,6 +179,7 @@ Both are optional:
 		"age": 30,
 		"height": 175,
 		"weight": 70,
+		"bodyFat": 18,
 		"gender": "male",
 		"workStyle": "desk",
 		"goal": "buildMuscle"
@@ -222,6 +226,7 @@ Each setting takes 1 of a fixed set of values:
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `events.action`                        | `appOpened`, `breakOver`, `languageChanged`, `levelUp`, `profileSaved`, `quoteDrawn`, `quoteSettingsChanged`, `themeChanged`, `timerPaused`, `timerResumed`, `timerStarted`, `timerStopped`, or `updateInstalled`       |
 | `language`                             | `en`, `ko`, or `zh-TW`                                                                                                                                                                                                  |
+| `profile.bodyFat`                      | A whole percentage from `3` to `60`, or left out                                                                                                                                                                        |
 | `profile.gender`                       | `female`, `male`, or `other`                                                                                                                                                                                            |
 | `profile.goal`                         | `buildMuscle`, `endurance`, `loseFat`, or `maintain`                                                                                                                                                                    |
 | `profile.workStyle`                    | `active`, `athlete`, `desk`, or `standing`                                                                                                                                                                              |
