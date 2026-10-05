@@ -9,32 +9,32 @@ The dashboard fills the whole terminal in the alternate screen buffer, like htop
 
 ```text
 ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Terminal Sigma                                                                                                            23:07:28 │
-│ “The fear of death follows from the fear of life.” — Mark Twain                                                                      │
+│ ✻ Terminal Sigma                                                                                                            23:17:38 │
+│ “It does not matter how slowly you go as long as you do not stop.” — Confucius                                                       │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭──────────────────────────────────╮╭──────────────────────────────────────╮╭──────────────────────╮╭──────────────────────────────────╮
 │ Ken                         Lv 1 ││                                      ││ ❯ 1. Everyday Quotes ││ Auto · every 25 minutes          │
 │                                  ││  Today                               ││   2. Tomato Timer    ││                                  │
 │                                  ││                                      ││   3. Health          ││ Draw a new quote, or choose how  │
-│                                  ││  Pet                  25 XP to Lv 2  ││   4. Logs            ││ often quotes refresh and which   │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  75%  ││   5. Profile         ││ kinds you see.                   │
-│                                  ││  Focus              1 of 4 sessions  ││   6. Theme           ││                                  │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  25%  ││   7. Language        ││ Enter to open                    │
+│                                  ││  Pet              25 XP to Lv 2 75%  ││   4. Logs            ││ often quotes refresh and which   │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   5. Profile         ││ kinds you see.                   │
+│                                  ││  Focus          1 of 4 sessions 25%  ││   6. Theme           ││                                  │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   7. Language        ││ Enter to open                    │
 │                                  ││                                      ││                      ││                                  │
 │                                  ││  Health · Build muscle               ││                      ││                                  │
-│                     ▄ ▄  ▄  ▄▄▄  ││  Protein                12 of 156 g  ││                      ││                                  │
-│                     ▀▀▀ ▀▀▀ ▀▀▀  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀   8%  ││                      ││                                  │
-│                                  ││  Calories 350 of 2,410 kcal · 1 me…  ││                      ││                                  │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  15%  ││                      ││                                  │
-│                                  ││  Workout           30 of 45 minutes  ││                      ││                                  │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  67%  ││                      ││                                  │
+│                     ▄ ▄  ▄  ▄▄▄  ││  Protein             12 of 156 g 8%  ││                      ││                                  │
+│                     ▀▀▀ ▀▀▀ ▀▀▀  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                      ││                                  │
+│                                  ││  Calories 350 of 2,410 kcal · … 15%  ││                      ││                                  │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                      ││                                  │
+│                                  ││  Workout       30 of 45 minutes 67%  ││                      ││                                  │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                      ││                                  │
 │                                  ││  ⏺ 15 more minutes of exercise tod…  ││                      ││                                  │
 │      ▄                           ││                                      ││                      ││                                  │
 │     ▀▄▀▄▄▄▄▄▄▄▄                  ││                                      ││                      ││                                  │
 │    ▀▀▀▀▀▀▀▀▀▀▀▀▀                 ││                                      │╰──────────────────────╯╰──────────────────────────────────╯
 │    ▀▀▀▀▀▀▀▀▀▀▀▀▀                 ││                                      │╭──────────────────────────────────────────────────────────╮
 │ ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              ││                                      ││ Recent                                                   │
-│ ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              ││                                      ││ 10/04, 23:07 Action   Opened Terminal Sigma              │
+│ ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              ││                                      ││ 10/04, 23:17 Action   Opened Terminal Sigma              │
 │     ▀ ▀     ▀ ▀                  ││                                      ││ 10/04, 23:02 Focus    25-minute focus             +25 XP │
 │                                  ││                                      ││ 10/04, 23:02 Diet     Oatmeal · 350 kcal · 12 …    +5 XP │
 │ ✻ Wandering…                     ││                                      ││ 10/04, 23:02 Workout  Running · 30 min · Moder…   +45 XP │
@@ -54,7 +54,7 @@ The regions of the dashboard:
 | Recent      | Its own block under the menu: the 4 latest logs                                                          |
 | Today       | Pet and Focus bars, then the Health group: protein, calories, and workout, with the most urgent advice   |
 
-The Logs view takes the place of the Menu, the Description, and Recent while it is open. Today draws each bar with `▀`, half a row tall, right under its label, with no blank row between items; only a group gets a blank row above it, and the border padding goes when `layoutOf` marks it compact.
+The Logs view takes the place of the Menu, the Description, and Recent while it is open. Today draws each bar with `▀`, half a row tall, right under its label, which carries the percentage because text centers in its row; there is no blank row between items, only a group gets a blank row above it, and the border padding goes when `layoutOf` marks it compact.
 
 ## Responsive Rules
 
