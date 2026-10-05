@@ -22,7 +22,7 @@
 	"bugs": {
 		"url": "https://github.com/SiegeSailor/Terminal-Sigma/issues"
 	},
-	"version": "1.4.0",
+	"version": "1.4.1",
 	"bin": {
 		"siegesailor-terminal-sigma": "build/command-line-interface.js"
 	},
