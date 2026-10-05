@@ -80,6 +80,20 @@ const start = (
 	),
 });
 
+// Waits for async work, like an install, to reach the screen.
+const shows = async (lastFrame: () => string | undefined, text: string) => {
+	for (let attempt = 0; attempt < 20; attempt++) {
+		if ((lastFrame() ?? "").includes(text)) {
+			return true;
+		}
+
+		// eslint-disable-next-line no-await-in-loop
+		await settle();
+	}
+
+	return false;
+};
+
 const actionsIn = (file: string) =>
 	loadProgress(file).events.map((event) => event.action);
 
@@ -333,21 +347,19 @@ test("updates to the newest version and restarts into it", async (t) => {
 		temporaryFile(),
 		fake,
 	);
+	t.teardown(unmount);
 
 	await type(stdin, ["8"]);
-	t.true((lastFrame() ?? "").includes("v1.1.0 available"));
+	t.true(await shows(lastFrame, "v1.1.0 available"));
 
 	await type(stdin, ["\r"]);
-	const frame = lastFrame() ?? "";
-	t.true(frame.includes("Current version: v1.0.0"));
-	t.true(frame.includes("Newest version: v1.1.0"));
+	t.true(await shows(lastFrame, "Newest version: v1.1.0"));
+	t.true((lastFrame() ?? "").includes("Current version: v1.0.0"));
 
 	await type(stdin, ["\r"]);
-	t.true((lastFrame() ?? "").includes("Installed v1.1.0"));
+	t.true(await shows(lastFrame, "Installed v1.1.0"));
 	t.true(actionsIn(file).includes("updateInstalled"));
 
 	await type(stdin, ["\r"]);
 	t.deepEqual(fake.calls, ["install 1.1.0", "restart"]);
-
-	unmount();
 });
