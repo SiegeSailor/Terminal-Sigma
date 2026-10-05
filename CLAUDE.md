@@ -8,22 +8,23 @@ Path-scoped rules live in [`.claude/rules/`](./.claude/rules/); read the ones wh
 
 TypeScript in `source/` compiles to `build/`, which the NPM package ships. The CLI entry renders [`App`](./source/app.tsx) with Ink into the terminal, and the desktop app renders the same `App` into a window:
 
-| Path                                                                       | Contents                                                                                                 |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| [`desktop/`](./desktop/)                                                   | The Electron wrapper, its own NPM package; see [`desktop/CLAUDE.md`](./desktop/CLAUDE.md)                |
-| [`source/app.tsx`](./source/app.tsx)                                       | The dashboard: views, state, the timer, and saving                                                       |
-| [`source/command-line-interface.tsx`](./source/command-line-interface.tsx) | The `bin`: parses the flags, loads the progress, and renders in the alternate screen                     |
-| [`source/components/`](./source/components/)                               | Presentational Ink components that take everything they show as props                                    |
-| [`source/content.ts`](./source/content.ts)                                 | The layout rules, the menu, the Today sections, the pet's mood, the forms, and how a log is described    |
-| [`source/foods.ts`](./source/foods.ts)                                     | The common foods in all 3 languages, and the suggestions for the food field                              |
-| [`source/health.ts`](./source/health.ts)                                   | Daily targets and advice from the profile: calories, protein, and exercise                               |
-| [`source/i18n.ts`](./source/i18n.ts)                                       | Every user-facing string, in English, Traditional Chinese, and Korean                                    |
-| [`source/pixel-art.ts`](./source/pixel-art.ts)                             | The pet rig: its look from the profile, its gear from the level, and every scene it acts out             |
-| [`source/progress.ts`](./source/progress.ts)                               | The `progress.json` schema with its settings, profile, and events, loading, saving, experience, and logs |
-| [`source/quotes.ts`](./source/quotes.ts)                                   | The bundled quotes in all 3 languages, the quote settings, and the optional API Ninjas fetch             |
-| [`source/tests/`](./source/tests/)                                         | AVA tests, compiled and run from `build/tests/`                                                          |
-| [`source/theme.ts`](./source/theme.ts)                                     | The 5 tonal themes, the palette context, and Claude Code's spinner                                       |
-| [`source/timer.ts`](./source/timer.ts)                                     | The Tomato Timer as pure functions of a timestamp                                                        |
+| Path                                                                       | Contents                                                                                                  |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| [`desktop/`](./desktop/)                                                   | The Electron wrapper, its own NPM package; see [`desktop/CLAUDE.md`](./desktop/CLAUDE.md)                 |
+| [`source/app.tsx`](./source/app.tsx)                                       | The dashboard: views, state, the timer, and saving                                                        |
+| [`source/command-line-interface.tsx`](./source/command-line-interface.tsx) | The `bin`: parses the flags, loads the progress, and renders in the alternate screen                      |
+| [`source/components/`](./source/components/)                               | Presentational Ink components that take everything they show as props                                     |
+| [`source/content.ts`](./source/content.ts)                                 | The layout rules, the menu, the Today sections, the mood, the forms, the update view, and how a log reads |
+| [`source/foods.ts`](./source/foods.ts)                                     | The common foods in all 3 languages, and the suggestions for the food field                               |
+| [`source/health.ts`](./source/health.ts)                                   | Daily targets and advice from the profile: calories, protein, and exercise                                |
+| [`source/i18n.ts`](./source/i18n.ts)                                       | Every user-facing string, in English, Traditional Chinese, and Korean                                     |
+| [`source/pixel-art.ts`](./source/pixel-art.ts)                             | The character rig: its body and clothes from the profile, its gear from the level, and every scene        |
+| [`source/progress.ts`](./source/progress.ts)                               | The `progress.json` schema with its settings, profile, and events, loading, saving, experience, and logs  |
+| [`source/quotes.ts`](./source/quotes.ts)                                   | The bundled quotes in all 3 languages, the quote settings, and the optional API Ninjas fetch              |
+| [`source/tests/`](./source/tests/)                                         | AVA tests, compiled and run from `build/tests/`                                                           |
+| [`source/theme.ts`](./source/theme.ts)                                     | The 5 tonal themes, the palette context, and Claude Code's spinner                                        |
+| [`source/timer.ts`](./source/timer.ts)                                     | The Tomato Timer as pure functions of a timestamp                                                         |
+| [`source/update.ts`](./source/update.ts)                                   | Software Update: the `Updater` both builds implement, the version check, and the NPM updater              |
 
 Logic that branches lives in the plain `.ts` modules as pure functions, so a test can call it without rendering. Components stay presentational.
 

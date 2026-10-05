@@ -5,54 +5,54 @@ paths:
 
 # Terminal Layout
 
-The dashboard fills the whole terminal in the alternate screen buffer, like htop, and [`app.tsx`](../../source/app.tsx) lays it out from the rules in [`content.ts`](../../source/content.ts). The snapshot is 136 columns by 32 rows with a profile set, the colors left out:
+The dashboard fills the whole terminal in the alternate screen buffer, like htop, and [`app.tsx`](../../source/app.tsx) lays it out from the rules in [`content.ts`](../../source/content.ts). The snapshot is 138 columns by 32 rows with a profile set, the colors left out:
 
 ```text
-╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Terminal Sigma                                                                                                            23:17:38 │
-│ “It does not matter how slowly you go as long as you do not stop.” — Confucius                                                       │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭──────────────────────────────────╮╭──────────────────────────────────────╮╭──────────────────────╮╭──────────────────────────────────╮
-│ Ken                         Lv 1 ││                                      ││ ❯ 1. Everyday Quotes ││ Auto · every 25 minutes          │
-│                                  ││  Today                               ││   2. Tomato Timer    ││                                  │
-│                                  ││                                      ││   3. Health          ││ Draw a new quote, or choose how  │
-│                                  ││  Pet              25 XP to Lv 2 75%  ││   4. Logs            ││ often quotes refresh and which   │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   5. Profile         ││ kinds you see.                   │
-│                                  ││  Focus          1 of 4 sessions 25%  ││   6. Theme           ││                                  │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   7. Language        ││ Enter to open                    │
-│                                  ││                                      ││                      ││                                  │
-│                                  ││  Health · Build muscle               ││                      ││                                  │
-│                     ▄ ▄  ▄  ▄▄▄  ││  Protein             12 of 156 g 8%  ││                      ││                                  │
-│                     ▀▀▀ ▀▀▀ ▀▀▀  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                      ││                                  │
-│                                  ││  Calories 350 of 2,410 kcal · … 15%  ││                      ││                                  │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                      ││                                  │
-│                                  ││  Workout       30 of 45 minutes 67%  ││                      ││                                  │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                      ││                                  │
-│                                  ││  ⏺ 15 more minutes of exercise tod…  ││                      ││                                  │
-│      ▄                           ││                                      ││                      ││                                  │
-│     ▀▄▀▄▄▄▄▄▄▄▄                  ││                                      ││                      ││                                  │
-│    ▀▀▀▀▀▀▀▀▀▀▀▀▀                 ││                                      │╰──────────────────────╯╰──────────────────────────────────╯
-│    ▀▀▀▀▀▀▀▀▀▀▀▀▀                 ││                                      │╭──────────────────────────────────────────────────────────╮
-│ ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              ││                                      ││ Recent                                                   │
-│ ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              ││                                      ││ 10/04, 23:17 Action   Opened Terminal Sigma              │
-│     ▀ ▀     ▀ ▀                  ││                                      ││ 10/04, 23:02 Focus    25-minute focus             +25 XP │
-│                                  ││                                      ││ 10/04, 23:02 Diet     Oatmeal · 350 kcal · 12 …    +5 XP │
-│ ✻ Wandering…                     ││                                      ││ 10/04, 23:02 Workout  Running · 30 min · Moder…   +45 XP │
-╰──────────────────────────────────╯╰──────────────────────────────────────╯╰──────────────────────────────────────────────────────────╯
- ⏺ Progress is saved to ~/.terminal-sigma/progress.json                                                                ↑↓ move · enter open · q quit
+╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✻ Terminal Sigma                                                                                                              00:31:56 │
+│ “Love all, trust a few, do wrong to none.” — William Shakespeare                                                                       │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────╮╭──────────────────────────────────────╮╭────────────────────────╮╭──────────────────────────────────╮
+│ Ken                         Lv 1 ││                                      ││ ❯ 1. Everyday Quotes   ││ Auto · every 25 minutes          │
+│                                  ││  Today                               ││   2. Tomato Timer      ││                                  │
+│                                  ││                                      ││   3. Health            ││ Draw a new quote, or choose how  │
+│                                  ││  Character        25 XP to Lv 2 75%  ││   4. Logs              ││ often quotes refresh and which   │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   5. Profile           ││ kinds you see.                   │
+│                                  ││  Focus          1 of 4 sessions 25%  ││   6. Theme             ││                                  │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   7. Language          ││ Enter to open                    │
+│                                  ││                                      ││   8. Software Update   ││                                  │
+│                                  ││  Health · Build muscle               ││                        ││                                  │
+│                                  ││  Protein             12 of 156 g 8%  ││                        ││                                  │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││                                  │
+│       ▄▀▀▀▄                      ││  Calories 350 of 2,410 kcal · … 15%  ││                        ││                                  │
+│       ▀▀▀▀▀                      ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││                                  │
+│       ▄▀▀▀▄                      ││  Workout       30 of 45 minutes 67%  ││                        ││                                  │
+│  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                 ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││                                  │
+│  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                 ││  ⏺ 15 more minutes of exercise tod…  ││                        ││                                  │
+│  ▀▀  ▀▀▀▀▀▀▀  ▀▀                 ││                                      ││                        ││                                  │
+│  ▀▀  ▀▀▀▀▀▀▀  ▀▀                 ││                                      ││                        ││                                  │
+│   ▀  ▀▀▀ ▀▀▀  ▀                  ││                                      │╰────────────────────────╯╰──────────────────────────────────╯
+│      ▀▀▀ ▀▀▀                     ││                                      │╭────────────────────────────────────────────────────────────╮
+│       ▀▀ ▀▀                      ││                                      ││ Recent                                                     │
+│    ▄▄▄▀▀▄▀▀▄▄▄                   ││                                      ││ 10/05, 00:31 Action   Opened Terminal Sigma                │
+│  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                 ││                                      ││ 10/05, 00:31 Focus    25-minute focus               +25 XP │
+│                                  ││                                      ││ 10/05, 00:31 Diet     Oatmeal · 350 kcal · 12 g …    +5 XP │
+│ ✻ Wandering…                     ││                                      ││ 10/05, 00:31 Workout  Running · 30 min · Moderate   +45 XP │
+╰──────────────────────────────────╯╰──────────────────────────────────────╯╰────────────────────────────────────────────────────────────╯
+ ⏺ Progress is saved to ~/.terminal-sigma/progress.json                                                                  ↑↓ move · enter open · q quit
 ```
 
 The regions of the dashboard:
 
-| Region      | Contents                                                                                                 |
-| ----------- | -------------------------------------------------------------------------------------------------------- |
-| Character   | Name, level, the stage the pet walks on, a blank row, then a Claude Code spinner with what it is doing   |
-| Description | The right box of the menu: what the focused item does, or once opened, its options, form, or picker      |
-| Footer      | 1 line: a spinner and the timer while it runs, otherwise a bullet and the last event, then the key hints |
-| Header      | `✻ Terminal Sigma`, the clock, and the everyday quote on 1 truncated line                                |
-| Menu        | The left box: the 7 numbered items, highlighted while it takes the input                                 |
-| Recent      | Its own block under the menu: the 4 latest logs                                                          |
-| Today       | Pet and Focus bars, then the Health group: protein, calories, and workout, with the most urgent advice   |
+| Region      | Contents                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------ |
+| Character   | Name, level, the stage the character walks on, a blank row, then a Claude Code spinner with what it is doing |
+| Description | The right box of the menu: what the focused item does, or once opened, its options, form, or picker          |
+| Footer      | 1 line: a spinner and the timer while it runs, otherwise a bullet and the last event, then the key hints     |
+| Header      | `✻ Terminal Sigma`, the clock, and the everyday quote on 1 truncated line                                    |
+| Menu        | The left box: the 8 numbered items, highlighted while it takes the input, padded evenly on both sides        |
+| Recent      | Its own block under the menu: the 4 latest logs                                                              |
+| Today       | Character and Focus bars, then the Health group: protein, calories, and workout, with the most urgent advice |
 
 The Logs view takes the place of the Menu, the Description, and Recent while it is open. Today draws each bar with `▀`, half a row tall, right under its label, which carries the percentage because text centers in its row; there is no blank row between items, only a group gets a blank row above it, and the border padding goes when `layoutOf` marks it compact.
 
@@ -63,10 +63,10 @@ The Logs view takes the place of the Menu, the Description, and Recent while it 
 | Columns  | Layout                                                                                   |
 | -------- | ---------------------------------------------------------------------------------------- |
 | 120 up   | Character, Today, and the Menu over Recent, side by side; Today is compact below 24 rows |
-| 80 - 119 | Character beside the Menu over Recent, with Today below from 40 rows, compact below 43   |
+| 80 - 119 | Character beside the Menu over Recent, with Today below from 42 rows, compact below 45   |
 | Below 80 | The Menu and Recent, then Character, then Today, each from as many rows as it needs      |
 
-The Description sits beside the Menu once the panel is 60 columns wide, which takes 136 columns at 120 up, 96 from 80, and 60 below 80; otherwise it sits under the Menu. Update `layoutOf` and its test together, never the widths inside a component.
+The Description sits beside the Menu once the panel is 62 columns wide, which takes 138 columns at 120 up, 98 from 80, and 62 below 80; otherwise it sits under the Menu. Update `layoutOf` and its test together, never the widths inside a component.
 
 ## Rules for Components
 
