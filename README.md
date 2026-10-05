@@ -10,7 +10,7 @@ Terminal-Sigma is a terminal-based application that gives game-style feedback on
 
 | Component             | What It Does                                                                                                  |
 | --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Character Progression | A pixel-art pet, shaped by your profile, dressed by your level, and woken up by what you log today            |
+| Character Progression | A pixel-art you, shaped by your profile, dressed by your level, and woken up by what you log today            |
 | Everyday Quotes       | An inspiring quote that refreshes on your schedule, filtered by category, author, or work                     |
 | Health                | Your meals and workouts against daily targets worked out from your profile, with advice for the rest of today |
 | Logs                  | Every focus, meal, workout, and action you took, with the latest 4 in a Recent block under the menu           |
@@ -50,7 +50,7 @@ Download the file for your system from the [latest release](https://github.com/S
 > xattr -dr com.apple.quarantine "/Applications/Terminal Sigma.app"
 > ```
 
-The desktop app opens the dashboard in its own window, sends a system notification when a focus or break ends, and uses your profile's name and the default timer options below.
+The desktop app opens the dashboard in its own window, sends a system notification when a focus or break ends, and uses your profile's name and the default timer options below. It updates itself from **Software Update** in the menu.
 
 ## Usage
 
@@ -72,19 +72,20 @@ On the first run, it asks for your language and saves the answer in `progress.js
 
 The menu drives everything. It sits in 2 boxes: the items on the left, and on the right what the focused item does, which turns into its options once you press Enter:
 
-| Key | Item            | Enter Opens                                                                               |
-| --- | --------------- | ----------------------------------------------------------------------------------------- |
-| `1` | Everyday Quotes | A new quote, and the settings below                                                       |
-| `2` | Tomato Timer    | Start a focus, or pause, resume, or stop the running one                                  |
-| `3` | Health          | Today's targets and advice, then log a meal or a workout                                  |
-| `4` | Logs            | Every log and action, newest first, with a filter per kind                                |
-| `5` | Profile         | Your name, age, height, weight, gender, work style, and health goal, showing saved values |
-| `6` | Theme           | The color tone of the dashboard and your pet, previewing each one as the cursor moves     |
-| `7` | Language        | English, Traditional Chinese, or Korean                                                   |
+| Key | Item            | Enter Opens                                                                                 |
+| --- | --------------- | ------------------------------------------------------------------------------------------- |
+| `1` | Everyday Quotes | A new quote, and the settings below                                                         |
+| `2` | Tomato Timer    | Start a focus, or pause, resume, or stop the running one                                    |
+| `3` | Health          | Today's targets and advice, then log a meal or a workout                                    |
+| `4` | Logs            | Every log and action, newest first, with a filter per kind                                  |
+| `5` | Profile         | Your name, age, height, weight, gender, work style, and health goal, showing saved values   |
+| `6` | Theme           | The color tone of the dashboard and your character, previewing each one as the cursor moves |
+| `7` | Language        | English, Traditional Chinese, or Korean                                                     |
+| `8` | Software Update | The version you run and the newest one, with an update when there is one                    |
 
 A meal asks for the food, its calories, and its protein; a workout asks for the activity, its minutes, and its intensity, one at a time. The food field suggests as you type, your past meals first and then 112 common foods matched in any of the 3 languages, and picking one fills in its calories and protein. The activity offers your 3 latest workouts to repeat in 1 step. A stopped focus earns nothing.
 
-Everything else you do is logged too, without experience: opening the app, starting, pausing, resuming, or stopping a tomato, finishing a break, leveling up, drawing a quote, and changing the language, the theme, the profile, or a quote setting.
+Everything else you do is logged too, without experience: opening the app, starting, pausing, resuming, or stopping a tomato, finishing a break, leveling up, drawing a quote, changing the language, the theme, the profile, or a quote setting, and updating.
 
 ### Everyday Quotes
 
@@ -102,17 +103,28 @@ Each setting is saved as soon as you choose it:
 
 Without an API key, the settings filter the 28 bundled quotes, which cover every category in all 3 languages, and fall back to all of them when nothing matches. With `API_NINJAS_KEY`, they become the query to API Ninjas.
 
-### Pet
+### Character
 
-Your character is a pixel-art pet in the spirit of Claude Code's mascot. It wanders around its panel and switches to typing at a laptop, sipping from a cup, eating, running, lifting, or stretching to match what you do. 3 things shape it:
+Your character is a pixel-art you, standing on its own shadow. It wanders around its panel, looks about, and switches to typing at a desk, sipping a coffee, eating, running, lifting, or stretching to match what you do. 3 things shape it:
 
-| Shaped By    | What Changes                                                                                                                                                                   |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Level        | It grows at levels 4 and 7, and gains 1 piece of gear per level up to level 9: headphones, a scarf, a cap, an orb, an antenna, a cape, a crown, and sparkles                   |
-| Profile      | Its size follows your height and its width your weight for that height; a bow, a tuft, or a sprout follows your gender                                                         |
-| Today's Logs | It naps until you log something, and beams once you meet your protein and exercise targets or finish 4 focus sessions; a tomato, an apple, and a dumbbell show what you logged |
+| Shaped By    | What Changes                                                                                                                                                                                     |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Level        | 1 piece of gear per level up to level 9: headphones, a scarf, a cap, a backpack, a smartwatch, a jacket, a crown, and a medal                                                                    |
+| Profile      | The height follows yours, and the build your weight for that height, from slim to heavy; gender sets the shoulders, hips, and hair, age greys the hair, and a muscle goal broadens the shoulders |
+| Today's Logs | It dozes on its feet until you log something, and smiles and waves once you meet your protein and exercise targets or finish 4 focus sessions                                                    |
 
-Your health goal adds a sweatband to lose fat, a heart to maintain, bigger arms to build muscle, or sneakers for endurance.
+Your work style dresses it: a hoodie and jeans at a desk, a shirt and an apron when standing, a tee and cargo pants when active, and a tank top and shorts as an athlete.
+
+### Software Update
+
+**Software Update** shows the version you run and the newest one, and checks once on start so the menu can tell you when there is a newer one. Choosing the update installs it, and **Restart now** starts the new version in place:
+
+| Running As | How It Updates                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------------- |
+| CLI        | `npm install --global @siegesailor/terminal-sigma@<version>`, then the same command starts again   |
+| Desktop    | Downloads this system's file from the release, swaps it in for the running app, and opens it again |
+
+The desktop app waits until the release has its file for your system, a few minutes after the CLI. On Linux it updates the AppImage, and on Windows it runs the installer silently.
 
 ### Health Targets
 
@@ -132,7 +144,7 @@ Every view shows its keys at the bottom right:
 
 | Key                       | Action                                                                   |
 | ------------------------- | ------------------------------------------------------------------------ |
-| `1` to `7`                | Jump to a menu item                                                      |
+| `1` to `8`                | Jump to a menu item                                                      |
 | Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters          |
 | Enter                     | Open the item, choose the option, or go to the next field                |
 | Esc                       | Go back to the menu, or out of a quote setting, without logging anything |
@@ -208,7 +220,7 @@ Each setting takes 1 of a fixed set of values:
 
 | Field                                  | Values                                                                                                                                                                                                                  |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `events.action`                        | `appOpened`, `breakOver`, `languageChanged`, `levelUp`, `profileSaved`, `quoteDrawn`, `quoteSettingsChanged`, `themeChanged`, `timerPaused`, `timerResumed`, `timerStarted`, or `timerStopped`                          |
+| `events.action`                        | `appOpened`, `breakOver`, `languageChanged`, `levelUp`, `profileSaved`, `quoteDrawn`, `quoteSettingsChanged`, `themeChanged`, `timerPaused`, `timerResumed`, `timerStarted`, `timerStopped`, or `updateInstalled`       |
 | `language`                             | `en`, `ko`, or `zh-TW`                                                                                                                                                                                                  |
 | `profile.gender`                       | `female`, `male`, or `other`                                                                                                                                                                                            |
 | `profile.goal`                         | `buildMuscle`, `endurance`, `loseFat`, or `maintain`                                                                                                                                                                    |
@@ -222,7 +234,7 @@ Each setting takes 1 of a fixed set of values:
 
 Every setting is optional, and files written by version 1 still load as they are.
 
-Every 100 XP is a level, and every level from level 2 to level 9 gives your pet 1 piece of gear. Experience is earned as follows:
+Every 100 XP is a level, and every level from level 2 to level 9 gives your character 1 piece of gear. Experience is earned as follows:
 
 | Entry          | Experience                                                            |
 | -------------- | --------------------------------------------------------------------- |
