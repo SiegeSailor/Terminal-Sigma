@@ -6,6 +6,7 @@ import React from "react";
 import { render } from "ink-testing-library";
 import App from "../app.js";
 import { loadConfig } from "../config.js";
+import { messagesOf } from "../i18n.js";
 import { loadProgress, type Progress } from "../progress.js";
 import type { Updater } from "../update.js";
 
@@ -448,6 +449,7 @@ test("a language switch is not a new quote", async (t) => {
 	// Language, then 繁體中文.
 	await type(stdin, ["7", "\r", down, "\r"]);
 	t.false((lastFrame() ?? "").includes("✦"));
+	t.true((lastFrame() ?? "").includes(messagesOf("zh-TW").menu.timer));
 
 	unmount();
 });
