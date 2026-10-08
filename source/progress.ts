@@ -149,7 +149,7 @@ const quotesSchema = zod.object({
 	work: zod.string().default(""),
 });
 
-const profileSchema = zod.object({
+const profileSchema = zod.looseObject({
 	name: zod.string().min(1),
 	age: zod.number().int().min(10).max(100),
 	height: zod.number().min(100).max(250),
@@ -160,7 +160,7 @@ const profileSchema = zod.object({
 	goal: zod.enum(healthGoals),
 });
 
-export const progressSchema = zod.object({
+export const progressSchema = zod.looseObject({
 	language: zod.enum(languages).optional(),
 	theme: zod.enum(themeNames).optional(),
 	profile: profileSchema.optional(),

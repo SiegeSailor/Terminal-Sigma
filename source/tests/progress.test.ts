@@ -165,6 +165,40 @@ test("never saves what it could not load", (t) => {
 	t.deepEqual(loadProgress(file), sample);
 });
 
+test("keeps fields from a newer version through a save", (t) => {
+	const file = temporaryFile();
+	writeFileSync(
+		file,
+		JSON.stringify({
+			language: "en",
+			newerField: { a: 1 },
+			profile: {
+				name: "Nova",
+				age: 30,
+				height: 170,
+				weight: 60,
+				gender: "other",
+				workStyle: "desk",
+				goal: "maintain",
+				newerProfileField: "kept",
+			},
+		}),
+	);
+	saveProgress(file, loadProgress(file));
+
+	const saved: Record<string, unknown> = loadProgress(file);
+	t.deepEqual(saved.newerField, { a: 1 });
+	t.like(saved.profile, { newerProfileField: "kept" });
+	t.throws(() => {
+		saveProgress(file, {
+			...loadProgress(file),
+			workouts: [
+				{ at: "2026-10-03T07:00:00.000Z", activity: "Run", minutes: 0 },
+			],
+		});
+	});
+});
+
 // A local time on 3 October 2026, so day boundaries hold in any time zone.
 const local = (hour: number, minute = 0, day = 3) =>
 	new Date(2026, 9, day, hour, minute).toISOString();
