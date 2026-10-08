@@ -1,9 +1,11 @@
 import type { Option } from "./components/choice.js";
 import type { Combination, Field } from "./components/entry-form.js";
 import type { Section } from "./components/today-panel.js";
+import { exerciseName, setGroupsOf } from "./exercises.js";
 import { foodSuggestions } from "./foods.js";
 import { adviceOf, targetsOf } from "./health.js";
 import {
+	durationOf,
 	formatNumber,
 	genders,
 	healthGoals,
@@ -13,6 +15,7 @@ import {
 	type Messages,
 	messagesOf,
 	type Mood,
+	type WorkoutActivity,
 	workoutActivities,
 	workStyles,
 } from "./i18n.js";
@@ -21,6 +24,7 @@ import {
 	type Event,
 	experienceOf,
 	experiencePerLevel,
+	type Logged,
 	type Meal,
 	type Profile,
 	type Progress,
@@ -523,6 +527,123 @@ export function describeEvent(messages: Messages, event: Event) {
 	}
 
 	return events[event.action](detail);
+}
+
+const isWorkoutActivity = (activity: string): activity is WorkoutActivity =>
+	(workoutActivities as readonly string[]).includes(activity);
+
+const joined = (...parts: Array<string | false>) =>
+	parts.filter(Boolean).join(" · ");
+
+function describeWorkout(
+	workout: Workout,
+	language: Language,
+	messages: Messages,
+) {
+	const { activity, minutes, intensity, sets, distance, calories } = workout;
+	const format = (value: number) => formatNumber(language, value);
+	const groups = setGroupsOf(sets).map((group, index, all) => {
+		const name =
+			all[index - 1]?.exercise === group.exercise
+				? ""
+				: `${exerciseName(group.exercise, language)} `;
+		const count = group.count > 1 ? `×${group.count}` : "";
+		return `${name}${format(group.weight)}×${group.reps}${count}`;
+	});
+
+	return joined(
+		messages.logs.workoutEntry(
+			isWorkoutActivity(activity)
+				? messages.workoutActivity[activity]
+				: activity,
+			minutes,
+			intensity ? messages.intensity[intensity] : "-",
+		),
+		groups.join(", "),
+		distance !== undefined && messages.logs.distance(format(distance)),
+		calories !== undefined && messages.logs.burned(format(calories)),
+	);
+}
+
+// 1 entry as a line of the logs, in the language on now.
+export function describeLog(
+	log: Logged,
+	language: Language,
+	messages: Messages,
+): string {
+	const { logs } = messages;
+	const format = (value: number) => formatNumber(language, value);
+	const optional = <Value>(
+		value: Value | undefined,
+		text: (value: Value) => string,
+	) => value !== undefined && text(value);
+
+	switch (log.kind) {
+		case "focus": {
+			return logs.focusEntry(log.entry.minutes);
+		}
+
+		case "meal": {
+			const { food, servings, calories, protein } = log.entry;
+			return logs.mealEntry(
+				servings === undefined ? food : `${format(servings)} × ${food}`,
+				calories === undefined ? "-" : format(calories),
+				protein === undefined ? "-" : format(protein),
+			);
+		}
+
+		case "workout": {
+			return describeWorkout(log.entry, language, messages);
+		}
+
+		case "water": {
+			return logs.waterEntry(format(log.entry.milliliters));
+		}
+
+		case "sleep": {
+			return joined(
+				logs.sleepEntry(durationOf(log.entry.minutes, messages)),
+				optional(log.entry.quality, logs.quality),
+			);
+		}
+
+		case "body": {
+			return joined(
+				optional(log.entry.weight, (weight) => logs.weight(format(weight))),
+				optional(log.entry.waist, (waist) => logs.waist(format(waist))),
+				optional(log.entry.bodyFat, (fat) => logs.bodyFat(format(fat))),
+			);
+		}
+
+		case "mood": {
+			const { score, energy, stress, tags = [] } = log.entry;
+			return joined(
+				logs.moodEntry(score),
+				optional(energy, logs.energy),
+				optional(stress, logs.stress),
+				tags.map((tag) => `#${tag}`).join(" "),
+			);
+		}
+
+		case "habit": {
+			const { name, amount, skipped } = log.entry;
+			return skipped
+				? logs.skipped(name)
+				: joined(name, optional(amount, format));
+		}
+
+		case "steps": {
+			return logs.stepsEntry(format(log.entry.count));
+		}
+
+		case "note": {
+			return log.entry.text;
+		}
+
+		case "event": {
+			return describeEvent(messages, log.entry);
+		}
+	}
 }
 
 export const dietFieldsOf = (

@@ -7,6 +7,7 @@ import {
 	type WorkoutActivity,
 	workoutActivities,
 } from "./i18n.js";
+import type { Workout } from "./progress.js";
 
 // METs from the 2024 Adult Compendium of Physical Activities, used as
 // published with their activity codes: https://pacompendium.com/
@@ -187,3 +188,31 @@ export const intensityOf = (word: string) =>
 
 export const exerciseName = (id: string, language: Language) =>
 	exercises.find((exercise) => exercise.id === id)?.names[language] ?? id;
+
+export type SetGroup = Readonly<{
+	exercise: string;
+	weight: number;
+	reps: number;
+	count: number;
+}>;
+
+// Runs of identical sets, so 3 sets of 60 kg × 5 read as 60×5×3.
+export function setGroupsOf(sets: Workout["sets"] = []): SetGroup[] {
+	const groups: SetGroup[] = [];
+
+	for (const { exercise, reps, weight = 0 } of sets) {
+		const last = groups.at(-1);
+
+		if (
+			last?.exercise === exercise &&
+			last.weight === weight &&
+			last.reps === reps
+		) {
+			groups[groups.length - 1] = { ...last, count: last.count + 1 };
+		} else {
+			groups.push({ exercise, weight, reps, count: 1 });
+		}
+	}
+
+	return groups;
+}

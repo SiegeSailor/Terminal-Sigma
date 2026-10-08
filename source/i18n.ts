@@ -1,5 +1,5 @@
 import type { Source, VariableGroup, VariableName } from "./config.js";
-import type { EventAction } from "./progress.js";
+import type { EventAction, LogKind } from "./progress.js";
 import type { QuoteCategory, QuoteMode } from "./quotes.js";
 import type { ThemeName } from "./theme.js";
 import type { Updater } from "./update.js";
@@ -353,10 +353,19 @@ const en = {
 	logs: {
 		title: "Logs",
 		all: "All",
-		focus: "Focus",
-		diet: "Diet",
-		workout: "Workout",
-		event: "Action",
+		kinds: {
+			focus: "Focus",
+			meal: "Diet",
+			workout: "Workout",
+			water: "Water",
+			sleep: "Sleep",
+			body: "Body",
+			mood: "Mood",
+			habit: "Habit",
+			steps: "Steps",
+			note: "Note",
+			event: "Action",
+		} satisfies Record<LogKind, string>,
 		empty: "Nothing logged yet.",
 		summary: (count: number, xp: number) =>
 			`${count} ${count === 1 ? "log" : "logs"} · ${xp} XP`,
@@ -365,6 +374,21 @@ const en = {
 			`${food} · ${calories} kcal · ${protein} g protein`,
 		workoutEntry: (activity: string, minutes: number, intensity: string) =>
 			`${activity} · ${minutes} min · ${intensity}`,
+		distance: (kilometers: string) => `${kilometers} km`,
+		burned: (calories: string) => `${calories} kcal burned`,
+		waterEntry: (milliliters: string) => `${milliliters} ml of water`,
+		sleepEntry: (duration: string) => `Slept ${duration}`,
+		quality: (score: number) => `quality ${score}/5`,
+		weight: (kilograms: string) => `${kilograms} kg`,
+		waist: (centimeters: string) => `waist ${centimeters} cm`,
+		bodyFat: (percent: string) => `body fat ${percent}%`,
+		moodEntry: (score: number) => `Mood ${score}/5`,
+		energy: (score: number) => `energy ${score}/5`,
+		stress: (score: number) => `stress ${score}/5`,
+		skipped: (name: string) => `Skipped ${name}`,
+		stepsEntry: (count: string) => `${count} steps`,
+		hours: (hours: number) => `${hours}h`,
+		minutes: (minutes: number) => `${minutes}m`,
 	},
 	recent: {
 		title: "Recent",
@@ -705,10 +729,19 @@ const traditionalChinese: Messages = {
 	logs: {
 		title: "所有紀錄",
 		all: "全部",
-		focus: "專注",
-		diet: "飲食",
-		workout: "運動",
-		event: "操作",
+		kinds: {
+			focus: "專注",
+			meal: "飲食",
+			workout: "運動",
+			water: "喝水",
+			sleep: "睡眠",
+			body: "身體",
+			mood: "心情",
+			habit: "習慣",
+			steps: "步數",
+			note: "筆記",
+			event: "操作",
+		},
 		empty: "尚無紀錄。",
 		summary: (count, xp) => `共 ${count} 筆 · ${xp} XP`,
 		focusEntry: (minutes) => `專注 ${minutes} 分鐘`,
@@ -716,6 +749,21 @@ const traditionalChinese: Messages = {
 			`${food} · ${calories} 大卡 · 蛋白質 ${protein} 克`,
 		workoutEntry: (activity, minutes, intensity) =>
 			`${activity} · ${minutes} 分鐘 · ${intensity}`,
+		distance: (kilometers) => `${kilometers} 公里`,
+		burned: (calories) => `消耗 ${calories} 大卡`,
+		waterEntry: (milliliters) => `喝水 ${milliliters} 毫升`,
+		sleepEntry: (duration) => `睡了 ${duration}`,
+		quality: (score) => `品質 ${score}/5`,
+		weight: (kilograms) => `${kilograms} 公斤`,
+		waist: (centimeters) => `腰圍 ${centimeters} 公分`,
+		bodyFat: (percent) => `體脂 ${percent}%`,
+		moodEntry: (score) => `心情 ${score}/5`,
+		energy: (score) => `精力 ${score}/5`,
+		stress: (score) => `壓力 ${score}/5`,
+		skipped: (name) => `略過 ${name}`,
+		stepsEntry: (count) => `${count} 步`,
+		hours: (hours) => `${hours} 小時`,
+		minutes: (minutes) => `${minutes} 分`,
 	},
 	recent: {
 		title: "最近",
@@ -1055,10 +1103,19 @@ const korean: Messages = {
 	logs: {
 		title: "전체 기록",
 		all: "전체",
-		focus: "집중",
-		diet: "식단",
-		workout: "운동",
-		event: "활동",
+		kinds: {
+			focus: "집중",
+			meal: "식단",
+			workout: "운동",
+			water: "물",
+			sleep: "수면",
+			body: "신체",
+			mood: "기분",
+			habit: "습관",
+			steps: "걸음",
+			note: "메모",
+			event: "활동",
+		},
 		empty: "아직 기록이 없습니다.",
 		summary: (count, xp) => `${count}개 · ${xp} XP`,
 		focusEntry: (minutes) => `${minutes}분 집중`,
@@ -1066,6 +1123,21 @@ const korean: Messages = {
 			`${food} · ${calories} kcal · 단백질 ${protein}g`,
 		workoutEntry: (activity, minutes, intensity) =>
 			`${activity} · ${minutes}분 · ${intensity}`,
+		distance: (kilometers) => `${kilometers}km`,
+		burned: (calories) => `${calories} kcal 소모`,
+		waterEntry: (milliliters) => `물 ${milliliters}ml`,
+		sleepEntry: (duration) => `${duration} 수면`,
+		quality: (score) => `만족도 ${score}/5`,
+		weight: (kilograms) => `${kilograms}kg`,
+		waist: (centimeters) => `허리 ${centimeters}cm`,
+		bodyFat: (percent) => `체지방 ${percent}%`,
+		moodEntry: (score) => `기분 ${score}/5`,
+		energy: (score) => `에너지 ${score}/5`,
+		stress: (score) => `스트레스 ${score}/5`,
+		skipped: (name) => `${name} 건너뜀`,
+		stepsEntry: (count) => `${count}걸음`,
+		hours: (hours) => `${hours}시간`,
+		minutes: (minutes) => `${minutes}분`,
 	},
 	recent: {
 		title: "최근",
@@ -1121,3 +1193,16 @@ export const messagesOf = (language: Language): Messages =>
 
 export const formatNumber = (language: Language, value: number) =>
 	value.toLocaleString(language);
+
+// "7h 40m", "7 小時 40 分", "7시간 40분".
+export function durationOf(minutes: number, messages: Messages) {
+	const hours = Math.floor(minutes / 60);
+	const rest = Math.round(minutes % 60);
+
+	return [
+		hours > 0 ? messages.logs.hours(hours) : "",
+		rest > 0 || hours === 0 ? messages.logs.minutes(rest) : "",
+	]
+		.filter(Boolean)
+		.join(" ");
+}

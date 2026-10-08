@@ -7,17 +7,11 @@ import { render } from "ink-testing-library";
 import App from "../app.js";
 import { loadConfig } from "../config.js";
 import { messagesOf } from "../i18n.js";
-import { loadProgress, type Progress } from "../progress.js";
+import { loadProgress, type Progress, progressSchema } from "../progress.js";
 import type { Updater } from "../update.js";
 
 const options = { name: "Nova", focus: 25, break: 5 };
-const empty: Progress = {
-	language: "en",
-	focus: [],
-	meals: [],
-	workouts: [],
-	events: [],
-};
+const empty = progressSchema.parse({ language: "en" });
 const down = "\u001B[B";
 const up = "\u001B[A";
 const backspace = "\u007F";
@@ -135,12 +129,7 @@ test("renders the dashboard with the menu in order", async (t) => {
 });
 
 test("asks for a language on the first run and saves it", async (t) => {
-	const { file, stdin, lastFrame, unmount } = start({
-		focus: [],
-		meals: [],
-		workouts: [],
-		events: [],
-	});
+	const { file, stdin, lastFrame, unmount } = start(progressSchema.parse({}));
 
 	t.true((lastFrame() ?? "").includes("언어 선택"));
 	await type(stdin, [down, "\r"]);

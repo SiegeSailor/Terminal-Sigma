@@ -1114,7 +1114,7 @@ export default function App({
 			{logs.length === 0 ? <Text dimColor>{messages.recent.empty}</Text> : null}
 			{logs.slice(0, recentCount).map((log) => (
 				<LogRow
-					key={`${log.kind}-${log.at}`}
+					key={`${log.kind}-${log.index}`}
 					language={language}
 					log={log}
 					messages={messages}

@@ -1,62 +1,21 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
-import {
-	formatNumber,
-	type Language,
-	type Messages,
-	workoutActivities,
-	type WorkoutActivity,
-} from "../i18n.js";
-import { describeEvent } from "../content.js";
+import type { Language, Messages } from "../i18n.js";
+import { describeLog } from "../content.js";
 import type { Log } from "../progress.js";
 import { usePalette } from "../theme.js";
+
+export { describeLog } from "../content.js";
 
 const filters = ["all", "focus", "meal", "workout", "event"] as const;
 type Filter = (typeof filters)[number];
 
-const isWorkoutActivity = (activity: string): activity is WorkoutActivity =>
-	(workoutActivities as readonly string[]).includes(activity);
-
-export function describeLog(log: Log, language: Language, messages: Messages) {
-	const amount = (value: number | undefined) =>
-		value === undefined ? "-" : formatNumber(language, value);
-
-	switch (log.kind) {
-		case "focus": {
-			return messages.logs.focusEntry(log.entry.minutes);
-		}
-
-		case "meal": {
-			return messages.logs.mealEntry(
-				log.entry.food,
-				amount(log.entry.calories),
-				amount(log.entry.protein),
-			);
-		}
-
-		case "event": {
-			return describeEvent(messages, log.entry);
-		}
-
-		case "workout": {
-			const { activity, minutes, intensity } = log.entry;
-			return messages.logs.workoutEntry(
-				isWorkoutActivity(activity)
-					? messages.workoutActivity[activity]
-					: activity,
-				minutes,
-				intensity ? messages.intensity[intensity] : "-",
-			);
-		}
-	}
-}
-
 const kindLabels = (messages: Messages): Record<Filter, string> => ({
 	all: messages.logs.all,
-	focus: messages.logs.focus,
-	meal: messages.logs.diet,
-	workout: messages.logs.workout,
-	event: messages.logs.event,
+	focus: messages.logs.kinds.focus,
+	meal: messages.logs.kinds.meal,
+	workout: messages.logs.kinds.workout,
+	event: messages.logs.kinds.event,
 });
 
 type LogRowProps = Readonly<{
@@ -71,6 +30,13 @@ export function LogRow({ log, language, messages }: LogRowProps) {
 		focus: palette.metrics.focus,
 		meal: palette.metrics.protein,
 		workout: palette.metrics.workout,
+		water: palette.soft,
+		sleep: palette.deep,
+		body: palette.metrics.character,
+		mood: palette.accent,
+		habit: palette.metrics.calories,
+		steps: palette.metrics.workout,
+		note: palette.soft,
 		event: palette.soft,
 	};
 	const formatDate = new Intl.DateTimeFormat(language, {
@@ -88,7 +54,7 @@ export function LogRow({ log, language, messages }: LogRowProps) {
 			</Box>
 			<Box flexShrink={0} width={8}>
 				<Text color={kindColor[log.kind]} wrap="truncate-end">
-					{kindLabels(messages)[log.kind]}
+					{messages.logs.kinds[log.kind]}
 				</Text>
 			</Box>
 			<Box flexGrow={1}>
@@ -189,7 +155,7 @@ export default function LogsView({
 				) : null}
 				{shown.slice(offset, offset + pageSize).map((log) => (
 					<LogRow
-						key={`${log.kind}-${log.at}`}
+						key={`${log.kind}-${log.index}`}
 						language={language}
 						log={log}
 						messages={messages}

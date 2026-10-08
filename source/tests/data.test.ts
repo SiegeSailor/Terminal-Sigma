@@ -1,14 +1,20 @@
 import test from "ava";
 import {
 	describeEvent,
+	describeLog,
 	describeQuoteChange,
 	moodOf,
 	updateViewOf,
 	workoutCombinationsOf,
 } from "../content.js";
 import { commonFoodCount, foodSuggestions } from "../foods.js";
-import { messagesOf } from "../i18n.js";
-import type { Progress } from "../progress.js";
+import { type Language, messagesOf } from "../i18n.js";
+import {
+	type EntryOf,
+	type Logged,
+	type LogKind,
+	progressSchema,
+} from "../progress.js";
 import {
 	bundledPool,
 	bundledQuotes,
@@ -23,13 +29,7 @@ import { isNewer } from "../update.js";
 
 const english = messagesOf("en");
 const at = new Date().toISOString();
-const empty: Progress = {
-	language: "en",
-	focus: [],
-	meals: [],
-	workouts: [],
-	events: [],
-};
+const empty = progressSchema.parse({ language: "en" });
 
 test("suggests foods from the user's meals first, then common ones", (t) => {
 	t.true(commonFoodCount >= 100);
@@ -222,4 +222,70 @@ test("never draws the quote already on screen", (t) => {
 	const one = { ...defaultQuoteSettings, author: "Juvenal" };
 	const only = pickBundled(one, 0, 0);
 	t.is(pickBundled(one, 0, 0.5, only).quote, only.quote, "a pool of 1 repeats");
+});
+
+test("describes every kind of entry in the language on now", (t) => {
+	const describe = (log: Logged, language: Language = "en") =>
+		describeLog(log, language, messagesOf(language));
+	const entry = <Kind extends LogKind>(
+		kind: Kind,
+		fields: Omit<EntryOf[Kind], "at">,
+	) => ({ kind, at, index: 0, entry: { ...fields, at } });
+	const bench = (weight: number, reps: number) => ({
+		exercise: "bench",
+		weight,
+		reps,
+	});
+
+	t.is(
+		describe(
+			entry("meal", { food: "Egg", servings: 2, calories: 144, protein: 12 }),
+		),
+		"2 × Egg · 144 kcal · 12 g protein",
+	);
+	t.is(
+		describe(
+			entry("workout", {
+				activity: "strength",
+				minutes: 9,
+				intensity: "moderate",
+				sets: [bench(60, 5), bench(60, 5), bench(65, 3)],
+			}),
+		),
+		"Strength · 9 min · Moderate · Bench press 60×5×2, 65×3",
+	);
+	t.is(
+		describe(
+			entry("workout", {
+				activity: "running",
+				minutes: 30,
+				intensity: "vigorous",
+				distance: 5,
+				calories: 413,
+			}),
+		),
+		"Running · 30 min · Vigorous · 5 km · 413 kcal burned",
+	);
+	t.is(describe(entry("water", { milliliters: 1500 })), "1,500 ml of water");
+	t.is(
+		describe(entry("sleep", { minutes: 460, quality: 4 })),
+		"Slept 7h 40m · quality 4/5",
+	);
+	t.is(
+		describe(entry("body", { weight: 72.4, bodyFat: 18 })),
+		"72.4 kg · body fat 18%",
+	);
+	t.is(
+		describe(entry("mood", { score: 4, energy: 3, tags: ["work", "friends"] })),
+		"Mood 4/5 · energy 3/5 · #work #friends",
+	);
+	t.is(describe(entry("habit", { name: "read", amount: 30 })), "read · 30");
+	t.is(
+		describe(entry("habit", { name: "read", skipped: true })),
+		"Skipped read",
+	);
+	t.is(describe(entry("steps", { count: 8400 })), "8,400 steps");
+	t.is(describe(entry("note", { text: "grateful" })), "grateful");
+	t.is(describe(entry("sleep", { minutes: 480 }), "zh-TW"), "睡了 8 小時");
+	t.is(describe(entry("water", { milliliters: 500 }), "ko"), "물 500ml");
 });

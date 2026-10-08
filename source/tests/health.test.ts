@@ -1,7 +1,7 @@
 import test from "ava";
 import { adviceOf, targetsOf } from "../health.js";
 import { messagesOf } from "../i18n.js";
-import type { Profile } from "../progress.js";
+import { type Profile, progressSchema, todayOf } from "../progress.js";
 
 const desk: Profile = {
 	name: "Ken",
@@ -14,7 +14,7 @@ const desk: Profile = {
 };
 
 const today = {
-	focusSessions: 0,
+	...todayOf(progressSchema.parse({}), 0),
 	meals: 1,
 	calories: 600,
 	protein: 30,

@@ -5,6 +5,7 @@ import {
 	intensityOf,
 	leadingActivity,
 	leadingExercise,
+	setGroupsOf,
 } from "../exercises.js";
 import {
 	intensities,
@@ -57,4 +58,21 @@ test("matches aliases as whole words, longest first", (t) => {
 test("names a known exercise in each language and keeps any other as typed", (t) => {
 	t.is(exerciseName("bench", "ko"), "벤치프레스");
 	t.is(exerciseName("farmer carry", "en"), "farmer carry");
+});
+
+test("groups identical sets into runs", (t) => {
+	const set = (weight: number, reps: number) => ({
+		exercise: "bench",
+		weight,
+		reps,
+	});
+
+	t.deepEqual(setGroupsOf([set(60, 5), set(60, 5), set(60, 5), set(65, 3)]), [
+		{ exercise: "bench", weight: 60, reps: 5, count: 3 },
+		{ exercise: "bench", weight: 65, reps: 3, count: 1 },
+	]);
+	t.deepEqual(setGroupsOf([{ exercise: "dip", reps: 8 }]), [
+		{ exercise: "dip", weight: 0, reps: 8, count: 1 },
+	]);
+	t.deepEqual(setGroupsOf(undefined), []);
 });
