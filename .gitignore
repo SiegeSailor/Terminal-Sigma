@@ -25,6 +25,7 @@ node_modules/
 # Miscellaneous
 #######################################
 .DS_Store
+.superpowers/
 
 #######################################
 # Test Reports
