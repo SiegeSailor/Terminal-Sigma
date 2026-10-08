@@ -128,7 +128,7 @@ Orange|柳橙|오렌지|62|1|15|0|1 orange|1 顆|1개
 Grapes|葡萄|포도|105|1|25|0|1 cup|1 碗|1컵
 Strawberries|草莓|딸기|50|1|11|0|1 cup|1 碗|1컵
 Blueberries|藍莓|블루베리|85|1|19|0|1 cup|1 碗|1컵
-Avocado|酪梨|아보카多|160|2|9|15|1/2 avocado|半顆|반 개
+Avocado|酪梨|아보카도|160|2|9|15|1/2 avocado|半顆|반 개
 Broccoli|花椰菜|브로콜리|55|4|9|0|1 cup|1 碗|1컵
 Mixed nuts|綜合堅果|견과류|175|5|6|15|1 handful|1 把|한 줌
 Almonds|杏仁|아몬드|165|6|6|14|1 handful|1 把|한 줌
