@@ -442,14 +442,27 @@ export function pickBundled(
 	settings: QuoteSettings,
 	now: number,
 	random = Math.random(),
+	current?: Quote,
 ): Quote {
 	const pool = bundledPool(settings);
-	const index =
-		settings.mode === "daily"
-			? dayOf(now) % pool.length
-			: Math.floor(random * pool.length);
 
-	return pool[index] ?? bundledQuotes[0] ?? { quote: "", author: "" };
+	if (settings.mode === "daily") {
+		return (
+			pool[dayOf(now) % pool.length] ??
+			bundledQuotes[0] ?? { quote: "", author: "" }
+		);
+	}
+
+	// A random draw never repeats the quote on screen, unless it is the only one.
+	const fresh =
+		current && pool.length > 1
+			? pool.filter((quote) => quote.quote !== current.quote)
+			: pool;
+
+	return (
+		fresh[Math.floor(random * fresh.length)] ??
+		bundledQuotes[0] ?? { quote: "", author: "" }
+	);
 }
 
 const apiResponse = zod
@@ -490,9 +503,10 @@ export function quoteRequestOf(settings: QuoteSettings) {
 export async function fetchQuote(
 	settings: QuoteSettings,
 	apiKey = process.env.API_NINJAS_KEY,
+	current?: Quote,
 ): Promise<Quote> {
 	if (!apiKey) {
-		return pickBundled(settings, Date.now());
+		return pickBundled(settings, Date.now(), Math.random(), current);
 	}
 
 	try {
@@ -501,8 +515,42 @@ export async function fetchQuote(
 			signal: AbortSignal.timeout(5000),
 		});
 		const [first] = apiResponse.parse(await response.json());
-		return first ?? pickBundled(settings, Date.now());
+		return first ?? pickBundled(settings, Date.now(), Math.random(), current);
 	} catch {
-		return pickBundled(settings, Date.now());
+		return pickBundled(settings, Date.now(), Math.random(), current);
 	}
+}
+
+// How long a new quote stays marked, and how long it takes to type itself in.
+export const quoteNoticeMilliseconds = 8000;
+export const quoteTypingMilliseconds = 800;
+
+export type QuoteNotice = Readonly<{ isNew: boolean; shown: number }>;
+
+export function quoteNoticeOf(
+	changedAt: number | undefined,
+	now: number,
+	isReduced: boolean,
+): QuoteNotice {
+	if (changedAt === undefined || now - changedAt >= quoteNoticeMilliseconds) {
+		return { isNew: false, shown: 1 };
+	}
+
+	return {
+		isNew: true,
+		shown: isReduced
+			? 1
+			: Math.min(Math.max((now - changedAt) / quoteTypingMilliseconds, 0), 1),
+	};
+}
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+// The first part of the text in whole characters, so CJK and emoji never split.
+export function typedOf(text: string, shown: number) {
+	const characters = Array.from(
+		graphemes.segment(text),
+		({ segment }) => segment,
+	);
+	return characters.slice(0, Math.round(characters.length * shown)).join("");
 }

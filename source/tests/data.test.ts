@@ -15,7 +15,9 @@ import {
 	defaultQuoteSettings,
 	pickBundled,
 	quoteCategories,
+	quoteNoticeOf,
 	quoteRequestOf,
+	typedOf,
 } from "../quotes.js";
 import { isNewer } from "../update.js";
 
@@ -185,4 +187,39 @@ test("offers an update only when a newer version is out", (t) => {
 		updateViewOf(english, { phase: "ready", newest: "1.4.1" }, current).status,
 		"Newest version: v1.4.1, so you are up to date",
 	);
+});
+
+test("marks a changed quote new for 8 seconds, typing it in first", (t) => {
+	t.deepEqual(quoteNoticeOf(undefined, 5000, false), {
+		isNew: false,
+		shown: 1,
+	});
+	t.deepEqual(quoteNoticeOf(1000, 1000, false), { isNew: true, shown: 0 });
+	t.deepEqual(quoteNoticeOf(1000, 1400, false), { isNew: true, shown: 0.5 });
+	t.deepEqual(quoteNoticeOf(1000, 3000, false), { isNew: true, shown: 1 });
+	t.deepEqual(quoteNoticeOf(1000, 9000, false), { isNew: false, shown: 1 });
+	t.deepEqual(quoteNoticeOf(1000, 1000, true), { isNew: true, shown: 1 });
+});
+
+test("types in whole characters, never half of one", (t) => {
+	t.is(typedOf("abcd", 0.5), "ab");
+	t.is(typedOf("健全的精神", 0.4), "健全");
+	t.is(typedOf("👍🏽ok", 0.34), "👍🏽");
+	t.is(typedOf("abc", 0), "");
+	t.is(typedOf("abc", 1), "abc");
+});
+
+test("never draws the quote already on screen", (t) => {
+	const current = pickBundled(defaultQuoteSettings, 0, 0);
+
+	for (const random of [0, 0.25, 0.5, 0.75, 0.999]) {
+		t.not(
+			pickBundled(defaultQuoteSettings, 0, random, current).quote,
+			current.quote,
+		);
+	}
+
+	const one = { ...defaultQuoteSettings, author: "Juvenal" };
+	const only = pickBundled(one, 0, 0);
+	t.is(pickBundled(one, 0, 0.5, only).quote, only.quote, "a pool of 1 repeats");
 });
