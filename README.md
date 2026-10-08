@@ -89,7 +89,7 @@ The headings give way to Recent on a terminal shorter than 28 rows. Body fat is 
 
 A meal asks for the food, its calories, and its protein; a workout asks for the activity, its minutes, and its intensity, one at a time. The food field suggests as you type, your past meals first and then 112 common foods matched in any of the 3 languages, and picking one fills in its calories and protein. The activity offers your 3 latest workouts to repeat in 1 step. A stopped focus earns nothing.
 
-Everything else you do is logged too, without experience: opening the app, starting, pausing, resuming, or stopping a tomato, finishing a break, leveling up, drawing a quote, changing the language, the theme, the profile, or a quote setting, and updating.
+Everything else you do is logged too, without experience: opening the app, starting, pausing, resuming, or stopping a tomato, finishing a break, leveling up, drawing a quote, changing the language, the theme, the profile, or a quote setting, saving or clearing an environment variable, and updating.
 
 ### Everyday Quotes
 

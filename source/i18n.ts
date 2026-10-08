@@ -387,7 +387,7 @@ const en = {
 		} satisfies Record<VariableName, string>,
 		describe: {
 			TERMINAL_SIGMA_HOME:
-				"The folder that holds progress.json, as an absolute path. Applies after a restart.",
+				"The folder that holds progress.json, as an absolute path. Applies after a restart; progress.json is not moved, so copy it there first.",
 			TERMINAL_SIGMA_FOCUS:
 				"Minutes of each focus, from 1 to 180. Applies after a restart; --focus still wins.",
 			TERMINAL_SIGMA_BREAK:
@@ -737,7 +737,7 @@ const traditionalChinese: Messages = {
 		},
 		describe: {
 			TERMINAL_SIGMA_HOME:
-				"存放 progress.json 的資料夾，須為絕對路徑。重新啟動後生效。",
+				"存放 progress.json 的資料夾，須為絕對路徑。重新啟動後生效；progress.json 不會自動搬移，請先複製過去。",
 			TERMINAL_SIGMA_FOCUS:
 				"每次專注的分鐘數，1 到 180。重新啟動後生效；--focus 仍優先。",
 			TERMINAL_SIGMA_BREAK:
@@ -1086,7 +1086,7 @@ const korean: Messages = {
 		},
 		describe: {
 			TERMINAL_SIGMA_HOME:
-				"progress.json을 보관하는 폴더의 절대 경로입니다. 다시 시작하면 적용됩니다.",
+				"progress.json을 보관하는 폴더의 절대 경로입니다. 다시 시작하면 적용되며, progress.json은 옮겨지지 않으니 먼저 복사해 두세요.",
 			TERMINAL_SIGMA_FOCUS:
 				"집중 1회의 시간(분), 1부터 180까지. 다시 시작하면 적용되며 --focus가 우선합니다.",
 			TERMINAL_SIGMA_BREAK:
