@@ -35,7 +35,8 @@ export const foodsOf = (table: string): Food[] =>
 
 // Approximate, like a nutrition label. Carbs and fat follow the closest food
 // in USDA FNDDS 2021-2023 (CC0), scaled to the serving's kcal; see
-// DATA-LICENSES.md.
+// DATA-LICENSES.md. The last 42, added with the Log line, are typical servings
+// from common nutrition labels, each within 20% of 4-4-9.
 export const commonFoods: readonly Food[] = foodsOf(`
 Chicken breast|雞胸肉|닭가슴살|248|46|0|5|1 breast|1 塊|1조각
 Chicken thigh|雞腿肉|닭다리살|315|37|0|20|1 thigh|1 支|1조각
@@ -62,7 +63,7 @@ Milk|牛奶|우유|150|8|11|8|1 cup|1 杯|1잔
 Soy milk|豆漿|두유|110|8|11|4|1 cup|1 杯|1잔
 Cheese slice|起司片|슬라이스 치즈|70|4|1|6|1 slice|1 片|1장
 Edamame|毛豆|에다마메|190|17|12|10|1 cup|1 碗|1컵
-White rice|白飯|흰쌀밥|280|5|61|1|1 bowl|1 碗|1공기
+White rice|白飯|밥|280|5|61|1|1 bowl|1 碗|1공기
 Brown rice|糙米飯|현미밥|250|5|52|2|1 bowl|1 碗|1공기
 Fried rice|炒飯|볶음밥|520|14|97|10|1 plate|1 盤|1인분
 Oatmeal|燕麥粥|오트밀|300|10|44|10|1 bowl|1 碗|1그릇
@@ -149,6 +150,48 @@ Beer|啤酒|맥주|150|2|12|0|1 can|1 罐|1캔
 Red wine|紅酒|레드 와인|125|0|4|0|1 glass|1 杯|1잔
 Soju|燒酒|소주|400|0|0|0|1 bottle|1 瓶|1병
 Kimchi|泡菜|김치|20|1|3|1|1 side dish|1 小碟|1접시
+Turkey sandwich|火雞三明治|칠면조 샌드위치|420|28|40|15|1 sandwich|1 個|1개
+Peanut butter sandwich|花生醬三明治|땅콩버터 샌드위치|380|14|40|18|1 sandwich|1 個|1개
+Grilled cheese|烤起司三明治|그릴드 치즈 샌드위치|400|15|33|23|1 sandwich|1 個|1개
+Fish and chips|炸魚薯條|피시 앤드 칩스|840|32|80|43|1 plate|1 盤|1접시
+Mac and cheese|起司通心粉|맥앤치즈|500|20|50|24|1 bowl|1 碗|1그릇
+Lasagna|千層麵|라자냐|450|25|36|23|1 piece|1 塊|1조각
+Fried egg|荷包蛋|계란 프라이|90|6|0|7|1 egg|1 顆|1개
+Plain yogurt|原味優格|플레인 요거트|150|9|17|5|1 cup|1 杯|1컵
+Chocolate milk|巧克力牛奶|초코우유|210|8|30|6|1 cup|1 杯|1잔
+Cappuccino|卡布奇諾|카푸치노|130|7|11|6|1 cup|1 杯|1잔
+Americano|美式咖啡|아메리카노|10|1|2|0|1 cup|1 杯|1잔
+Cola|可樂|콜라|140|0|39|0|1 can|1 罐|1캔
+Pear|梨子|배|100|1|27|0|1 pear|1 顆|1개
+Watermelon|西瓜|수박|85|2|21|0|2 cups|2 碗|2컵
+Mango|芒果|망고|200|3|50|1|1 mango|1 顆|1개
+Kiwi|奇異果|키위|42|1|10|0|1 kiwi|1 顆|1개
+Guava|芭樂|구아바|70|3|14|1|1 guava|1 顆|1개
+Cherry tomatoes|小番茄|방울토마토|30|1|6|0|1 cup|1 碗|1컵
+Spinach|菠菜|시금치|41|5|7|0|1 cup, cooked|1 碗，煮熟|익힌 것 1컵
+Cucumber|小黃瓜|오이|16|1|4|0|1 cucumber|1 條|1개
+Gua bao|刈包|꽈바오|350|13|35|17|1 bun|1 個|1개
+Taiwanese sausage|台式香腸|대만 소시지|250|10|10|19|1 sausage|1 條|1개
+Lu wei|滷味|루웨이|400|25|30|19|1 bowl|1 碗|1그릇
+Fried rice noodles|炒米粉|볶음 쌀국수|450|10|65|16|1 plate|1 盤|1접시
+Pork chop rice|排骨飯|돼지갈비 덮밥|750|32|85|30|1 box|1 個|1개
+Egg crepe|蛋餅|단빙|300|10|30|15|1 crepe|1 份|1개
+Taiwanese rice roll|飯糰|대만식 주먹밥|500|14|70|18|1 roll|1 個|1개
+Sesame noodles|麻醬麵|마장면|500|15|65|20|1 bowl|1 碗|1그릇
+Wonton soup|餛飩湯|완탕|250|14|25|10|1 bowl|1 碗|1그릇
+Shaved ice|剉冰|빙수|300|4|65|3|1 bowl|1 碗|1그릇
+Tea egg|茶葉蛋|차예단|75|6|1|5|1 egg|1 顆|1개
+Japchae|韓式雜菜|잡채|300|6|45|11|1 plate|1 盤|1접시
+Galbi|韓式烤牛小排|갈비|600|36|10|46|1 serving|1 份|1인분
+Naengmyeon|韓式冷麵|냉면|500|18|90|6|1 bowl|1 碗|1그릇
+Sundubu jjigae|嫩豆腐鍋|순두부찌개|300|20|12|19|1 bowl|1 碗|1그릇
+Samgyetang|蔘雞湯|삼계탕|900|80|40|45|1 bowl|1 碗|1그릇
+Jjajangmyeon|炸醬麵|짜장면|800|20|120|26|1 bowl|1 碗|1그릇
+Jjamppong|炒碼麵|짬뽕|700|30|90|22|1 bowl|1 碗|1그릇
+Dakgalbi|春川辣炒雞|닭갈비|500|40|25|26|1 serving|1 份|1인분
+Triangle kimbap|三角飯糰|삼각김밥|200|5|40|2|1 piece|1 個|1개
+Hotteok|韓式糖餅|호떡|230|4|38|7|1 piece|1 個|1개
+Makgeolli|韓國米酒|막걸리|185|2|18|0|1 bowl|1 碗|1사발
 `);
 
 export const commonFoodCount = commonFoods.length;

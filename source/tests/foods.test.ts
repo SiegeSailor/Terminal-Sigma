@@ -2,10 +2,10 @@ import test from "ava";
 import { commonFoods, foodsOf, matchFood } from "../foods.js";
 
 // Alcohol brings 7 kcal per gram, which the 4-4-9 rule leaves out.
-const alcoholic = new Set(["Beer", "Red wine", "Soju"]);
+const alcoholic = new Set(["Beer", "Red wine", "Soju", "Makgeolli"]);
 
 test("gives every food 3 names, a serving in 3 languages, and its macros", (t) => {
-	t.is(commonFoods.length, 112);
+	t.is(commonFoods.length, 154);
 
 	for (const food of commonFoods) {
 		t.true(
@@ -93,4 +93,16 @@ test("matches the food a name means, yours first", (t) => {
 	// 1 Latin letter is too little to guess a food from.
 	t.is(matchFood("u", "en", []), undefined);
 	t.is(matchFood("  ", "en", []), undefined);
+});
+
+test("knows everyday Taiwanese and Korean dishes in their own language", (t) => {
+	t.like(matchFood("刈包", "zh-TW", []), { label: "刈包", calories: 350 });
+	t.like(matchFood("짜장면", "ko", []), { label: "짜장면", calories: 800 });
+	t.like(matchFood("americano", "en", []), {
+		label: "Americano",
+		calories: 10,
+	});
+	t.like(matchFood("rice", "en", []), { label: "White rice" });
+	t.like(matchFood("蛋", "zh-TW", []), { label: "雞蛋" });
+	t.like(matchFood("밥", "ko", []), { label: "밥", calories: 280 });
 });
