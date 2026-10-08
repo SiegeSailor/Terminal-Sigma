@@ -90,7 +90,7 @@ A stopped focus earns nothing. The dashboard opens with **Log** focused.
 
 ### Log
 
-**Log** takes 1 line. Without a prefix, a line is a meal: its items split on `,`, `+`, or `、`, each with an optional quantity, matched against your own past meals first and then 155 common foods in any of the 3 languages. A partial name needs at least 2 characters, unless it is Chinese or Korean. Typed amounts win: `ramen 500kcal 20p` logs exactly that. Every other kind starts with a short prefix, in ASCII so it works through a Chinese or Korean input method:
+**Log** takes 1 line. Without a prefix, a line is a meal: its items split on `,`, `+`, or `、`, each with an optional quantity, matched against your own past meals first and then 155 common foods in any of the 3 languages. A partial name needs at least 2 characters, unless it is Chinese or Korean. Typed amounts win: `ramen 500kcal 20p` logs exactly that. Every other kind starts with a short prefix, in ASCII so it works through a Chinese or Korean input method; `water` also works as `水` or `물`. A quantity can lead with a counter word, as in `2 slices pizza` or `1 cup rice`. `p`, `c`, and `f` must touch their number, as in `30p`, so `1 c rice` is not 1 g of carbs:
 
 | Prefix  | Logs                                                                     | Examples                                                |
 | ------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |

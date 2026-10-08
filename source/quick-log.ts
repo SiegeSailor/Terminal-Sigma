@@ -160,7 +160,8 @@ type Parser = (
 ) => ParseResult;
 
 // 1 line of the Log view into drafts. ASCII prefixes choose the kind, so they
-// still work through a Chinese or Korean input method; no prefix is a meal.
+// still work through a Chinese or Korean input method (water also takes 水 and
+// 물); no prefix is a meal.
 export function parseQuickLog(
 	text: string,
 	context: ParseContext,
