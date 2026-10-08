@@ -1,12 +1,18 @@
 import test from "ava";
 import { type Language, messagesOf } from "../i18n.js";
-import { logsOf, type Progress, progressSchema } from "../progress.js";
+import {
+	type Logged,
+	logsOf,
+	type Progress,
+	progressSchema,
+} from "../progress.js";
 import {
 	applyDrafts,
 	completionOf,
 	describeDraft,
 	type Draft,
 	draftOf,
+	isEditable,
 	lineOf,
 	type ParseError,
 	parseQuickLog,
@@ -807,4 +813,33 @@ test("finds the food name being typed, to complete it", (t) => {
 	t.deepEqual(completionOf("udon"), { head: "", query: "udon" });
 	t.is(completionOf("w 500"), undefined);
 	t.is(completionOf("wo bench"), undefined);
+});
+
+test("edits only an entry whose line parses back to itself", (t) => {
+	const progress = progressSchema.parse({
+		language: "en",
+		meals: [
+			{ at: local(8), food: "Toast", calories: 160 },
+			{ at: local(9), food: "salt, pepper", calories: 5 },
+		],
+		workouts: [
+			{
+				at: local(10),
+				activity: "strength",
+				minutes: 30,
+				sets: [
+					{ exercise: "bench", weight: 60, reps: 5 },
+					{ exercise: "squat", weight: 80, reps: 5 },
+				],
+			},
+		],
+		water: [{ at: local(11), milliliters: 500 }],
+	});
+	const editable = (match: (log: Logged) => boolean) =>
+		isEditable(logsOf(progress).find((log) => match(log))!, progress, "en");
+
+	t.true(editable((log) => log.at === local(8)));
+	t.false(editable((log) => log.at === local(9)));
+	t.false(editable((log) => log.at === local(10)));
+	t.true(editable((log) => log.at === local(11)));
 });

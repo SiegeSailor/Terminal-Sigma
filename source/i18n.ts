@@ -66,7 +66,7 @@ const en = {
 		select: "↑↓ move · enter select · esc back",
 		form: "enter next · esc cancel",
 		suggest: "↑↓ pick · tab fill · enter next · esc cancel",
-		logs: "←→ filter · ↑↓ scroll · esc back",
+		logs: "←→ filter · e edit · d delete · r repeat · u undo · esc back",
 		environment: "↑↓ move · enter edit · esc back",
 		edit: "enter save · empty enter clears · esc keep",
 		log: "↑↓ pick · tab complete · enter log · esc back",
@@ -94,7 +94,7 @@ const en = {
 		timer: (focus: number, rest: number) =>
 			`A ${focus}-minute focus earns ${focus} XP, then a ${rest}-minute break begins. Start, pause, resume, or stop it here.`,
 		log: "Log anything in 1 line, e.g. 2 eggs, toast · w 500 · wo run 30m · sl 23:30-7:10. While the line is empty, it suggests what you usually log now.",
-		logs: "Browse every focus, meal, workout, and action you have taken.",
+		logs: "Browse every log and action, filtered by kind; edit, delete, or repeat a log, and undo a delete.",
 		profile:
 			"Your name, body, work style, and health goal, which set your daily targets and shape your character.",
 		theme: "Pick the color tone of the dashboard and your character.",
@@ -395,7 +395,12 @@ const en = {
 		},
 	},
 	logs: {
-		title: "Logs",
+		title: "History",
+		deleted: "Deleted the log. Press u to put it back.",
+		restored: "Put the log back.",
+		cannotEdit: "Focus and actions cannot change.",
+		cannotEditLine:
+			"This entry can't be written as 1 line; delete it and log it again.",
 		all: "All",
 		kinds: {
 			focus: "Focus",
@@ -496,7 +501,7 @@ const traditionalChinese: Messages = {
 		select: "↑↓ 移動 · enter 選擇 · esc 返回",
 		form: "enter 下一步 · esc 取消",
 		suggest: "↑↓ 挑選 · tab 填入 · enter 下一步 · esc 取消",
-		logs: "←→ 篩選 · ↑↓ 捲動 · esc 返回",
+		logs: "←→ 篩選 · e 編輯 · d 刪除 · r 重複 · u 復原 · esc 返回",
 		environment: "↑↓ 移動 · enter 編輯 · esc 返回",
 		edit: "enter 儲存 · 空白 enter 清除 · esc 保留",
 		log: "↑↓ 挑選 · tab 補全 · enter 記錄 · esc 返回",
@@ -523,7 +528,7 @@ const traditionalChinese: Messages = {
 		timer: (focus, rest) =>
 			`完成 ${focus} 分鐘專注可獲得 ${focus} XP，接著休息 ${rest} 分鐘。在這裡開始、暫停、繼續或停止。`,
 		log: "用一行記錄任何事，例如：2 顆蛋, 吐司 · w 500 · wo 跑步 30m · sl 23:30-7:10。輸入列空白時，會建議你這個時段常記錄的內容。",
-		logs: "瀏覽所有專注、飲食、運動與操作紀錄。",
+		logs: "依類型瀏覽每一筆紀錄與操作；可以編輯、刪除或重複一筆紀錄，也能復原刪除。",
 		profile:
 			"你的名字、身體數據、工作型態與健康目標，用來計算每日目標並決定角色的樣子。",
 		theme: "選擇儀表板與角色的色調。",
@@ -814,7 +819,11 @@ const traditionalChinese: Messages = {
 		},
 	},
 	logs: {
-		title: "所有紀錄",
+		title: "歷史紀錄",
+		deleted: "已刪除這筆紀錄，按 u 還原。",
+		restored: "已還原這筆紀錄。",
+		cannotEdit: "專注與操作紀錄不能更改。",
+		cannotEditLine: "這筆紀錄無法寫成一行；請刪除後重新記錄。",
 		all: "全部",
 		kinds: {
 			focus: "專注",
@@ -907,7 +916,7 @@ const korean: Messages = {
 		select: "↑↓ 이동 · enter 선택 · esc 뒤로",
 		form: "enter 다음 · esc 취소",
 		suggest: "↑↓ 고르기 · tab 채우기 · enter 다음 · esc 취소",
-		logs: "←→ 필터 · ↑↓ 스크롤 · esc 뒤로",
+		logs: "←→ 필터 · e 수정 · d 삭제 · r 반복 · u 되돌리기 · esc 뒤로",
 		environment: "↑↓ 이동 · enter 편집 · esc 뒤로",
 		edit: "enter 저장 · 빈 enter 지우기 · esc 유지",
 		log: "↑↓ 고르기 · tab 완성 · enter 기록 · esc 뒤로",
@@ -935,7 +944,7 @@ const korean: Messages = {
 		timer: (focus, rest) =>
 			`${focus}분 집중을 마치면 ${focus} XP를 얻고 ${rest}분 휴식이 시작됩니다. 여기서 시작, 일시정지, 재개, 중지합니다.`,
 		log: "한 줄로 무엇이든 기록합니다. 예: 계란 2개, 토스트 · w 500 · wo 달리기 30m · sl 23:30-7:10. 줄이 비어 있으면 지금 자주 기록하는 항목을 제안합니다.",
-		logs: "기록한 모든 집중, 식사, 운동, 활동을 봅니다.",
+		logs: "모든 기록과 활동을 종류별로 봅니다. 기록을 수정, 삭제, 반복하고 삭제를 되돌릴 수 있습니다.",
 		profile:
 			"이름, 신체 정보, 업무 형태, 건강 목표로 하루 목표를 정하고 캐릭터의 모습을 바꿉니다.",
 		theme: "대시보드와 캐릭터의 색조를 고릅니다.",
@@ -1230,7 +1239,12 @@ const korean: Messages = {
 		},
 	},
 	logs: {
-		title: "전체 기록",
+		title: "지난 기록",
+		deleted: "기록을 삭제했습니다. u를 누르면 되돌립니다.",
+		restored: "기록을 되돌렸습니다.",
+		cannotEdit: "집중과 활동 기록은 바꿀 수 없습니다.",
+		cannotEditLine:
+			"이 기록은 한 줄로 쓸 수 없습니다. 삭제하고 다시 기록하세요.",
 		all: "전체",
 		kinds: {
 			focus: "집중",

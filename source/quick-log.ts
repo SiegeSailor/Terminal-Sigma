@@ -1096,6 +1096,34 @@ export function lineOf(log: Logged, language: Language): string {
 	}
 }
 
+// Whether an entry's line parses back to exactly that 1 entry: a food with a
+// comma or a workout of 2 exercises would come back as 2, and editing it
+// would then replace 1 entry with 2.
+export function isEditable(
+	log: Logged,
+	progress: Progress,
+	language: Language,
+): boolean {
+	if (
+		log.kind === "workout" &&
+		new Set(log.entry.sets?.map((set) => set.exercise)).size > 1
+	) {
+		return false;
+	}
+
+	const result = parseQuickLog(lineOf(log, language), {
+		progress,
+		now: Date.parse(log.at),
+		language,
+	});
+
+	return (
+		result.ok &&
+		result.drafts.length === 1 &&
+		result.drafts[0]?.kind === log.kind
+	);
+}
+
 // What a draft will log, for the live preview: a meal nobody knows says how
 // to give it kcal.
 export function describeDraft(

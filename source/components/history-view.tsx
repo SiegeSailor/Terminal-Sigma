@@ -1,22 +1,14 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
-import type { Language, Messages } from "../i18n.js";
 import { describeLog } from "../content.js";
-import type { Log } from "../progress.js";
+import type { Language, Messages } from "../i18n.js";
+import { type Log, logKinds } from "../progress.js";
 import { usePalette } from "../theme.js";
 
 export { describeLog } from "../content.js";
 
-const filters = ["all", "focus", "meal", "workout", "event"] as const;
+const filters = ["all", ...logKinds] as const;
 type Filter = (typeof filters)[number];
-
-const kindLabels = (messages: Messages): Record<Filter, string> => ({
-	all: messages.logs.all,
-	focus: messages.logs.kinds.focus,
-	meal: messages.logs.kinds.meal,
-	workout: messages.logs.kinds.workout,
-	event: messages.logs.kinds.event,
-});
 
 type LogRowProps = Readonly<{
 	log: Log;
@@ -69,30 +61,45 @@ export function LogRow({ log, language, messages }: LogRowProps) {
 	);
 }
 
-type LogsViewProps = Readonly<{
+type HistoryViewProps = Readonly<{
 	logs: readonly Log[];
 	language: Language;
 	messages: Messages;
 	height: number;
+	onEdit: (log: Log) => void;
+	onDelete: (log: Log) => void;
+	onRepeat: (log: Log) => void;
+	onUndo: () => void;
 }>;
 
-export default function LogsView({
+// Every log, newest first, filtered by kind, with a cursor: e edits the log
+// under it, d deletes it, r logs it again now, and u puts back the last
+// deleted one. App does the saving through the callbacks.
+export default function HistoryView({
 	logs,
 	language,
 	messages,
 	height,
-}: LogsViewProps) {
+	onEdit,
+	onDelete,
+	onRepeat,
+	onUndo,
+}: HistoryViewProps) {
 	const palette = usePalette();
 	const [filter, setFilter] = React.useState<Filter>("all");
+	const [cursor, setCursor] = React.useState(0);
 	const [offset, setOffset] = React.useState(0);
 	const shown = logs.filter((log) => filter === "all" || log.kind === filter);
-	// Title, tabs, summary, and their spacing take 4 rows.
-	const pageSize = Math.max(height - 4, 3);
-	const maximumOffset = Math.max(shown.length - pageSize, 0);
-	const labels = kindLabels(messages);
+	// Title, summary, and their spacing take 3 rows.
+	const pageSize = Math.max(height - 3, 3);
+	const at = Math.min(cursor, Math.max(shown.length - 1, 0));
+	const top = Math.min(offset, at);
+	const label = (option: Filter) =>
+		option === "all" ? messages.logs.all : messages.logs.kinds[option];
 
 	useInput((input, key) => {
-		const move = (step: number) => {
+		const picked = shown[at];
+		const moveFilter = (step: number) => {
 			const next =
 				filters[
 					(filters.indexOf(filter) + step + filters.length) % filters.length
@@ -100,28 +107,37 @@ export default function LogsView({
 
 			if (next) {
 				setFilter(next);
+				setCursor(0);
 				setOffset(0);
 			}
 		};
 
-		const scroll = (step: number) => {
-			setOffset((current) =>
-				Math.min(Math.max(current + step, 0), maximumOffset),
-			);
+		const moveCursor = (step: number) => {
+			const next = Math.min(Math.max(at + step, 0), shown.length - 1);
+			setCursor(next);
+			setOffset(Math.min(Math.max(top, next - pageSize + 1), next));
 		};
 
 		if (key.leftArrow || input === "h") {
-			move(-1);
+			moveFilter(-1);
 		} else if (key.rightArrow || input === "l" || key.tab) {
-			move(1);
+			moveFilter(1);
 		} else if (key.upArrow || input === "k") {
-			scroll(-1);
+			moveCursor(-1);
 		} else if (key.downArrow || input === "j") {
-			scroll(1);
+			moveCursor(1);
 		} else if (key.pageUp) {
-			scroll(-pageSize);
+			moveCursor(-pageSize);
 		} else if (key.pageDown) {
-			scroll(pageSize);
+			moveCursor(pageSize);
+		} else if (input === "u") {
+			onUndo();
+		} else if (picked && input === "e") {
+			onEdit(picked);
+		} else if (picked && input === "d") {
+			onDelete(picked);
+		} else if (picked && input === "r") {
+			onRepeat(picked);
 		}
 	});
 
@@ -131,35 +147,33 @@ export default function LogsView({
 				<Text bold color={palette.accent}>
 					{messages.logs.title}
 				</Text>
-				{filters.map((option) => (
-					<Text
-						key={option}
-						bold={option === filter}
-						color={option === filter ? palette.accent : undefined}
-						dimColor={option !== filter}
-						underline={option === filter}
-					>
-						{labels[option]}
+				<Text>
+					<Text dimColor>{"‹ "}</Text>
+					<Text bold color={palette.accent}>
+						{label(filter)}
 					</Text>
-				))}
+					<Text dimColor>{" ›"}</Text>
+				</Text>
+				<Text dimColor wrap="truncate-end">
+					{messages.logs.summary(
+						shown.length,
+						shown.reduce((total, log) => total + log.experience, 0),
+					)}
+				</Text>
 			</Box>
-			<Text dimColor>
-				{messages.logs.summary(
-					shown.length,
-					shown.reduce((total, log) => total + log.experience, 0),
-				)}
-			</Text>
 			<Box flexDirection="column" marginTop={1}>
 				{shown.length === 0 ? (
 					<Text dimColor>{messages.logs.empty}</Text>
 				) : null}
-				{shown.slice(offset, offset + pageSize).map((log) => (
-					<LogRow
-						key={`${log.kind}-${log.index}`}
-						language={language}
-						log={log}
-						messages={messages}
-					/>
+				{shown.slice(top, top + pageSize).map((log, row) => (
+					<Box key={`${log.kind}-${log.index}`} gap={1}>
+						<Box flexShrink={0}>
+							<Text color={palette.accent}>{top + row === at ? "❯" : " "}</Text>
+						</Box>
+						<Box flexGrow={1}>
+							<LogRow language={language} log={log} messages={messages} />
+						</Box>
+					</Box>
 				))}
 			</Box>
 		</Box>

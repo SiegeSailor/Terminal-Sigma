@@ -12,7 +12,7 @@ import EnvironmentView from "./components/environment-view.js";
 import Footer, { type Tone } from "./components/footer.js";
 import Header from "./components/header.js";
 import LogView from "./components/log-view.js";
-import LogsView, { LogRow } from "./components/logs-view.js";
+import HistoryView, { LogRow } from "./components/history-view.js";
 import MultiChoice from "./components/multi-choice.js";
 import TodayPanel from "./components/today-panel.js";
 import {
@@ -61,6 +61,7 @@ import {
 	experienceOf,
 	levelOf,
 	logsOf,
+	type Log,
 	type Progress,
 	saveProgress,
 	profileNow,
@@ -70,6 +71,10 @@ import {
 	type Added,
 	applyDrafts,
 	type Draft,
+	draftOf,
+	isEditable,
+	lineOf,
+	restoreLog,
 	summaryOf,
 	undoAdded,
 } from "./quick-log.js";
@@ -256,6 +261,10 @@ export default function App({
 	const [flash, setFlash] = React.useState<Flash>();
 	// What each line logged in the open Log view added, newest last, for undo.
 	const [undoStack, setUndoStack] = React.useState<Added[][]>([]);
+	// The log being edited in the Log view, and what History deleted, newest
+	// last, for its undo.
+	const [editing, setEditing] = React.useState<Log>();
+	const [deleted, setDeleted] = React.useState<Log[]>([]);
 	const language = progress.language ?? "en";
 	const messages = messagesOf(language);
 	const themeName = progress.theme ?? "ember";
@@ -457,6 +466,8 @@ export default function App({
 		setQuoteEditor(undefined);
 		setVariableEditor(undefined);
 		setUndoStack([]);
+		setEditing(undefined);
+		setDeleted([]);
 		setPreviewTheme(undefined);
 
 		if (text) {
@@ -472,6 +483,9 @@ export default function App({
 				setQuoteEditor(undefined);
 			} else if (view === "environment" && variableEditor && key.escape) {
 				setVariableEditor(undefined);
+			} else if (view === "log" && editing && key.escape) {
+				setEditing(undefined);
+				setView("logs");
 			} else if (view !== "menu" && key.escape) {
 				backToMenu(view === "profile" ? messages.form.cancelled : undefined);
 			}
@@ -605,6 +619,93 @@ export default function App({
 
 		if (commit(next, messages.log.undone, "success")) {
 			setUndoStack((stack) => stack.slice(0, -1));
+		}
+	};
+
+	// Focus sessions come from the timer and actions are the record of what
+	// was done, so History changes neither.
+	const isFixed = (log: Log) => log.kind === "focus" || log.kind === "event";
+
+	const startEdit = (log: Log) => {
+		if (isFixed(log)) {
+			say(messages.logs.cannotEdit);
+			return;
+		}
+
+		if (!isEditable(log, progress, language)) {
+			say(messages.logs.cannotEditLine);
+			return;
+		}
+
+		setEditing(log);
+		setView("log");
+	};
+
+	// Swaps the edited log for what its line now says, at its own time.
+	const replaceLog = (_line: string, drafts: Draft[]) => {
+		if (!editing) {
+			return false;
+		}
+
+		const { next } = applyDrafts(undoAdded(progress, [editing]), drafts);
+		const isSaved = commit(
+			withEvent(next, "logEdited", editing.kind),
+			messages.log.edited(summaryOf(drafts, messages)),
+			"success",
+		);
+
+		if (isSaved) {
+			setEditing(undefined);
+			setDeleted([]);
+			setView("logs");
+		}
+
+		return isSaved;
+	};
+
+	const deleteLog = (log: Log) => {
+		if (isFixed(log)) {
+			say(messages.logs.cannotEdit);
+			return;
+		}
+
+		if (
+			commit(
+				withEvent(undoAdded(progress, [log]), "logDeleted", log.kind),
+				messages.logs.deleted,
+				"success",
+			)
+		) {
+			setDeleted((stack) => [...stack, log]);
+		}
+	};
+
+	const restoreDeleted = () => {
+		const log = deleted.at(-1);
+
+		if (!log) {
+			say(messages.log.nothingToUndo);
+			return;
+		}
+
+		if (
+			commit(
+				withEvent(restoreLog(progress, log), "logEdited", log.kind),
+				messages.logs.restored,
+				"success",
+			)
+		) {
+			setDeleted((stack) => stack.slice(0, -1));
+		}
+	};
+
+	const repeatLog = (log: Log) => {
+		const draft = draftOf(log);
+
+		if (draft) {
+			logLine("", [{ ...draft, at: new Date().toISOString() }]);
+		} else {
+			say(messages.logs.cannotEdit);
 		}
 	};
 
@@ -1010,21 +1111,26 @@ export default function App({
 			</Titled>
 		),
 		logs: (
-			<LogsView
+			<HistoryView
 				height={Math.max(rows - 9, 6)}
 				language={language}
 				logs={logs}
 				messages={messages}
+				onDelete={deleteLog}
+				onEdit={startEdit}
+				onRepeat={repeatLog}
+				onUndo={restoreDeleted}
 			/>
 		),
 		log: (
 			<LogView
-				key="log"
+				key={editing ? `edit-${editing.kind}-${editing.index}` : "log"}
+				initialLine={editing ? lineOf(editing, language) : undefined}
 				language={language}
 				messages={messages}
-				now={now}
+				now={editing ? Date.parse(editing.at) : now}
 				progress={progress}
-				onLog={logLine}
+				onLog={editing ? replaceLog : logLine}
 				onUndo={undoLine}
 			/>
 		),

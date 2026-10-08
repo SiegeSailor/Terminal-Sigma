@@ -582,3 +582,59 @@ test("keeps the menu preview's lines apart when it overflows", async (t) => {
 
 	unmount();
 });
+
+const right = "\u001B[C";
+
+test("edits an older log in place, keeping its day and its neighbor", async (t) => {
+	const at = new Date(Date.now() - 3 * 86_400_000).toISOString();
+	const { file, stdin, lastFrame, unmount } = start({
+		...empty,
+		meals: [
+			{ at, food: "Egg", servings: 2, calories: 144 },
+			{ at, food: "Toast", calories: 160 },
+		],
+	});
+
+	// History, the Diet filter, then the second item of that line.
+	await type(stdin, ["3", "\r", right, right, down, "e"]);
+	t.true((lastFrame() ?? "").includes("Toast 160kcal"));
+
+	await type(stdin, [backspace.repeat(13), "Bagel 280kcal", "\r"]);
+	t.deepEqual(loadProgress(file).meals, [
+		{ at, food: "Egg", servings: 2, calories: 144 },
+		{ at, food: "Bagel", calories: 280 },
+	]);
+	t.like(loadProgress(file).events.at(-1), {
+		action: "logEdited",
+		detail: "meal",
+	});
+	t.true((lastFrame() ?? "").includes("History"), "back in History");
+
+	unmount();
+});
+
+test("deletes a log, puts it back, and logs it again now", async (t) => {
+	const at = new Date(Date.now() - 86_400_000).toISOString();
+	const { file, stdin, lastFrame, unmount } = start({
+		...empty,
+		water: [{ at, milliliters: 500 }],
+	});
+
+	// History, then the Water filter: All, Focus, Diet, Workout, Water.
+	await type(stdin, ["3", "\r", right, right, right, right, "d"]);
+	t.deepEqual(loadProgress(file).water, []);
+	t.true(actionsIn(file).includes("logDeleted"));
+
+	await type(stdin, ["u"]);
+	t.deepEqual(loadProgress(file).water, [{ at, milliliters: 500 }]);
+
+	await type(stdin, ["r"]);
+	t.is(loadProgress(file).water.length, 2);
+	t.true((lastFrame() ?? "").includes("Logged Water"));
+
+	// The Actions filter is the last of 12, 7 after Water.
+	await type(stdin, [...Array.from({ length: 7 }, () => right), "e"]);
+	t.true((lastFrame() ?? "").includes("cannot change"));
+
+	unmount();
+});
