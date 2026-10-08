@@ -26,9 +26,13 @@ export default function Header({
 	const previous = React.useRef(quoteKey);
 	// Redraws 20 times a second only while the notice shows. Its `time` is the
 	// clock of the notice, since xo's react-hooks/purity forbids Date.now() here.
-	const { time, reset } = useAnimation({ interval: 50, isActive: isFresh });
+	const { time, reset } = useAnimation({
+		interval: isReduced ? 1000 : 50,
+		isActive: isFresh,
+	});
 
-	React.useEffect(() => {
+	// A layout effect restarts typing before the commit paints, so the whole new quote never flashes.
+	React.useLayoutEffect(() => {
 		if (previous.current !== quoteKey) {
 			previous.current = quoteKey;
 			reset();
