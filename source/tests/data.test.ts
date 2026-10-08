@@ -14,6 +14,7 @@ import {
 	type Logged,
 	type LogKind,
 	progressSchema,
+	experienceOf,
 } from "../progress.js";
 import { themes } from "../theme.js";
 import {
@@ -278,7 +279,13 @@ test("shows water and last night's sleep against their targets in Today", (t) =>
 		water: [{ at, milliliters: 750 }],
 		sleep: [{ at, minutes: 400 }],
 	});
-	const [, health] = sectionsOf("en", themes.ember, progress, Date.parse(at));
+	const [, health] = sectionsOf(
+		"en",
+		themes.ember,
+		progress,
+		Date.parse(at),
+		experienceOf(progress),
+	);
 
 	t.like(
 		health?.metrics.find((metric) => metric.label === "Water"),

@@ -19,7 +19,6 @@ import {
 } from "./i18n.js";
 import {
 	type Event,
-	experienceOf,
 	experiencePerLevel,
 	goalKeys,
 	type Goals,
@@ -144,12 +143,12 @@ export function sectionsOf(
 	palette: Palette,
 	progress: Progress,
 	now: number,
+	experience: number,
 ): Section[] {
 	const messages = messagesOf(language);
 	const today = todayOf(progress, now);
 	const profile = profileNow(progress);
 	const targets = targetsOf(profile, progress.goals);
-	const experience = experienceOf(progress);
 	const level = Math.floor(experience / experiencePerLevel) + 1;
 	const levelExperience = experience % experiencePerLevel;
 	const advice = adviceOf(profile, today, language, messages, progress.goals);

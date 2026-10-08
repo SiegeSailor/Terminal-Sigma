@@ -260,9 +260,9 @@ export default function HistoryView({
 	// The week only changes with the data or the day.
 	const dayKey = new Date(now).toDateString();
 	const week = React.useMemo(
-		() => weekOf(progress, now),
+		() => (filter === "week" ? weekOf(progress, now) : undefined),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[progress, dayKey],
+		[progress, dayKey, filter],
 	);
 	const shown = logs.filter((log) => filter === "all" || log.kind === filter);
 	// Title, summary, and their spacing take 3 rows.
@@ -346,7 +346,7 @@ export default function HistoryView({
 				)}
 			</Box>
 			<Box flexDirection="column" marginTop={1}>
-				{filter === "week" ? (
+				{filter === "week" && week ? (
 					<WeekView language={language} messages={messages} week={week} />
 				) : (
 					<>

@@ -1226,7 +1226,7 @@ export default function App({
 	const todayPanel = (
 		<TodayPanel
 			isCompact={layout.isTodayCompact}
-			sections={sectionsOf(language, palette, progress, now)}
+			sections={sectionsOf(language, palette, progress, now, experience)}
 			title={messages.today.title}
 			width={layout.todayWidth}
 		/>
