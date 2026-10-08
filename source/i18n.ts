@@ -369,6 +369,12 @@ const en = {
 		} satisfies Record<keyof Goals, string>,
 		goalSet: (goal: string, value: string) => `${goal}: ${value}`,
 		milliliters: (amount: number) => `${amount} ml`,
+		reasons: {
+			usual: "usual around now",
+			water: "behind on water today",
+			workout: "same day last week",
+			habit: (days: number) => `${days} of the last 7 days`,
+		},
 	},
 	logs: {
 		title: "Logs",
@@ -765,6 +771,12 @@ const traditionalChinese: Messages = {
 		},
 		goalSet: (goal, value) => `${goal}：${value}`,
 		milliliters: (amount) => `${amount} 毫升`,
+		reasons: {
+			usual: "這個時段常吃",
+			water: "今天喝水進度落後",
+			workout: "上週的今天",
+			habit: (days) => `過去 7 天有 ${days} 天`,
+		},
 	},
 	logs: {
 		title: "所有紀錄",
@@ -1159,6 +1171,12 @@ const korean: Messages = {
 		},
 		goalSet: (goal, value) => `${goal}: ${value}`,
 		milliliters: (amount) => `${amount}ml`,
+		reasons: {
+			usual: "이 시간에 자주 먹음",
+			water: "오늘 물이 부족함",
+			workout: "지난주 오늘",
+			habit: (days) => `지난 7일 중 ${days}일`,
+		},
 	},
 	logs: {
 		title: "전체 기록",

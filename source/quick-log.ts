@@ -8,6 +8,7 @@ import {
 	setGroupsOf,
 } from "./exercises.js";
 import { matchFood } from "./foods.js";
+import { targetsOf } from "./health.js";
 import {
 	type Intensity,
 	type Language,
@@ -27,6 +28,7 @@ import {
 	logsOf,
 	type Progress,
 	profileNow,
+	todayOf,
 } from "./progress.js";
 
 export type ParseContext = Readonly<{
@@ -1125,6 +1127,144 @@ function nameOf(draft: Draft, messages: Messages) {
 // The short names of what a line logged, for the footer.
 export const summaryOf = (drafts: readonly Draft[], messages: Messages) =>
 	drafts.map((draft) => nameOf(draft, messages)).join(", ");
+
+export type Suggestion = Readonly<{ line: string; label: string }>;
+
+const minuteOfDay = (at: number) => {
+	const date = new Date(at);
+	return date.getHours() * 60 + date.getMinutes();
+};
+
+// Within 90 minutes of now on the clock, on any day, across midnight too.
+const isNearNow = (at: string, now: number) => {
+	const gap = Math.abs(minuteOfDay(Date.parse(at)) - minuteOfDay(now));
+	return Math.min(gap, 1440 - gap) <= 90;
+};
+
+const daysBefore = (now: number, days: number) => {
+	const date = new Date(now);
+	date.setDate(date.getDate() - days);
+	return date.toDateString();
+};
+
+// A meal as the line that logs it again, without its nutrients: a lone
+// serving drops its count when the food reads the same without it.
+function mealLineOf(meal: EntryOf["meal"], language: Language) {
+	const { calories, protein, carbs, fat, ...rest } = meal;
+	const line = lineOf(
+		{ kind: "meal", at: meal.at, index: 0, entry: rest },
+		language,
+	);
+	const bare = line.replace(/^1 (?!x )/v, "");
+	return leadingQuantity.test(bare) ? line : bare;
+}
+
+// The foods eaten around this time of day, most often first, then most
+// recent: MacroFactor's "hourly go-to". Today's foods are already logged.
+function usualFoodsOf(progress: Progress, now: number, language: Language) {
+	const today = new Date(now).toDateString();
+	const eatenToday = new Set(
+		progress.meals
+			.filter((meal) => new Date(meal.at).toDateString() === today)
+			.map((meal) => keyOf(meal.food)),
+	);
+	const usual = new Map<
+		string,
+		{ meal: EntryOf["meal"]; count: number; last: number }
+	>();
+
+	for (const meal of progress.meals) {
+		const key = keyOf(meal.food);
+		const at = Date.parse(meal.at);
+		const seen = usual.get(key);
+
+		if (!eatenToday.has(key) && isNearNow(meal.at, now)) {
+			usual.set(key, {
+				meal: seen && seen.last > at ? seen.meal : meal,
+				count: (seen?.count ?? 0) + 1,
+				last: Math.max(seen?.last ?? 0, at),
+			});
+		}
+	}
+
+	return [...usual.values()]
+		.toSorted(
+			(left, right) => right.count - left.count || right.last - left.last,
+		)
+		.map(({ meal }) => mealLineOf(meal, language));
+}
+
+// Lines worth logging now, each logged as is with Enter: the usual foods of
+// this hour, water when behind its pace from 7:00 to 22:00, the workout of
+// this weekday last week, and habits done on 3 of the last 7 days.
+export function suggestionsOf(
+	progress: Progress,
+	now: number,
+	limit = 5,
+): Suggestion[] {
+	const language = progress.language ?? "en";
+	const { log } = messagesOf(language);
+	const today = todayOf(progress, now);
+	const isOn = (at: string, day: string) => new Date(at).toDateString() === day;
+	const foods = usualFoodsOf(progress, now, language).map((line) => ({
+		line,
+		label: log.reasons.usual,
+	}));
+	const { water } = targetsOf(profileNow(progress), progress.goals);
+	const pace =
+		water * Math.min(Math.max((minuteOfDay(now) - 7 * 60) / (15 * 60), 0), 1);
+	const lastWeek = progress.workouts.findLast((workout) =>
+		isOn(workout.at, daysBefore(now, 7)),
+	);
+	const workedOut = progress.workouts.some((workout) =>
+		isOn(workout.at, daysBefore(now, 0)),
+	);
+	const habits = Map.groupBy(
+		progress.habits.filter(
+			(habit) =>
+				!habit.skipped &&
+				[1, 2, 3, 4, 5, 6, 7].some((days) =>
+					isOn(habit.at, daysBefore(now, days)),
+				),
+		),
+		(habit) => keyOf(habit.name),
+	);
+	const habitsToday = new Set(
+		progress.habits
+			.filter((habit) => isOn(habit.at, daysBefore(now, 0)))
+			.map((habit) => keyOf(habit.name)),
+	);
+	const usualHabits = [...habits].flatMap(([key, done]) => {
+		const days = new Set(done.map((habit) => new Date(habit.at).toDateString()))
+			.size;
+		return days >= 3 && !habitsToday.has(key)
+			? [
+					{
+						line: `h ${done.at(-1)?.name ?? key}`,
+						label: log.reasons.habit(days),
+					},
+				]
+			: [];
+	});
+
+	return [
+		...foods.slice(0, 2),
+		...(today.water < pace ? [{ line: "w", label: log.reasons.water }] : []),
+		...(lastWeek && !workedOut
+			? [
+					{
+						line: lineOf(
+							{ kind: "workout", at: lastWeek.at, index: 0, entry: lastWeek },
+							language,
+						),
+						label: log.reasons.workout,
+					},
+				]
+			: []),
+		...usualHabits,
+		...foods.slice(2),
+	].slice(0, limit);
+}
 
 // The prefix of a line picks its parser; a line without 1 is a meal.
 const parsers: Partial<Record<string, Parser>> = {

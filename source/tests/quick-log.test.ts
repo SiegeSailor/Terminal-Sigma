@@ -11,6 +11,7 @@ import {
 	parseQuickLog,
 	restoreLog,
 	summaryOf,
+	suggestionsOf,
 	undoAdded,
 } from "../quick-log.js";
 
@@ -738,5 +739,55 @@ test("describes drafts for the preview and names them for the footer", (t) => {
 			messagesOf("ko"),
 		),
 		"물",
+	);
+});
+
+test("suggests the usual foods of this hour, water, last week's workout, and habits", (t) => {
+	const nine = Date.parse(local(9));
+	const progress = progressSchema.parse({
+		language: "en",
+		meals: [
+			{ at: local(8, 0, 1), food: "Oatmeal", calories: 300 },
+			{ at: local(8, 15, 2), food: "Oatmeal", calories: 300 },
+			{ at: local(8, 30, 2), food: "Banana", servings: 2, calories: 210 },
+			{ at: local(19, 0, 2), food: "Ramen", calories: 500 },
+			{ at: local(8, 10), food: "Egg", calories: 72 },
+			{ at: local(9, 30, 1), food: "Egg", calories: 72 },
+		],
+		workouts: [
+			{
+				at: new Date(2026, 8, 26, 7).toISOString(),
+				activity: "running",
+				minutes: 30,
+				intensity: "moderate",
+			},
+		],
+		habits: [
+			{ at: new Date(2026, 8, 30, 21).toISOString(), name: "read" },
+			{ at: local(21, 0, 1), name: "read" },
+			{ at: local(21, 0, 2), name: "read" },
+			{ at: local(22, 0, 1), name: "stretch" },
+			{ at: local(22, 0, 2), name: "stretch" },
+		],
+	});
+
+	t.deepEqual(suggestionsOf(progress, nine), [
+		{ line: "Oatmeal", label: "usual around now" },
+		{ line: "2 Banana", label: "usual around now" },
+		{ line: "w", label: "behind on water today" },
+		{ line: "wo Running 30m Moderate", label: "same day last week" },
+		{ line: "h read", label: "3 of the last 7 days" },
+	]);
+	t.is(suggestionsOf(progress, nine, 2).length, 2);
+	t.false(
+		suggestionsOf(
+			{ ...progress, water: [{ at: local(8), milliliters: 1000 }] },
+			nine,
+		).some(({ line }) => line === "w"),
+		"ahead of the water pace",
+	);
+	t.deepEqual(
+		suggestionsOf(progressSchema.parse({}), Date.parse(local(6))),
+		[],
 	);
 });
