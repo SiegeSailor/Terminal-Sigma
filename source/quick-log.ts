@@ -279,5 +279,302 @@ function mealsOf(text: string, at: number, context: ParseContext): ParseResult {
 		: failed("badNumber");
 }
 
+const isWithin = (value: number, minimum: number, maximum: number) =>
+	value >= minimum && value <= maximum;
+
+// "7.5h", "7h30m", "450m", "30min", "30분", "7小時", or a bare "450".
+function minutesOf(text: string): number | undefined {
+	if (/^\d+(?:\.\d+)?$/v.test(text)) {
+		return Number(text);
+	}
+
+	const { hours, minutes } =
+		/^(?:(?<hours>\d+(?:\.\d+)?)(?:h|시간|小時))?(?:(?<minutes>\d+(?:\.\d+)?)(?:m(?:in)?|분|分鐘?))?$/iv.exec(
+			text,
+		)?.groups ?? {};
+
+	return hours === undefined && minutes === undefined
+		? undefined
+		: Number(hours ?? 0) * 60 + Number(minutes ?? 0);
+}
+
+// "500", "500ml", "0.5l", or "2 glasses", where a glass, cup, 杯, or 잔 is 250 ml.
+function millilitersOf(text: string): number | undefined {
+	const { value = "", unit = "ml" } =
+		/^(?<value>[\d.\/⁄]+) ?(?<unit>ml|l|glass(?:es)?|cups?|杯|잔)?$/iv.exec(
+			text,
+		)?.groups ?? {};
+	const amount = amountOf(value);
+	const glass = /^(?:ml|l)$/iv.test(unit) ? undefined : 250;
+
+	if (amount === undefined) {
+		return undefined;
+	}
+
+	return Math.round(
+		amount * (glass ?? (unit.toLowerCase() === "l" ? 1000 : 1)),
+	);
+}
+
+const wholeOf = (text: string) =>
+	/^\d+$/v.test(text.replaceAll(",", ""))
+		? Number(text.replaceAll(",", ""))
+		: undefined;
+
+const water: Parser = (text, at) => {
+	const milliliters = text ? millilitersOf(text) : 250;
+
+	if (milliliters === undefined) {
+		return failed("badNumber");
+	}
+
+	return isWithin(milliliters, 1, 5000)
+		? parsed({ kind: "water", at: iso(at), milliliters })
+		: failed("outOfRange");
+};
+
+const bodyFields: Partial<
+	Record<string, readonly ["weight" | "waist" | "bodyFat", number, number]>
+> = {
+	wt: ["weight", 30, 300],
+	waist: ["waist", 40, 250],
+	bf: ["bodyFat", 3, 60],
+};
+
+// "wt 72.4", "waist 82", "bf 18", or several at once: "wt 72.4 bf 18".
+const body: Parser = (text, at, _context, prefix) => {
+	const tokens = [prefix, ...text.split(" ")];
+	const entry: Partial<Record<"weight" | "waist" | "bodyFat", number>> = {};
+
+	for (let index = 0; index < tokens.length; index += 2) {
+		const field = bodyFields[tokens[index]?.toLowerCase() ?? ""];
+		const value = amountOf(
+			(tokens[index + 1] ?? "").replace(/(?:kg|cm|%)$/iv, ""),
+		);
+
+		if (!field || value === undefined) {
+			return failed("badNumber");
+		}
+
+		const [key, minimum, maximum] = field;
+
+		if (!isWithin(value, minimum, maximum)) {
+			return failed("outOfRange");
+		}
+
+		entry[key] = value;
+	}
+
+	return parsed({ kind: "body", at: iso(at), ...entry });
+};
+
+const clockPattern =
+	/^(?<fromHour>\d{1,2}):(?<fromMinute>\d{2})-(?<toHour>\d{1,2}):(?<toMinute>\d{2})$/v;
+
+// "23:30-7:10" in minutes, across midnight, and its wake time on the day of
+// `at`, or the day before when that is still to come.
+function spanOf(
+	text: string,
+	at: number,
+	now: number,
+): { minutes: number; wakeAt: number } | undefined {
+	const clock = clockPattern.exec(text)?.groups;
+
+	if (!clock) {
+		return undefined;
+	}
+
+	const [fromHour = 0, fromMinute = 0, toHour = 0, toMinute = 0] = [
+		clock.fromHour,
+		clock.fromMinute,
+		clock.toHour,
+		clock.toMinute,
+	].map(Number);
+
+	if (Math.max(fromHour, toHour) > 23 || Math.max(fromMinute, toMinute) > 59) {
+		return undefined;
+	}
+
+	const wake = new Date(at);
+	wake.setHours(toHour, toMinute, 0, 0);
+
+	if (wake.getTime() > now) {
+		wake.setDate(wake.getDate() - 1);
+	}
+
+	return {
+		minutes:
+			(toHour * 60 + toMinute - fromHour * 60 - fromMinute + 1440) % 1440,
+		wakeAt: wake.getTime(),
+	};
+}
+
+// "sl 23:30-7:10 q4" stamps the wake time; "sl 7.5h q3" woke up just now.
+const sleep: Parser = (text, at, { now }) => {
+	const [span = "", ...rest] = text.split(" ");
+	const scores = rest.map(
+		(token) => /^q(?<score>[1-5])$/iv.exec(token)?.groups?.score,
+	);
+	const { minutes, wakeAt } = spanOf(span, at, now) ?? {
+		minutes: minutesOf(span),
+		wakeAt: at,
+	};
+
+	if (
+		minutes === undefined ||
+		!isWithin(minutes, 1, 1440) ||
+		scores.includes(undefined)
+	) {
+		return failed("badSleep");
+	}
+
+	const quality = scores.at(-1);
+
+	return parsed({
+		kind: "sleep",
+		at: iso(wakeAt),
+		minutes: Math.round(minutes),
+		...(quality === undefined ? {} : { quality: Number(quality) }),
+	});
+};
+
+// "m 4 e3 s2 #work #friends": the mood, then energy, stress, and tags.
+const mood: Parser = (text, at) => {
+	const [score = "", ...rest] = text.split(" ");
+	const tags: string[] = [];
+	const ratings: Partial<Record<"energy" | "stress", number>> = {};
+
+	if (!/^[1-5]$/v.test(score)) {
+		return failed("badMood");
+	}
+
+	for (const token of rest) {
+		const rating = /^(?<scale>[es])(?<value>[1-5])$/iv.exec(token)?.groups;
+
+		if (token.length > 1 && token.startsWith("#")) {
+			tags.push(token.slice(1));
+		} else if (rating) {
+			ratings[rating.scale?.toLowerCase() === "e" ? "energy" : "stress"] =
+				Number(rating.value);
+		} else {
+			return failed("badMood");
+		}
+	}
+
+	return parsed({
+		kind: "mood",
+		at: iso(at),
+		score: Number(score),
+		...ratings,
+		...(tags.length > 0 ? { tags } : {}),
+	});
+};
+
+// "h read", "h read 30" for an amount, and "h read s" to skip it today.
+const habit: Parser = (text, at, { progress }) => {
+	const words = text.split(" ").filter(Boolean);
+	const skipped = words.length > 1 && words.at(-1)?.toLowerCase() === "s";
+
+	if (skipped) {
+		words.pop();
+	}
+
+	const amount = words.length > 1 ? amountOf(words.at(-1) ?? "") : undefined;
+
+	if (amount !== undefined) {
+		words.pop();
+	}
+
+	const typed = words.join(" ");
+
+	if (!typed) {
+		return failed("empty");
+	}
+
+	if (amount === 0) {
+		return failed("outOfRange");
+	}
+
+	// The spelling logged before, so "Read" and "read" stay 1 habit.
+	const name =
+		progress.habits.findLast(
+			(logged) => logged.name.toLowerCase() === typed.toLowerCase(),
+		)?.name ?? typed;
+
+	return parsed({
+		kind: "habit",
+		at: iso(at),
+		name,
+		...(amount === undefined ? {} : { amount }),
+		...(skipped ? { skipped } : {}),
+	});
+};
+
+const steps: Parser = (text, at) => {
+	const count = wholeOf(text);
+
+	if (count === undefined) {
+		return failed("badNumber");
+	}
+
+	return isWithin(count, 1, 100_000)
+		? parsed({ kind: "steps", at: iso(at), count })
+		: failed("outOfRange");
+};
+
+const note: Parser = (text, at) => {
+	if (!text) {
+		return failed("empty");
+	}
+
+	return text.length > 2000
+		? failed("tooLong")
+		: parsed({ kind: "note", at: iso(at), text });
+};
+
+const goalRules: Partial<
+	Record<
+		string,
+		readonly [keyof Goals, (text: string) => number | undefined, number, number]
+	>
+> = {
+	water: ["water", millilitersOf, 250, 10_000],
+	sleep: ["sleep", minutesOf, 240, 720],
+	steps: ["steps", wholeOf, 1000, 50_000],
+	focus: ["focusSessions", wholeOf, 1, 16],
+};
+
+// "goal water 2.5l", "goal sleep 8h", "goal steps 9000", or "goal focus 6".
+const goal: Parser = (text, at) => {
+	const [name = "", ...rest] = text.split(" ");
+	const rule = goalRules[name.toLowerCase()];
+
+	if (!rule) {
+		return failed("badGoal");
+	}
+
+	const [key, read, minimum, maximum] = rule;
+	const value = read(rest.join(" "));
+
+	if (value === undefined) {
+		return failed("badNumber");
+	}
+
+	return isWithin(value, minimum, maximum)
+		? parsed({ kind: "goal", at: iso(at), goal: key, value: Math.round(value) })
+		: failed("outOfRange");
+};
+
 // The prefix of a line picks its parser; a line without 1 is a meal.
-const parsers: Partial<Record<string, Parser>> = {};
+const parsers: Partial<Record<string, Parser>> = {
+	w: water,
+	wt: body,
+	waist: body,
+	bf: body,
+	sl: sleep,
+	m: mood,
+	h: habit,
+	st: steps,
+	n: note,
+	goal,
+};

@@ -248,3 +248,88 @@ test("puts a time typed after midnight on yesterday", (t) => {
 		meal({ at: local(23, 0, 3), food: "Quick add", calories: 450 }),
 	]);
 });
+test("parses water, body, sleep, mood, habits, steps, notes, and goals", (t) => {
+	const at = local(12);
+
+	check(t, [
+		["w", [{ kind: "water", at, milliliters: 250 }]],
+		["w 500", [{ kind: "water", at, milliliters: 500 }]],
+		["W 500ml", [{ kind: "water", at, milliliters: 500 }]],
+		["w 0.5l", [{ kind: "water", at, milliliters: 500 }]],
+		["w 2 glasses", [{ kind: "water", at, milliliters: 500 }]],
+		["w 2杯", [{ kind: "water", at, milliliters: 500 }]],
+		["ｗ　５００", [{ kind: "water", at, milliliters: 500 }]],
+		["w lots", "badNumber"],
+		["w 6000", "outOfRange"],
+		["wt 72.4", [{ kind: "body", at, weight: 72.4 }]],
+		["waist 82", [{ kind: "body", at, waist: 82 }]],
+		["bf 18", [{ kind: "body", at, bodyFat: 18 }]],
+		["wt 72.4kg bf 18%", [{ kind: "body", at, weight: 72.4, bodyFat: 18 }]],
+		["wt 500", "outOfRange"],
+		["wt 72 bf", "badNumber"],
+		[
+			"sl 23:30-7:10 q4",
+			[{ kind: "sleep", at: local(7, 10), minutes: 460, quality: 4 }],
+		],
+		["sl 7.5h q3", [{ kind: "sleep", at, minutes: 450, quality: 3 }]],
+		["sl 7h30m", [{ kind: "sleep", at, minutes: 450 }]],
+		["sl 7시간", [{ kind: "sleep", at, minutes: 420 }]],
+		["sl 7.5h q9", "badSleep"],
+		["sl 25:00-7:00", "badSleep"],
+		["sl", "badSleep"],
+		[
+			"m 4 e3 s2 #work #friends",
+			[
+				{
+					kind: "mood",
+					at,
+					score: 4,
+					energy: 3,
+					stress: 2,
+					tags: ["work", "friends"],
+				},
+			],
+		],
+		["m 2", [{ kind: "mood", at, score: 2 }]],
+		["m 6", "badMood"],
+		["m 4 great", "badMood"],
+		["h read", [{ kind: "habit", at, name: "read" }]],
+		["h read 30", [{ kind: "habit", at, name: "read", amount: 30 }]],
+		["h read s", [{ kind: "habit", at, name: "read", skipped: true }]],
+		["h no sugar", [{ kind: "habit", at, name: "no sugar" }]],
+		["h", "empty"],
+		["st 8400", [{ kind: "steps", at, count: 8400 }]],
+		["st 8,400", [{ kind: "steps", at, count: 8400 }]],
+		["st 0", "outOfRange"],
+		["st many", "badNumber"],
+		[
+			"n grateful for the sun",
+			[{ kind: "note", at, text: "grateful for the sun" }],
+		],
+		["n", "empty"],
+		[`n ${"a".repeat(2001)}`, "tooLong"],
+		["goal water 2.5l", [{ kind: "goal", at, goal: "water", value: 2500 }]],
+		["goal sleep 8h", [{ kind: "goal", at, goal: "sleep", value: 480 }]],
+		["goal steps 9000", [{ kind: "goal", at, goal: "steps", value: 9000 }]],
+		["goal focus 6", [{ kind: "goal", at, goal: "focusSessions", value: 6 }]],
+		["goal water 20l", "outOfRange"],
+		["goal mood 5", "badGoal"],
+		["goal steps lots", "badNumber"],
+	]);
+});
+
+test("puts a sleep logged after midnight on the morning it ended", (t) => {
+	t.deepEqual(parse("sl 23:30-7:10", { at: Date.parse(local(0, 20, 4)) }), [
+		{ kind: "sleep", at: local(7, 10, 3), minutes: 460 },
+	]);
+});
+
+test("reuses the spelling of a habit logged before", (t) => {
+	const progress = progressSchema.parse({
+		habits: [{ at: local(8, 0, 2), name: "Read" }],
+	});
+
+	t.deepEqual(parse("h read", { progress }), [
+		{ kind: "habit", at: local(12), name: "Read" },
+	]);
+});
