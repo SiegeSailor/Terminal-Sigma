@@ -728,6 +728,7 @@ export default function App({
 			{
 				...progress,
 				profile: {
+					...progress.profile,
 					name: values.name ?? name,
 					age: Number(values.age),
 					height: Number(values.height),

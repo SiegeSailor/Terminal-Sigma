@@ -355,6 +355,30 @@ test("saves a profile and turns it into targets", async (t) => {
 	unmount();
 });
 
+test("keeps unknown profile fields when saving the profile", async (t) => {
+	const { file, stdin, unmount } = start(
+		progressSchema.parse({
+			language: "en",
+			profile: {
+				name: "Ken",
+				age: 30,
+				height: 175,
+				weight: 70,
+				gender: "male",
+				workStyle: "desk",
+				goal: "maintain",
+				newerField: "kept",
+			},
+		}),
+	);
+
+	await type(stdin, ["5", "\r", ...Array.from({ length: 8 }, () => "\r")]);
+	t.true(actionsIn(file).includes("profileSaved"));
+	t.like(loadProgress(file).profile, { name: "Ken", newerField: "kept" });
+
+	unmount();
+});
+
 test("previews a theme while browsing and saves the chosen one", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 	const before = lastFrame() ?? "";
