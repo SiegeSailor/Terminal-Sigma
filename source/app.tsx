@@ -642,8 +642,18 @@ export default function App({
 	};
 
 	// Swaps the edited log for what its line now says, at its own time.
+	// ponytail: the edited entry is appended to its array, so a same-timestamp
+	// tie can change order; reinsert at the entry's index if that order matters.
 	const replaceLog = (_line: string, drafts: Draft[]) => {
 		if (!editing) {
+			return false;
+		}
+
+		if (
+			drafts.length === 0 ||
+			drafts.some((draft) => draft.kind !== editing.kind)
+		) {
+			say(messages.logs.mustKeepKind);
 			return false;
 		}
 

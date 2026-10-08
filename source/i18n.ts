@@ -429,6 +429,7 @@ const en = {
 		cannotEdit: "Focus and actions cannot change.",
 		cannotEditLine:
 			"This entry can't be written as 1 line; delete it and log it again.",
+		mustKeepKind: "An edit keeps its kind; log anything else as a new line.",
 		all: "All",
 		week: "Week",
 		kinds: {
@@ -875,6 +876,7 @@ const traditionalChinese: Messages = {
 		restored: "已還原這筆紀錄。",
 		cannotEdit: "專注與操作紀錄不能更改。",
 		cannotEditLine: "這筆紀錄無法寫成一行；請刪除後重新記錄。",
+		mustKeepKind: "編輯時不能改變種類；其他內容請另起一行記錄。",
 		all: "全部",
 		week: "本週",
 		kinds: {
@@ -1319,6 +1321,8 @@ const korean: Messages = {
 		cannotEdit: "집중과 활동 기록은 바꿀 수 없습니다.",
 		cannotEditLine:
 			"이 기록은 한 줄로 쓸 수 없습니다. 삭제하고 다시 기록하세요.",
+		mustKeepKind:
+			"수정할 때는 종류를 바꿀 수 없습니다. 다른 기록은 새 줄로 남기세요.",
 		all: "전체",
 		week: "이번 주",
 		kinds: {

@@ -613,6 +613,48 @@ test("edits an older log in place, keeping its day and its neighbor", async (t) 
 	unmount();
 });
 
+test("keeps an edited log's kind", async (t) => {
+	const at = new Date(Date.now() - 3 * 86_400_000).toISOString();
+	const { file, stdin, lastFrame, unmount } = start({
+		...empty,
+		meals: [{ at, food: "Toast", calories: 160 }],
+	});
+	const before = loadProgress(file);
+
+	await type(stdin, ["3", "\r", right, right, "e"]);
+	await type(stdin, [backspace.repeat(15), "goal water 2.5l", "\r"]);
+	t.deepEqual(loadProgress(file).meals, [{ at, food: "Toast", calories: 160 }]);
+	t.deepEqual(loadProgress(file).goals, before.goals);
+	t.true((lastFrame() ?? "").includes("An edit keeps its kind"), "says why");
+
+	unmount();
+});
+
+test("cannot edit a workout of several exercises", async (t) => {
+	const at = new Date(Date.now() - 3 * 86_400_000).toISOString();
+	const { stdin, lastFrame, unmount } = start({
+		...empty,
+		workouts: [
+			{
+				at,
+				activity: "strength",
+				minutes: 30,
+				intensity: "moderate",
+				sets: [
+					{ exercise: "bench", weight: 60, reps: 5 },
+					{ exercise: "squat", weight: 80, reps: 5 },
+				],
+			},
+		],
+	});
+
+	await type(stdin, ["3", "\r", right, right, right, "e"]);
+	// The footer clips the message, so match its start.
+	t.true((lastFrame() ?? "").includes("This entry can't be written"));
+
+	unmount();
+});
+
 test("deletes a log, puts it back, and logs it again now", async (t) => {
 	const at = new Date(Date.now() - 86_400_000).toISOString();
 	const { file, stdin, lastFrame, unmount } = start({
