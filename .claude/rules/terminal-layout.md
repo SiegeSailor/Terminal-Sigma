@@ -53,7 +53,7 @@ The regions of the dashboard:
 | Character   | Name, level, the stage the character walks on, a blank row, then a Claude Code spinner with what it is doing                                     |
 | Description | The right box of the menu: what the focused item does, or once opened, its options, form, or picker                                              |
 | Footer      | 1 line: a spinner and the timer while it runs, otherwise a bullet and the last event, then the key hints                                         |
-| Header      | `✻ Terminal Sigma`, the clock, and the everyday quote on 1 truncated line                                                                        |
+| Header      | `✻ Terminal Sigma`, the clock, and the everyday quote on 1 truncated line, marked ✦ New for 8 seconds after it changes                           |
 | Menu        | The left box: the 10 numbered items under 4 headings, `0` jumping to the 10th, highlighted while it takes the input, padded evenly on both sides |
 | Recent      | Its own block under the menu: the 4 latest logs                                                                                                  |
 | Today       | Character and Focus bars, then the Health group: protein, calories, and workout, with the most urgent advice                                     |

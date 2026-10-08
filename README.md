@@ -107,6 +107,8 @@ Each setting is saved as soon as you choose it:
 
 Without an API key, the settings filter the 28 bundled quotes, which cover every category in all 3 languages, and fall back to all of them when nothing matches. With `API_NINJAS_KEY`, they become the query to API Ninjas.
 
+Every new quote marks itself with **✦ New** for 8 seconds and types itself in, whether you drew it or it refreshed on its own. A random draw never repeats the quote on screen. With `TERMINAL_SIGMA_MOTION=reduced`, it appears whole at once.
+
 ### Character
 
 Your character is a pixel-art you, standing on its own oval shadow and animating at 10 frames a second. It wanders around its panel, turning side on to walk with both feet stepping the way it goes and its arms swinging, then faces you to look about, blink, and shake out its hands. It types at a desk, sips a coffee, eats, runs a lap, lifts, or stretches to match what you do, and always finishes back where it started before the next animation begins. 3 things shape it:
