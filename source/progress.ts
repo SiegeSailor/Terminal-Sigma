@@ -149,7 +149,7 @@ const quotesSchema = zod.object({
 	work: zod.string().default(""),
 });
 
-const profileSchema = zod.looseObject({
+const profileShape = {
 	name: zod.string().min(1),
 	age: zod.number().int().min(10).max(100),
 	height: zod.number().min(100).max(250),
@@ -158,12 +158,15 @@ const profileSchema = zod.looseObject({
 	gender: zod.enum(genders),
 	workStyle: zod.enum(workStyles),
 	goal: zod.enum(healthGoals),
-});
+};
+// Parsing keeps the fields a newer version wrote; the types stay strict.
+const profileSchema = zod.looseObject(profileShape);
+const strictProfileSchema = zod.object(profileShape);
 
-export const progressSchema = zod.looseObject({
+const progressShape = {
 	language: zod.enum(languages).optional(),
 	theme: zod.enum(themeNames).optional(),
-	profile: profileSchema.optional(),
+	profile: strictProfileSchema.optional(),
 	quotes: quotesSchema.optional(),
 	goals: goalsSchema.optional(),
 	focus: zod.array(focusSchema).default([]),
@@ -177,11 +180,18 @@ export const progressSchema = zod.looseObject({
 	steps: zod.array(stepsSchema).default([]),
 	notes: zod.array(noteSchema).default([]),
 	events: zod.array(eventSchema).default([]),
+};
+
+export const progressSchema = zod.looseObject({
+	...progressShape,
+	profile: profileSchema.optional(),
 });
 
-export type Progress = zod.infer<typeof progressSchema>;
+export type Progress = zod.infer<
+	ReturnType<typeof zod.object<typeof progressShape>>
+>;
 export const goalKeys = goalsSchema.keyof().options;
-export type Profile = zod.infer<typeof profileSchema>;
+export type Profile = zod.infer<typeof strictProfileSchema>;
 export type Goals = zod.infer<typeof goalsSchema>;
 export type Focus = zod.infer<typeof focusSchema>;
 export type Meal = zod.infer<typeof mealSchema>;
