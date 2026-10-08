@@ -4,6 +4,7 @@
 build/
 desktop/dist/
 desktop/release/
+scenes/
 
 #######################################
 # Cache

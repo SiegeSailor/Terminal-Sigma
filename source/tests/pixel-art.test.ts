@@ -17,6 +17,7 @@ import {
 	toSegments,
 } from "../pixel-art.js";
 import { themeNames, themes } from "../theme.js";
+import { pngOf, sheetOf } from "./render-scenes.js";
 
 const activities: Activity[] = [
 	"idle",
@@ -313,4 +314,13 @@ test("upgrades exactly 1 piece of equipment on each level from 2 to 9", (t) => {
 
 	t.deepEqual(gearOf(1), { gadget: 0, wear: 0, headwear: 0, carry: 0 });
 	t.deepEqual(gearOf(20), { gadget: 2, wear: 2, headwear: 2, carry: 2 });
+});
+
+test("encodes a contact sheet of scenes as a PNG", (t) => {
+	const png = pngOf(sheetOf([scene(), scene({ counter: 24 })], 2));
+
+	t.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+	// IHDR's width and height, after the signature, the length, and the type.
+	t.is(png.readUInt32BE(16), 2 * (width + 2) * 6);
+	t.is(png.readUInt32BE(20), (stageHeight + 2) * 6);
 });
