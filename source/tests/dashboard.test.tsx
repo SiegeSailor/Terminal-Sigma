@@ -428,3 +428,51 @@ test("masks a saved secret and clears it with an empty value", async (t) => {
 
 	unmount();
 });
+
+test("marks a newly drawn quote", async (t) => {
+	const { stdin, lastFrame, unmount } = start();
+	await settle();
+	t.false((lastFrame() ?? "").includes("✦ New"), "the first quote is not news");
+
+	// Everyday Quotes, then Draw a new quote.
+	await type(stdin, ["4", "\r", "\r"]);
+	t.true(await shows(lastFrame, "✦ New"));
+
+	unmount();
+});
+
+test("a language switch is not a new quote", async (t) => {
+	const { stdin, lastFrame, unmount } = start();
+	await settle();
+
+	// Language, then 繁體中文.
+	await type(stdin, ["7", "\r", down, "\r"]);
+	t.false((lastFrame() ?? "").includes("✦"));
+
+	unmount();
+});
+
+test("shows the whole new quote at once with reduced motion", async (t) => {
+	const { stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		{ TERMINAL_SIGMA_MOTION: "reduced" },
+	);
+
+	await type(stdin, ["4", "\r", "\r"]);
+	const quoteLine = () => (lastFrame() ?? "").split("\n")[2];
+	await shows(lastFrame, "✦ New");
+	const before = quoteLine();
+	t.true(before?.includes("✦ New"));
+
+	for (let index = 0; index < 7; index++) {
+		// eslint-disable-next-line no-await-in-loop
+		await settle();
+	}
+
+	t.is(quoteLine(), before, "the quote does not type in");
+
+	unmount();
+});

@@ -10,12 +10,14 @@ import Choice from "./components/choice.js";
 import EntryForm from "./components/entry-form.js";
 import EnvironmentView from "./components/environment-view.js";
 import Footer, { type Tone } from "./components/footer.js";
+import Header from "./components/header.js";
 import LogsView, { LogRow } from "./components/logs-view.js";
 import MultiChoice from "./components/multi-choice.js";
 import TodayPanel from "./components/today-panel.js";
 import {
 	type Config,
 	type Environment,
+	isReducedMotion,
 	saveConfig,
 	sourceOf,
 	type VariableName,
@@ -233,6 +235,12 @@ export default function App({
 	const [quote, setQuote] = React.useState<Quote>(() =>
 		pickBundled(quoteSettings, Date.now()),
 	);
+	const quoteOnScreen = React.useRef(quote);
+
+	React.useEffect(() => {
+		quoteOnScreen.current = quote;
+	}, [quote]);
+
 	const [view, setView] = React.useState<View>("menu");
 	const [focusedMenu, setFocusedMenu] = React.useState<MenuKey>("timer");
 	const [quoteEditor, setQuoteEditor] = React.useState<QuoteEditor>();
@@ -406,7 +414,11 @@ export default function App({
 	React.useEffect(() => {
 		let isMounted = true;
 		const refresh = async () => {
-			const next = await fetchQuote(quoteSettings, env.API_NINJAS_KEY);
+			const next = await fetchQuote(
+				quoteSettings,
+				env.API_NINJAS_KEY,
+				quoteOnScreen.current,
+			);
 
 			if (isMounted) {
 				setQuote(next);
@@ -638,7 +650,9 @@ export default function App({
 	};
 
 	const drawQuote = (settings: QuoteSettings, base: Progress) => {
-		void fetchQuote(settings, env.API_NINJAS_KEY).then(setQuote);
+		void fetchQuote(settings, env.API_NINJAS_KEY, quoteOnScreen.current).then(
+			setQuote,
+		);
 		return withEvent(base, "quoteDrawn");
 	};
 
@@ -654,7 +668,9 @@ export default function App({
 
 		if (commit(next, messages.quotes.changed)) {
 			setQuoteEditor(undefined);
-			setQuote(pickBundled(settings, Date.now()));
+			setQuote(
+				pickBundled(settings, Date.now(), Math.random(), quoteOnScreen.current),
+			);
 		}
 	};
 
@@ -1114,23 +1130,13 @@ export default function App({
 			overflow="hidden"
 			width={columns}
 		>
-			<Box
-				borderColor={palette.accent}
-				borderStyle="round"
-				flexDirection="column"
-				flexShrink={0}
-				paddingX={1}
-			>
-				<Box justifyContent="space-between">
-					<Text bold color={palette.accent}>
-						✻ Terminal Sigma
-					</Text>
-					<Text dimColor>{new Date(now).toTimeString().slice(0, 8)}</Text>
-				</Box>
-				<Text dimColor italic wrap="truncate-end">
-					{`“${shownQuote.quote}” — ${shownQuote.author}`}
-				</Text>
-			</Box>
+			<Header
+				clock={new Date(now).toTimeString().slice(0, 8)}
+				freshLabel={messages.quotes.fresh}
+				isReduced={isReducedMotion(env)}
+				line={`“${shownQuote.quote}” — ${shownQuote.author}`}
+				quoteKey={`${quote.quote}|${quote.author}`}
+			/>
 
 			<Box
 				flexDirection={layout.stacked ? "column-reverse" : "row"}

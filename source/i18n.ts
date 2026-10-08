@@ -279,6 +279,7 @@ const en = {
 	},
 	quotes: {
 		draw: "Draw a new quote",
+		fresh: "New",
 		autoRefresh: (isOn: boolean) => `Auto-refresh: ${isOn ? "On" : "Off"}`,
 		interval: (label: string) => `Interval: ${label}`,
 		mode: (label: string) => `Source: ${label}`,
@@ -630,6 +631,7 @@ const traditionalChinese: Messages = {
 	},
 	quotes: {
 		draw: "換一則語錄",
+		fresh: "新",
 		autoRefresh: (isOn) => `自動更新：${isOn ? "開" : "關"}`,
 		interval: (label) => `間隔：${label}`,
 		mode: (label) => `來源：${label}`,
@@ -979,6 +981,7 @@ const korean: Messages = {
 	},
 	quotes: {
 		draw: "새 명언 뽑기",
+		fresh: "새 명언",
 		autoRefresh: (isOn) => `자동 새로고침: ${isOn ? "켬" : "끔"}`,
 		interval: (label) => `간격: ${label}`,
 		mode: (label) => `출처: ${label}`,
