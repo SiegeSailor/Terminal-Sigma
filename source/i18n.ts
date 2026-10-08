@@ -1,5 +1,5 @@
 import type { Source, VariableGroup, VariableName } from "./config.js";
-import type { EventAction, LogKind } from "./progress.js";
+import type { EventAction, Goals, LogKind } from "./progress.js";
 import type { QuoteCategory, QuoteMode } from "./quotes.js";
 import type { ThemeName } from "./theme.js";
 import type { Updater } from "./update.js";
@@ -357,7 +357,19 @@ const en = {
 			mono: "Mono",
 		} satisfies Record<ThemeName, string>,
 	},
-	log: { quickAdd: "Quick add" },
+	log: {
+		quickAdd: "Quick add",
+		unknownFood: (food: string) =>
+			`${food}: not a food I know yet; add its kcal, e.g. ${food} 500kcal`,
+		goals: {
+			water: "Water goal",
+			sleep: "Sleep goal",
+			steps: "Steps goal",
+			focusSessions: "Focus goal",
+		} satisfies Record<keyof Goals, string>,
+		goalSet: (goal: string, value: string) => `${goal}: ${value}`,
+		milliliters: (amount: number) => `${amount} ml`,
+	},
 	logs: {
 		title: "Logs",
 		all: "All",
@@ -741,7 +753,19 @@ const traditionalChinese: Messages = {
 			mono: "單色",
 		},
 	},
-	log: { quickAdd: "快速記錄" },
+	log: {
+		quickAdd: "快速記錄",
+		unknownFood: (food) =>
+			`${food}：還不認識這個食物，請加上熱量，例如 ${food} 500kcal`,
+		goals: {
+			water: "喝水目標",
+			sleep: "睡眠目標",
+			steps: "步數目標",
+			focusSessions: "專注目標",
+		},
+		goalSet: (goal, value) => `${goal}：${value}`,
+		milliliters: (amount) => `${amount} 毫升`,
+	},
 	logs: {
 		title: "所有紀錄",
 		all: "全部",
@@ -1123,7 +1147,19 @@ const korean: Messages = {
 			mono: "모노",
 		},
 	},
-	log: { quickAdd: "빠른 기록" },
+	log: {
+		quickAdd: "빠른 기록",
+		unknownFood: (food) =>
+			`${food}: 아직 모르는 음식입니다. 열량을 함께 입력하세요. 예: ${food} 500kcal`,
+		goals: {
+			water: "물 목표",
+			sleep: "수면 목표",
+			steps: "걸음 목표",
+			focusSessions: "집중 목표",
+		},
+		goalSet: (goal, value) => `${goal}: ${value}`,
+		milliliters: (amount) => `${amount}ml`,
+	},
 	logs: {
 		title: "전체 기록",
 		all: "전체",

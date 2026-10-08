@@ -1,7 +1,18 @@
 import test from "ava";
-import type { Language } from "../i18n.js";
-import { type Progress, progressSchema } from "../progress.js";
-import { type Draft, type ParseError, parseQuickLog } from "../quick-log.js";
+import { type Language, messagesOf } from "../i18n.js";
+import { logsOf, type Progress, progressSchema } from "../progress.js";
+import {
+	applyDrafts,
+	describeDraft,
+	type Draft,
+	draftOf,
+	lineOf,
+	type ParseError,
+	parseQuickLog,
+	restoreLog,
+	summaryOf,
+	undoAdded,
+} from "../quick-log.js";
 
 // Noon on 3 October 2026, local time, so the cases hold in any time zone.
 const local = (hour: number, minute = 0, day = 3) =>
@@ -524,4 +535,201 @@ test("keeps sets typed after an activity word", (t) => {
 			sets: [{ exercise: "lift", reps: 5, weight: 60 }],
 		},
 	]);
+});
+
+test("repeats the last line with a dot, and copies yesterday's meals", (t) => {
+	const progress = progressSchema.parse({
+		meals: [
+			{ at: local(8, 0, 1), food: "Bagel", calories: 280 },
+			{ at: local(8, 0, 2), food: "Egg", servings: 2, calories: 144 },
+			{ at: local(8, 0, 2), food: "Toast", calories: 160 },
+			{ at: local(13, 0, 2), food: "Ramen", calories: 500 },
+		],
+		events: [{ at: local(11), action: "appOpened" }],
+	});
+	const ramen = {
+		kind: "meal",
+		food: "Ramen",
+		servings: 1,
+		calories: 500,
+		isKnown: true,
+	};
+	const egg = {
+		kind: "meal",
+		food: "Egg",
+		servings: 2,
+		calories: 144,
+		isKnown: true,
+	};
+	const toast = {
+		kind: "meal",
+		food: "Toast",
+		servings: 1,
+		calories: 160,
+		isKnown: true,
+	};
+
+	t.deepEqual(parse(".", { progress }), [{ ...ramen, at: local(12) }]);
+	t.deepEqual(parse("copy y", { progress }), [
+		{ ...egg, at: local(8) },
+		{ ...toast, at: local(8) },
+		{ ...ramen, at: local(13) },
+	]);
+	t.is(parse(".", { progress: empty }), "nothingToRepeat");
+	t.is(parse("copy y", { progress: empty }), "nothingToCopy");
+	t.is(parse("copy x", { progress }), "badTime");
+});
+
+test("applies drafts, undoes exactly them, and restores a deleted entry", (t) => {
+	const before = progressSchema.parse({
+		meals: [{ at: local(7), food: "Bagel", calories: 280 }],
+		water: [{ at: local(9), milliliters: 250 }],
+	});
+	const result = parseQuickLog("2 eggs, mystery stew", {
+		progress: before,
+		now,
+		language: "en",
+	});
+	const goal = parseQuickLog("goal water 2.5l", {
+		progress: before,
+		now,
+		language: "en",
+	});
+	const drafts = [
+		...(result.ok ? result.drafts : []),
+		...(goal.ok ? goal.drafts : []),
+	];
+	const { next, added } = applyDrafts(before, drafts);
+
+	t.deepEqual(added, [
+		{ kind: "meal", index: 1 },
+		{ kind: "meal", index: 2 },
+	]);
+	t.deepEqual(next.meals.slice(1), [
+		{
+			at: local(12),
+			food: "Egg",
+			servings: 2,
+			calories: 144,
+			protein: 12,
+			carbs: 0,
+			fat: 10,
+		},
+		{ at: local(12), food: "mystery stew" },
+	]);
+	t.deepEqual(next.goals, { water: 2500 });
+	t.deepEqual(undoAdded(next, added).meals, before.meals);
+	t.deepEqual(undoAdded(next, added).water, before.water);
+
+	const [toast] = logsOf(
+		progressSchema.parse({ meals: [{ at: local(8), food: "Toast" }] }),
+	);
+	const deleted = { ...toast!, index: 0 };
+	t.deepEqual(restoreLog(before, deleted).meals, [
+		{ at: local(8), food: "Toast" },
+		{ at: local(7), food: "Bagel", calories: 280 },
+	]);
+});
+
+test("writes every kind back as a line that parses to the same entry", (t) => {
+	const at = local(18, 30, 1);
+	const progress = progressSchema.parse({
+		meals: [
+			{
+				at,
+				food: "Egg",
+				servings: 2,
+				calories: 144,
+				protein: 12,
+				carbs: 0,
+				fat: 10,
+			},
+			{ at, food: "Quick add", calories: 450, protein: 30 },
+		],
+		workouts: [
+			{
+				at,
+				activity: "running",
+				minutes: 30,
+				intensity: "vigorous",
+				distance: 5,
+			},
+			{
+				at,
+				activity: "strength",
+				minutes: 12,
+				intensity: "moderate",
+				sets: [
+					{ exercise: "bench", reps: 5, weight: 60 },
+					{ exercise: "bench", reps: 5, weight: 60 },
+					{ exercise: "bench", reps: 3, weight: 65 },
+				],
+			},
+		],
+		water: [{ at, milliliters: 500 }],
+		sleep: [{ at, minutes: 460, quality: 4 }],
+		body: [{ at, weight: 72.4, bodyFat: 18 }],
+		moods: [{ at, score: 4, energy: 3, stress: 2, tags: ["work"] }],
+		habits: [
+			{ at, name: "no sugar", amount: 2 },
+			{ at, name: "read", skipped: true },
+		],
+		steps: [{ at, count: 8400 }],
+		notes: [{ at, text: "grateful for the sun" }],
+	});
+
+	for (const language of ["en", "zh-TW", "ko"] as const) {
+		for (const log of logsOf(progress)) {
+			const line = lineOf(log, language);
+			t.deepEqual(
+				parse(line, { progress, language, at: Date.parse(log.at) }),
+				[draftOf(log)],
+				`${language}: ${line}`,
+			);
+		}
+	}
+
+	t.is(
+		lineOf(
+			logsOf(progress).find((log) => log.kind === "workout" && log.entry.sets)!,
+			"zh-TW",
+		),
+		"wo 臥推 60x5x2 65x3 12m 中度",
+	);
+});
+
+test("describes drafts for the preview and names them for the footer", (t) => {
+	const english = messagesOf("en");
+	const result = parseQuickLog("2 eggs, mystery stew", {
+		progress: empty,
+		now,
+		language: "en",
+	});
+	const drafts = result.ok ? result.drafts : [];
+	const [eggs, stew] = drafts;
+
+	t.is(
+		describeDraft(eggs!, english, "en"),
+		"2 × Egg · 144 kcal · 12 g protein",
+	);
+	t.is(
+		describeDraft(stew!, english, "en"),
+		"mystery stew: not a food I know yet; add its kcal, e.g. mystery stew 500kcal",
+	);
+	t.is(
+		describeDraft(
+			{ kind: "goal", at: local(12), goal: "sleep", value: 480 },
+			english,
+			"en",
+		),
+		"Sleep goal: 8h",
+	);
+	t.is(summaryOf(drafts, english), "2 Egg, mystery stew");
+	t.is(
+		summaryOf(
+			[{ kind: "water", at: local(12), milliliters: 250 }],
+			messagesOf("ko"),
+		),
+		"물",
+	);
 });

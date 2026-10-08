@@ -1,13 +1,17 @@
+import { describeLog, goalText } from "./content.js";
 import {
 	caloriesOf,
+	exerciseName,
 	intensityOf,
 	leadingActivity,
 	leadingExercise,
+	setGroupsOf,
 } from "./exercises.js";
 import { matchFood } from "./foods.js";
 import {
 	type Intensity,
 	type Language,
+	type Messages,
 	messagesOf,
 	type WorkoutActivity,
 	workoutActivities,
@@ -15,7 +19,12 @@ import {
 import {
 	byTime,
 	type EntryOf,
+	fieldOf,
 	type Goals,
+	type Logged,
+	type LogKind,
+	logKinds,
+	logsOf,
 	type Progress,
 	profileNow,
 } from "./progress.js";
@@ -763,6 +772,355 @@ const workout: Parser = (text, at, { progress }) => {
 	});
 };
 
+// An entry as the draft that would log it again.
+export function draftOf(log: Logged): Draft | undefined {
+	switch (log.kind) {
+		case "meal": {
+			return {
+				...log.entry,
+				kind: "meal",
+				servings: log.entry.servings ?? 1,
+				isKnown: true,
+			};
+		}
+
+		case "workout": {
+			return { ...log.entry, kind: "workout" };
+		}
+
+		case "water": {
+			return { ...log.entry, kind: "water" };
+		}
+
+		case "sleep": {
+			return { ...log.entry, kind: "sleep" };
+		}
+
+		case "body": {
+			return { ...log.entry, kind: "body" };
+		}
+
+		case "mood": {
+			return { ...log.entry, kind: "mood" };
+		}
+
+		case "habit": {
+			return { ...log.entry, kind: "habit" };
+		}
+
+		case "steps": {
+			return { ...log.entry, kind: "steps" };
+		}
+
+		case "note": {
+			return { ...log.entry, kind: "note" };
+		}
+
+		case "focus":
+		case "event": {
+			return undefined;
+		}
+	}
+}
+
+// "." logs the last line again, every item of it, stamped now.
+const repeat: Parser = (_text, at, { progress }) => {
+	const logs = logsOf(progress).filter(
+		(log) => log.kind !== "event" && log.kind !== "focus",
+	);
+	const last = logs[0]?.at;
+	const drafts = logs
+		.filter((log) => log.at === last)
+		.flatMap((log) => draftOf(log) ?? [])
+		.map((draft) => ({ ...draft, at: iso(at) }));
+
+	return drafts.length > 0 ? parsed(...drafts) : failed("nothingToRepeat");
+};
+
+// "copy y" logs yesterday's meals again today, each at the same time.
+const copy: Parser = (text, _at, { progress, now }) => {
+	const yesterday = new Date(now);
+	yesterday.setDate(yesterday.getDate() - 1);
+	const drafts = progress.meals
+		.filter(
+			(meal) => new Date(meal.at).toDateString() === yesterday.toDateString(),
+		)
+		.toSorted(byTime)
+		.map((meal): Draft => {
+			const today = new Date(meal.at);
+			today.setDate(today.getDate() + 1);
+			return {
+				...meal,
+				kind: "meal",
+				at: today.toISOString(),
+				servings: meal.servings ?? 1,
+				isKnown: true,
+			};
+		});
+
+	if (text.toLowerCase() !== "y") {
+		return failed("badTime");
+	}
+
+	return drafts.length > 0 ? parsed(...drafts) : failed("nothingToCopy");
+};
+
+export type Added = Readonly<{ kind: LogKind; index: number }>;
+
+// The entry a draft saves: a meal drops its flag, and 1 serving goes unsaid.
+function entryOf(draft: Exclude<Draft, GoalDraft>): Logged {
+	const index = -1;
+
+	switch (draft.kind) {
+		case "meal": {
+			const { kind, isKnown, servings, ...meal } = draft;
+			return {
+				kind,
+				at: draft.at,
+				index,
+				entry: { ...meal, ...(servings === 1 ? {} : { servings }) },
+			};
+		}
+
+		case "workout": {
+			const { kind, ...entry } = draft;
+			return { kind, at: draft.at, index, entry };
+		}
+
+		case "water": {
+			const { kind, ...entry } = draft;
+			return { kind, at: draft.at, index, entry };
+		}
+
+		case "sleep": {
+			const { kind, ...entry } = draft;
+			return { kind, at: draft.at, index, entry };
+		}
+
+		case "body": {
+			const { kind, ...entry } = draft;
+			return { kind, at: draft.at, index, entry };
+		}
+
+		case "mood": {
+			const { kind, ...entry } = draft;
+			return { kind, at: draft.at, index, entry };
+		}
+
+		case "habit": {
+			const { kind, ...entry } = draft;
+			return { kind, at: draft.at, index, entry };
+		}
+
+		case "steps": {
+			const { kind, ...entry } = draft;
+			return { kind, at: draft.at, index, entry };
+		}
+
+		case "note": {
+			const { kind, ...entry } = draft;
+			return { kind, at: draft.at, index, entry };
+		}
+	}
+}
+
+// Appends every draft and says where each entry landed, so undo can find it;
+// a goal changes the goals instead.
+export function applyDrafts(
+	progress: Progress,
+	drafts: readonly Draft[],
+): { next: Progress; added: Added[] } {
+	let next = progress;
+	const added: Added[] = [];
+
+	for (const draft of drafts) {
+		if (draft.kind === "goal") {
+			next = { ...next, goals: { ...next.goals, [draft.goal]: draft.value } };
+			continue;
+		}
+
+		const { kind, entry } = entryOf(draft);
+		const field = fieldOf[kind];
+		added.push({ kind, index: next[field].length });
+		next = { ...next, [field]: [...next[field], entry] };
+	}
+
+	return { next, added };
+}
+
+// Removes the entries a line added, or any others by kind and index.
+export function undoAdded(
+	progress: Progress,
+	added: readonly Added[],
+): Progress {
+	let next = progress;
+
+	for (const kind of logKinds) {
+		const indexes = new Set(
+			added.filter((item) => item.kind === kind).map((item) => item.index),
+		);
+		const field = fieldOf[kind];
+
+		if (indexes.size > 0) {
+			next = {
+				...next,
+				[field]: next[field].filter((_, index) => !indexes.has(index)),
+			};
+		}
+	}
+
+	return next;
+}
+
+// Puts a deleted entry back where it was.
+export function restoreLog(progress: Progress, log: Logged): Progress {
+	const field = fieldOf[log.kind];
+	const entries = progress[field];
+
+	return {
+		...progress,
+		[field]: [
+			...entries.slice(0, log.index),
+			log.entry,
+			...entries.slice(log.index),
+		],
+	};
+}
+
+const plain = (value: number) => String(Math.round(value * 10) / 10);
+
+const isActivity = (activity: string): activity is WorkoutActivity =>
+	(workoutActivities as readonly string[]).includes(activity);
+
+// An entry as the line that logs it, in the given language, without its time:
+// editing parses it again at the entry's own time.
+export function lineOf(log: Logged, language: Language): string {
+	const messages = messagesOf(language);
+	const words = (...parts: Array<string | false | undefined>) =>
+		parts.filter(Boolean).join(" ");
+	const optional = <Value>(
+		value: Value | undefined,
+		text: (value: Value) => string,
+	) => value !== undefined && text(value);
+
+	switch (log.kind) {
+		case "meal": {
+			const { food, servings, calories, protein, carbs, fat } = log.entry;
+			return words(
+				optional(servings, plain),
+				food,
+				optional(calories, (value) => `${plain(value)}kcal`),
+				optional(protein, (value) => `${plain(value)}p`),
+				optional(carbs, (value) => `${plain(value)}c`),
+				optional(fat, (value) => `${plain(value)}f`),
+			);
+		}
+
+		case "workout": {
+			const { activity, minutes, intensity, distance, sets } = log.entry;
+			const groups = setGroupsOf(sets);
+			const name = groups[0]
+				? exerciseName(groups[0].exercise, language)
+				: isActivity(activity)
+					? messages.workoutActivity[activity]
+					: activity;
+			return words(
+				"wo",
+				name,
+				...groups.map(
+					(group) =>
+						`${plain(group.weight)}x${group.reps}${group.count > 1 ? `x${group.count}` : ""}`,
+				),
+				`${plain(minutes)}m`,
+				optional(intensity, (value) => messages.intensity[value]),
+				optional(distance, (value) => `${plain(value)}km`),
+			);
+		}
+
+		case "water": {
+			return `w ${plain(log.entry.milliliters)}`;
+		}
+
+		case "sleep": {
+			return words(
+				"sl",
+				`${log.entry.minutes}m`,
+				optional(log.entry.quality, (value) => `q${value}`),
+			);
+		}
+
+		case "body": {
+			const { weight, waist, bodyFat } = log.entry;
+			return words(
+				optional(weight, (value) => `wt ${plain(value)}`),
+				optional(waist, (value) => `waist ${plain(value)}`),
+				optional(bodyFat, (value) => `bf ${plain(value)}`),
+			);
+		}
+
+		case "mood": {
+			const { score, energy, stress, tags = [] } = log.entry;
+			return words(
+				"m",
+				String(score),
+				optional(energy, (value) => `e${value}`),
+				optional(stress, (value) => `s${value}`),
+				...tags.map((tag) => `#${tag}`),
+			);
+		}
+
+		case "habit": {
+			const { name, amount, skipped } = log.entry;
+			return words("h", name, optional(amount, plain), skipped && "s");
+		}
+
+		case "steps": {
+			return `st ${log.entry.count}`;
+		}
+
+		case "note": {
+			return `n ${log.entry.text}`;
+		}
+
+		case "focus":
+		case "event": {
+			return "";
+		}
+	}
+}
+
+// What a draft will log, for the live preview: a meal nobody knows says how
+// to give it kcal.
+export function describeDraft(
+	draft: Draft,
+	messages: Messages,
+	language: Language,
+): string {
+	if (draft.kind === "goal") {
+		return goalText(draft.goal, draft.value, messages);
+	}
+
+	return draft.kind === "meal" && !draft.isKnown
+		? messages.log.unknownFood(draft.food)
+		: describeLog(entryOf(draft), language, messages);
+}
+
+function nameOf(draft: Draft, messages: Messages) {
+	if (draft.kind === "meal") {
+		return draft.servings === 1
+			? draft.food
+			: `${plain(draft.servings)} ${draft.food}`;
+	}
+
+	return draft.kind === "goal"
+		? messages.log.goals[draft.goal]
+		: messages.logs.kinds[draft.kind];
+}
+
+// The short names of what a line logged, for the footer.
+export const summaryOf = (drafts: readonly Draft[], messages: Messages) =>
+	drafts.map((draft) => nameOf(draft, messages)).join(", ");
+
 // The prefix of a line picks its parser; a line without 1 is a meal.
 const parsers: Partial<Record<string, Parser>> = {
 	w: water,
@@ -776,4 +1134,8 @@ const parsers: Partial<Record<string, Parser>> = {
 	n: note,
 	goal,
 	wo: workout,
+	// Prefixes are what people type, not identifiers.
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	".": repeat,
+	copy,
 };

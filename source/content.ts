@@ -23,6 +23,7 @@ import {
 	type Event,
 	experienceOf,
 	experiencePerLevel,
+	type Goals,
 	type Logged,
 	type Meal,
 	type Profile,
@@ -645,6 +646,19 @@ export function describeLog(
 			return describeEvent(messages, log.entry);
 		}
 	}
+}
+
+// "Water goal: 2500 ml": a goal and its value, in the language on now.
+export function goalText(goal: keyof Goals, value: number, messages: Messages) {
+	const { log } = messages;
+	const shown: Record<keyof Goals, string> = {
+		water: log.milliliters(value),
+		sleep: durationOf(value, messages),
+		steps: String(value),
+		focusSessions: String(value),
+	};
+
+	return log.goalSet(log.goals[goal], shown[goal]);
 }
 
 export const dietFieldsOf = (
