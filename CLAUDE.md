@@ -14,6 +14,7 @@ TypeScript in `source/` compiles to `build/`, which the NPM package ships. The C
 | [`source/app.tsx`](./source/app.tsx)                                       | The dashboard: views, state, the timer, and saving                                                        |
 | [`source/command-line-interface.tsx`](./source/command-line-interface.tsx) | The `bin`: parses the flags, loads the progress, and renders in the alternate screen                      |
 | [`source/components/`](./source/components/)                               | Presentational Ink components that take everything they show as props                                     |
+| [`source/config.ts`](./source/config.ts)                                   | The environment variable registry, and `config.json`: loading, applying, and saving                       |
 | [`source/content.ts`](./source/content.ts)                                 | The layout rules, the menu, the Today sections, the mood, the forms, the update view, and how a log reads |
 | [`source/foods.ts`](./source/foods.ts)                                     | The common foods in all 3 languages, and the suggestions for the food field                               |
 | [`source/health.ts`](./source/health.ts)                                   | Daily targets and advice from the profile: calories, protein, and exercise                                |
@@ -54,6 +55,7 @@ These hold everywhere, and none may be broken on the way to finishing something 
 
 - **Isolate Tests from the Real Data Folder**: Pass `App` a temporary `file`; set `TERMINAL_SIGMA_HOME` when a test needs `progressFile()`. AVA runs in worker threads, where `os.homedir()` ignores an overridden `HOME`
 - **Keep Old Progress Files Loading**: A field added to the schema is optional, and a test loads a file the previous version wrote
+- **Keep Secrets Out of `progress.json`**: API keys live only in `config.json`, written with mode 600; an event names a variable, never its value
 - **Log Every Action**: A new action the user can take appends an event through `withEvent` in [`app.tsx`](./source/app.tsx), with its text under `events` in all 3 languages
 - **Never Bump a Version by Hand**: Semantic Release owns `version` in `package.json` and `package-lock.json`
 - **Never Commit `build/`, `desktop/dist/`, or `desktop/release/`**: They are generated, and only CI publishes them
@@ -61,6 +63,7 @@ These hold everywhere, and none may be broken on the way to finishing something 
 - **Never Hard-Code User-Facing Text**: Add it to all 3 languages in [`i18n.ts`](./source/i18n.ts); the `Messages` type rejects a language that misses a key
 - **Never Overwrite an Unreadable `progress.json`**: `loadProgress` refuses one and `saveProgress` validates before writing. The file holds the user's whole journey
 - **Pick Commit Types Deliberately**: Every `feat` or `fix` that reaches `main` publishes a new version to NPM and a new desktop release
+- **Register Every Environment Variable**: A new variable joins `variables` in [`config.ts`](./source/config.ts) with its strings in all 3 languages, so **Environment** can edit it
 
 Commit messages follow the `conventional-commit` skill from [`SiegeSailor/Claude-Plugins`](https://github.com/SiegeSailor/Claude-Plugins), enabled for this repository in [`.claude/settings.json`](./.claude/settings.json).
 

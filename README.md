@@ -81,10 +81,11 @@ The menu drives everything. It sits in 2 boxes: the items on the left, grouped u
 | `5` | Settings | Profile         | Your name, age, height, weight, body fat, gender, work style, and health goal, showing saved values |
 | `6` | Settings | Theme           | The color tone of the dashboard and your character, previewing each one as the cursor moves         |
 | `7` | Settings | Language        | English, Traditional Chinese, or Korean                                                             |
-| `8` | System   | Logs            | Every log and action, newest first, with a filter per kind                                          |
-| `9` | System   | Software Update | The version you run and the newest one, with an update when there is one                            |
+| `8` | Settings | Environment     | Every environment variable with its value and source; Enter edits 1, an empty value clears it       |
+| `9` | System   | Logs            | Every log and action, newest first, with a filter per kind                                          |
+| `0` | System   | Software Update | The version you run and the newest one, with an update when there is one                            |
 
-The headings give way to Recent on a terminal shorter than 27 rows. Body fat is optional: press Enter to skip it.
+The headings give way to Recent on a terminal shorter than 28 rows. Body fat is optional: press Enter to skip it.
 
 A meal asks for the food, its calories, and its protein; a workout asks for the activity, its minutes, and its intensity, one at a time. The food field suggests as you type, your past meals first and then 112 common foods matched in any of the 3 languages, and picking one fills in its calories and protein. The activity offers your 3 latest workouts to repeat in 1 step. A stopped focus earns nothing.
 
@@ -147,7 +148,7 @@ Every view shows its keys at the bottom right:
 
 | Key                       | Action                                                                   |
 | ------------------------- | ------------------------------------------------------------------------ |
-| `1` to `9`                | Jump to a menu item                                                      |
+| `0` to `9`                | Jump to a menu item; `0` is the 10th                                     |
 | Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters          |
 | Enter                     | Open the item, choose the option, or go to the next field                |
 | Esc                       | Go back to the menu, or out of a quote setting, without logging anything |
@@ -159,12 +160,17 @@ When a focus or break ends, the terminal rings its bell.
 
 ### Environment Variables
 
-Both are optional:
+Every variable is optional, and **Environment** in the menu shows and edits each one. A value saved there goes to `config.json` beside `progress.json`, readable only by you; a variable your shell sets always wins over a saved one:
 
-| Variable              | Effect                                                                                                                                    |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `API_NINJAS_KEY`      | Fetch quotes from [API Ninjas](https://api-ninjas.com/api/quotes) instead of the bundled list, in English only, falling back on any error |
-| `TERMINAL_SIGMA_HOME` | The folder that holds `progress.json`, instead of `~/.terminal-sigma`, e.g. a synced folder                                               |
+| Variable                | Effect                                                                                                                                    |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `API_NINJAS_KEY`        | Fetch quotes from [API Ninjas](https://api-ninjas.com/api/quotes) instead of the bundled list, in English only, falling back on any error |
+| `TERMINAL_SIGMA_BREAK`  | Minutes of each Tomato Timer break, from `1` to `180`; `--break` wins                                                                     |
+| `TERMINAL_SIGMA_FOCUS`  | Minutes of each Tomato Timer focus, from `1` to `180`; `--focus` wins                                                                     |
+| `TERMINAL_SIGMA_HOME`   | The folder that holds `progress.json`, instead of `~/.terminal-sigma`, e.g. a synced folder                                               |
+| `TERMINAL_SIGMA_MOTION` | `full`, or `reduced` to show every change at once, without text effects                                                                   |
+
+A saved `TERMINAL_SIGMA_HOME` moves `progress.json`, while `config.json` stays in `~/.terminal-sigma`, so your keys never travel with a synced folder.
 
 ## Progress File
 
@@ -250,6 +256,19 @@ Every 100 XP is a level, and every level from level 2 to level 9 gives your char
 
 > [!important]
 > If `progress.json` is not valid, Terminal-Sigma refuses to start rather than overwrite it. Fix or move the file, then start again.
+
+## Config File
+
+`config.json` holds the environment variables you saved in **Environment**, under `env`. Names Terminal-Sigma does not know are ignored:
+
+```json
+{
+	"env": { "TERMINAL_SIGMA_FOCUS": "50" }
+}
+```
+
+> [!important]
+> If `config.json` is not valid, Terminal-Sigma refuses to start rather than overwrite it. Fix or move the file, then start again.
 
 ## Contributing
 

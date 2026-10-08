@@ -48,15 +48,15 @@ The dashboard fills the whole terminal in the alternate screen buffer, like htop
 
 The regions of the dashboard:
 
-| Region      | Contents                                                                                                               |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Character   | Name, level, the stage the character walks on, a blank row, then a Claude Code spinner with what it is doing           |
-| Description | The right box of the menu: what the focused item does, or once opened, its options, form, or picker                    |
-| Footer      | 1 line: a spinner and the timer while it runs, otherwise a bullet and the last event, then the key hints               |
-| Header      | `✻ Terminal Sigma`, the clock, and the everyday quote on 1 truncated line                                              |
-| Menu        | The left box: the 9 numbered items under 4 headings, highlighted while it takes the input, padded evenly on both sides |
-| Recent      | Its own block under the menu: the 4 latest logs                                                                        |
-| Today       | Character and Focus bars, then the Health group: protein, calories, and workout, with the most urgent advice           |
+| Region      | Contents                                                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Character   | Name, level, the stage the character walks on, a blank row, then a Claude Code spinner with what it is doing                                     |
+| Description | The right box of the menu: what the focused item does, or once opened, its options, form, or picker                                              |
+| Footer      | 1 line: a spinner and the timer while it runs, otherwise a bullet and the last event, then the key hints                                         |
+| Header      | `✻ Terminal Sigma`, the clock, and the everyday quote on 1 truncated line                                                                        |
+| Menu        | The left box: the 10 numbered items under 4 headings, `0` jumping to the 10th, highlighted while it takes the input, padded evenly on both sides |
+| Recent      | Its own block under the menu: the 4 latest logs                                                                                                  |
+| Today       | Character and Focus bars, then the Health group: protein, calories, and workout, with the most urgent advice                                     |
 
 The Logs view takes the place of the Menu, the Description, and Recent while it is open. Today draws each bar with `▀`, half a row tall, right under its label, which carries the percentage because text centers in its row; there is no blank row between items, only a group gets a blank row above it, and the border padding goes when `layoutOf` marks it compact.
 
@@ -70,7 +70,7 @@ The Logs view takes the place of the Menu, the Description, and Recent while it 
 | 80 - 119 | Character beside the Menu over Recent, with Today below from 46 rows, compact below 49   |
 | Below 80 | The Menu and Recent, then Character, then Today, each from as many rows as it needs      |
 
-The Description sits beside the Menu once the panel is 62 columns wide, which takes 138 columns at 120 up, 98 from 80, and 62 below 80; otherwise it sits under the Menu. The Menu shows its group headings from 27 rows, and drops them below that so Recent still fits. Update `layoutOf` and its test together, never the widths inside a component.
+The Description sits beside the Menu once the panel is 62 columns wide, which takes 138 columns at 120 up, 98 from 80, and 62 below 80; otherwise it sits under the Menu. The Menu shows its group headings from 28 rows, and drops them below that so Recent still fits. Update `layoutOf` and its test together, never the widths inside a component.
 
 ## Rules for Components
 
