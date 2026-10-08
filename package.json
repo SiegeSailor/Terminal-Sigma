@@ -29,7 +29,8 @@
 	"main": "build/command-line-interface.js",
 	"files": [
 		"build/",
-		"!build/tests/"
+		"!build/tests/",
+		"DATA-LICENSES.md"
 	],
 	"license": "MIT",
 	"private": false,
