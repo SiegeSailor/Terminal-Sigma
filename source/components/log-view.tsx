@@ -193,11 +193,11 @@ export default function LogView({
 					<Text inverse> </Text>
 				</Text>
 			</Box>
-			<Box flexDirection="column" paddingLeft={2}>
+			<Box flexDirection="column" flexShrink={0} paddingLeft={2}>
 				{preview}
 			</Box>
 			{options.length > 0 ? (
-				<Box flexDirection="column" marginTop={1}>
+				<Box flexDirection="column" flexShrink={0} marginTop={1}>
 					{options.map((option, index) => {
 						const isPicked = index === picked;
 
