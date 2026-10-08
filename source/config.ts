@@ -10,7 +10,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import zod from "zod";
-import { parseWholeNumber, progressFile } from "./progress.js";
+import { parseWholeNumber } from "./progress.js";
 
 export const variableGroups = ["data", "timer", "display", "quotes"] as const;
 export type VariableGroup = (typeof variableGroups)[number];
@@ -83,16 +83,15 @@ export type VariableName = (typeof variables)[number]["name"];
 export const variableOf = (name: string) =>
 	variables.find((variable) => variable.name === name);
 
-export const configSchema = zod.object({
+export const configSchema = zod.looseObject({
 	env: zod.record(zod.string(), zod.string()).default({}),
 });
 
 export type Config = zod.infer<typeof configSchema>;
 
-// Beside progress.json, located before a saved TERMINAL_SIGMA_HOME applies,
-// so moving the data folder never moves the setting that moved it.
+// Fixed, whatever TERMINAL_SIGMA_HOME says, so keys stay out of any synced data folder.
 export const configFile = () =>
-	path.join(path.dirname(progressFile()), "config.json");
+	path.join(homedir(), ".terminal-sigma", "config.json");
 
 export function loadConfig(file: string): Config {
 	if (!existsSync(file)) {
@@ -123,11 +122,12 @@ export function saveConfig(file: string, config: Config) {
 
 // A saved value fills in only what the shell left unset, so the shell wins.
 export function applyConfig(config: Config, env: Environment = process.env) {
-	for (const { name } of variables) {
+	for (const { name, parse } of variables) {
 		const saved = config.env[name];
+		const value = saved === undefined ? undefined : parse(saved);
 
-		if (saved !== undefined && !env[name]) {
-			env[name] = saved;
+		if (value !== undefined && !env[name]) {
+			env[name] = value;
 		}
 	}
 }

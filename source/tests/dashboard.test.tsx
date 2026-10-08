@@ -403,7 +403,7 @@ test("saves an environment variable, leaving the shell's alone", async (t) => {
 });
 
 test("masks a saved secret and clears it with an empty value", async (t) => {
-	const { configFile, env, stdin, lastFrame, unmount } = start();
+	const { configFile, env, file, stdin, lastFrame, unmount } = start();
 
 	// Data, Focus, Break, Motion, then API Ninjas key.
 	await type(stdin, [
@@ -420,6 +420,7 @@ test("masks a saved secret and clears it with an empty value", async (t) => {
 	t.is(loadConfig(configFile).env.API_NINJAS_KEY, "ninja-key-123456");
 	t.true((lastFrame() ?? "").includes("••••3456"));
 	t.false((lastFrame() ?? "").includes("ninja-key"));
+	t.false(readFileSync(file, "utf8").includes("ninja-key"));
 
 	await type(stdin, ["\r", "\r"]);
 	t.deepEqual(loadConfig(configFile).env, {});

@@ -160,7 +160,7 @@ When a focus or break ends, the terminal rings its bell.
 
 ### Environment Variables
 
-Every variable is optional, and **Environment** in the menu shows and edits each one. A value saved there goes to `config.json` beside `progress.json`, readable only by you; a variable your shell sets always wins over a saved one:
+Every variable is optional, and **Environment** in the menu shows and edits each one. A value saved there goes to `config.json` in `~/.terminal-sigma`, readable only by you; a variable your shell sets always wins over a saved one:
 
 | Variable                | Effect                                                                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -170,7 +170,7 @@ Every variable is optional, and **Environment** in the menu shows and edits each
 | `TERMINAL_SIGMA_HOME`   | The folder that holds `progress.json`, instead of `~/.terminal-sigma`, e.g. a synced folder                                               |
 | `TERMINAL_SIGMA_MOTION` | `full`, or `reduced` to show every change at once, without text effects                                                                   |
 
-A saved `TERMINAL_SIGMA_HOME` moves `progress.json`, while `config.json` stays in `~/.terminal-sigma`, so your keys never travel with a synced folder.
+`config.json` always lives in `~/.terminal-sigma`, whatever `TERMINAL_SIGMA_HOME` says; `TERMINAL_SIGMA_HOME` moves only `progress.json`, so your keys never travel with a synced folder.
 
 ## Progress File
 
@@ -259,7 +259,7 @@ Every 100 XP is a level, and every level from level 2 to level 9 gives your char
 
 ## Config File
 
-`config.json` holds the environment variables you saved in **Environment**, under `env`. Names Terminal-Sigma does not know are ignored:
+`config.json` holds the environment variables you saved in **Environment**, under `env`, and always lives in `~/.terminal-sigma`, whatever `TERMINAL_SIGMA_HOME` says. Names Terminal-Sigma does not know are ignored, and keys it does not know are kept:
 
 ```json
 {

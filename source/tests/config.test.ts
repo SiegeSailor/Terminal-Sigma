@@ -6,6 +6,7 @@ import process from "node:process";
 import test from "ava";
 import {
 	applyConfig,
+	configSchema,
 	type Config,
 	isReducedMotion,
 	loadConfig,
@@ -47,6 +48,27 @@ test("refuses an unreadable config without touching it", (t) => {
 	t.is(readFileSync(file, "utf8"), "{ nope");
 });
 
+test("keeps keys and variables this build does not know", (t) => {
+	const file = temporaryFile();
+	saveConfig(
+		file,
+		configSchema.parse({
+			env: { FUTURE_NAME: "x" },
+			accounts: [{ id: "a1" }],
+		}),
+	);
+
+	const next = withVariable(loadConfig(file), "TERMINAL_SIGMA_FOCUS", "50");
+	saveConfig(file, next);
+	const reread: Record<string, unknown> = loadConfig(file);
+
+	t.deepEqual(reread.accounts, [{ id: "a1" }]);
+	t.deepEqual(loadConfig(file).env, {
+		FUTURE_NAME: "x",
+		TERMINAL_SIGMA_FOCUS: "50",
+	});
+});
+
 test("fills in only what the shell left unset, and only known names", (t) => {
 	const env: Record<string, string | undefined> = {
 		TERMINAL_SIGMA_FOCUS: "30",
@@ -56,6 +78,18 @@ test("fills in only what the shell left unset, and only known names", (t) => {
 	t.is(env.TERMINAL_SIGMA_FOCUS, "30", "the shell wins");
 	t.is(env.API_NINJAS_KEY, "ninja-key-123456");
 	t.is(env.UNKNOWN_NAME, undefined);
+
+	const hand: Record<string, string | undefined> = {};
+	applyConfig(
+		{
+			env: {
+				TERMINAL_SIGMA_FOCUS: "abc",
+				TERMINAL_SIGMA_HOME: "relative/folder",
+			},
+		},
+		hand,
+	);
+	t.deepEqual(hand, {}, "a saved value that does not parse is skipped");
 	t.is(sourceOf("TERMINAL_SIGMA_FOCUS", saved, env), "shell");
 	t.is(sourceOf("API_NINJAS_KEY", saved, env), "saved");
 	t.is(sourceOf("TERMINAL_SIGMA_BREAK", saved, env), "default");
