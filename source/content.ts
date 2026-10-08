@@ -48,12 +48,12 @@ export const characterWidth = 36;
 export const menuListWidth = 26;
 
 // Header and footer take 5 rows. The character's panel is 25 rows tall,
-// Today 19 with its spacing or 16 compact, the menu 15 with its 4 headings
+// Today 23 with its spacing or 20 compact, the menu 15 with its 4 headings
 // and 9 items, and Recent 7.
 const chromeRows = 5;
 const characterRows = 25;
-const todayRows = 19;
-const compactTodayRows = 16;
+const todayRows = 23;
+const compactTodayRows = 20;
 const menuRows = 15;
 const compactMenuRows = 11;
 const recentRows = 7;
@@ -210,6 +210,24 @@ export function sectionsOf(
 					),
 					value: percentOf(today.workoutMinutes, targets.workoutMinutes),
 					color: palette.metrics.workout,
+				},
+				{
+					label: messages.today.water,
+					detail: messages.today.waterDetail(
+						format(today.water),
+						format(targets.water),
+					),
+					value: percentOf(today.water, targets.water),
+					color: palette.metrics.water,
+				},
+				{
+					label: messages.today.sleep,
+					detail: messages.today.sleepDetail(
+						durationOf(today.sleepMinutes, messages),
+						durationOf(targets.sleep, messages),
+					),
+					value: percentOf(today.sleepMinutes, targets.sleep),
+					color: palette.metrics.sleep,
 				},
 			],
 			advice: progress.profile

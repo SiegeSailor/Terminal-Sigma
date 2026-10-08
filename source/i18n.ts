@@ -134,6 +134,11 @@ const en = {
 		workout: "Workout",
 		workoutDetail: (minutes: number, goal: number) =>
 			`${minutes} of ${goal} minutes`,
+		water: "Water",
+		waterDetail: (milliliters: string, target: string) =>
+			`${milliliters} of ${target} ml`,
+		sleep: "Sleep",
+		sleepDetail: (slept: string, target: string) => `${slept} of ${target}`,
 	},
 	activity: {
 		idle: "Wandering…",
@@ -589,6 +594,10 @@ const traditionalChinese: Messages = {
 			`${calories} / ${target} 大卡 · ${meals} 餐`,
 		workout: "運動",
 		workoutDetail: (minutes, goal) => `${minutes} / ${goal} 分鐘`,
+		water: "喝水",
+		waterDetail: (milliliters, target) => `${milliliters} / ${target} 毫升`,
+		sleep: "睡眠",
+		sleepDetail: (slept, target) => `${slept} / ${target}`,
 	},
 	activity: {
 		idle: "閒晃中…",
@@ -1024,6 +1033,10 @@ const korean: Messages = {
 			`${calories} / ${target} kcal · ${meals}끼`,
 		workout: "운동",
 		workoutDetail: (minutes, goal) => `${minutes} / ${goal}분`,
+		water: "물",
+		waterDetail: (milliliters, target) => `${milliliters} / ${target}ml`,
+		sleep: "수면",
+		sleepDetail: (slept, target) => `${slept} / ${target}`,
 	},
 	activity: {
 		idle: "돌아다니는 중…",

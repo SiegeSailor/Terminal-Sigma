@@ -18,6 +18,8 @@ export type Palette = Readonly<{
 		protein: string;
 		calories: string;
 		workout: string;
+		water: string;
+		sleep: string;
 	}>;
 	sprite: Readonly<{
 		cloak: string;
@@ -43,6 +45,8 @@ export const themes: Readonly<Record<ThemeName, Palette>> = {
 			protein: "#C98E6B",
 			calories: "#B9785F",
 			workout: "#F0C29C",
+			water: "#F5D5B8",
+			sleep: "#A65A41",
 		},
 		sprite: {
 			cloak: "#4A3036",
@@ -66,6 +70,8 @@ export const themes: Readonly<Record<ThemeName, Palette>> = {
 			protein: "#A3B97E",
 			calories: "#7E9C63",
 			workout: "#C9D9A8",
+			water: "#D9E8C4",
+			sleep: "#5E7F4A",
 		},
 		sprite: {
 			cloak: "#34402C",
@@ -88,6 +94,8 @@ export const themes: Readonly<Record<ThemeName, Palette>> = {
 			protein: "#8FB3DE",
 			calories: "#6A92C4",
 			workout: "#BFD6F2",
+			water: "#D6E6F7",
+			sleep: "#4F75A6",
 		},
 		sprite: {
 			cloak: "#2A3446",
@@ -110,6 +118,8 @@ export const themes: Readonly<Record<ThemeName, Palette>> = {
 			protein: "#B49EDF",
 			calories: "#8E6FC4",
 			workout: "#D8C9F0",
+			water: "#E5DAF5",
+			sleep: "#7559A8",
 		},
 		sprite: {
 			cloak: "#352B4A",
@@ -132,6 +142,8 @@ export const themes: Readonly<Record<ThemeName, Palette>> = {
 			protein: "#BDBDBD",
 			calories: "#A6A6A6",
 			workout: "#FFFFFF",
+			water: "#F5F5F5",
+			sleep: "#8A8A8A",
 		},
 		sprite: {
 			cloak: "#3A3A3A",

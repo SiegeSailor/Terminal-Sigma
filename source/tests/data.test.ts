@@ -4,6 +4,7 @@ import {
 	describeLog,
 	describeQuoteChange,
 	moodOf,
+	sectionsOf,
 	updateViewOf,
 } from "../content.js";
 import { commonFoodCount, foodSuggestions } from "../foods.js";
@@ -14,6 +15,7 @@ import {
 	type LogKind,
 	progressSchema,
 } from "../progress.js";
+import { themes } from "../theme.js";
 import {
 	bundledPool,
 	bundledQuotes,
@@ -268,4 +270,24 @@ test("describes every kind of entry in the language on now", (t) => {
 	t.is(describe(entry("note", { text: "grateful" })), "grateful");
 	t.is(describe(entry("sleep", { minutes: 480 }), "zh-TW"), "睡了 8 小時");
 	t.is(describe(entry("water", { milliliters: 500 }), "ko"), "물 500ml");
+});
+
+test("shows water and last night's sleep against their targets in Today", (t) => {
+	const progress = progressSchema.parse({
+		language: "en",
+		water: [{ at, milliliters: 750 }],
+		sleep: [{ at, minutes: 400 }],
+	});
+	const [, health] = sectionsOf("en", themes.ember, progress, Date.parse(at));
+
+	t.like(
+		health?.metrics.find((metric) => metric.label === "Water"),
+		{ detail: "750 of 2,600 ml", color: themes.ember.metrics.water },
+	);
+	t.like(
+		health?.metrics.find((metric) => metric.label === "Sleep"),
+		{
+			detail: "6h 40m of 7h",
+		},
+	);
 });

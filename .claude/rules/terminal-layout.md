@@ -56,7 +56,7 @@ The regions of the dashboard:
 | Header      | `✻ Terminal Sigma`, the clock, and the everyday quote on 1 truncated line, marked ✦ New for 8 seconds after it changes                                       |
 | Menu        | The left box: the 9 numbered items under 4 headings: Today, Journal, Settings, and System, highlighted while it takes the input, padded evenly on both sides |
 | Recent      | Its own block under the menu: the 4 latest logs                                                                                                              |
-| Today       | Character and Focus bars, then the Health group: protein, calories, and workout, with the most urgent advice                                                 |
+| Today       | Character and Focus bars, then the Health group: protein, calories, workout, water, and last night's sleep, with the most urgent advice                      |
 
 History takes the place of the Menu, the Description, and Recent while it is open, and the Log view the place of the Menu and the Description, with Recent under it. Today draws each bar with `▀`, half a row tall, right under its label, which carries the percentage because text centers in its row; there is no blank row between items, only a group gets a blank row above it, and the border padding goes when `layoutOf` marks it compact.
 
@@ -66,8 +66,8 @@ History takes the place of the Menu, the Description, and Recent while it is ope
 
 | Columns  | Layout                                                                                   |
 | -------- | ---------------------------------------------------------------------------------------- |
-| 120 up   | Character, Today, and the Menu over Recent, side by side; Today is compact below 24 rows |
-| 80 - 119 | Character beside the Menu over Recent, with Today below from 46 rows, compact below 49   |
+| 120 up   | Character, Today, and the Menu over Recent, side by side; Today is compact below 28 rows |
+| 80 - 119 | Character beside the Menu over Recent, with Today below from 50 rows, compact below 53   |
 | Below 80 | The Menu and Recent, then Character, then Today, each from as many rows as it needs      |
 
 The Description sits beside the Menu once the panel is 62 columns wide, which takes 138 columns at 120 up, 98 from 80, and 62 below 80; otherwise it sits under the Menu. The Menu shows its group headings from 27 rows, and drops them below that so Recent still fits. Update `layoutOf` and its test together, never the widths inside a component.
