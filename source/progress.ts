@@ -193,7 +193,6 @@ export type Event = zod.infer<typeof eventSchema>;
 
 export const experiencePerLevel = 100;
 export const experiencePerMeal = 5;
-export const dailyGoals = { focusSessions: 4 };
 
 // Entries from before intensity existed earned 1 XP per minute, and still do.
 const intensityFactor: Record<Intensity, number> = {

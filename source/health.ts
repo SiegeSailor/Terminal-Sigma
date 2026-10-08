@@ -1,4 +1,5 @@
 import {
+	durationOf,
 	formatNumber,
 	type Gender,
 	type HealthGoal,
@@ -6,21 +7,38 @@ import {
 	type Messages,
 	type WorkStyle,
 } from "./i18n.js";
-import type { Profile, todayOf } from "./progress.js";
+import type { Goals, Profile, Today } from "./progress.js";
 
 export type Targets = Readonly<{
 	calories: number;
 	protein: number;
 	workoutMinutes: number;
+	// Milliliters, minutes, and a count.
+	water: number;
+	sleep: number;
+	steps: number;
+	focusSessions: number;
 }>;
 
-type Today = ReturnType<typeof todayOf>;
-
-// Without a profile: the common 2,000 kcal reference, 50 g protein, and 30 active minutes.
+// Without a profile: the common 2,000 kcal reference, 50 g protein, and 30
+// active minutes; the rest follow from the profile when there is one.
 const defaultTargets: Targets = {
 	calories: 2000,
 	protein: 50,
 	workoutMinutes: 30,
+	water: 2600,
+	sleep: 420,
+	steps: 8000,
+	focusSessions: 4,
+};
+
+// What to drink a day: the beverage share of the National Academies' adequate
+// intake of 3.7 L for men and 2.7 L for women, about 80% of all water, since
+// food brings the rest. "other" takes the middle.
+const waterTarget: Record<Gender, number> = {
+	male: 3000,
+	female: 2200,
+	other: 2600,
 };
 
 // Physical activity levels, from sedentary to very active.
@@ -68,7 +86,16 @@ const workoutMinutes: Record<HealthGoal, number> = {
 	endurance: 60,
 };
 
-export function targetsOf(profile: Profile | undefined): Targets {
+// The targets for the body, work style, and goal, with the user's own goals
+// for water, sleep, steps, and focus winning over the defaults.
+export function targetsOf(
+	profile: Profile | undefined,
+	goals: Goals = {},
+): Targets {
+	return { ...bodyTargetsOf(profile), ...goals };
+}
+
+function bodyTargetsOf(profile: Profile | undefined): Targets {
 	if (!profile) {
 		return defaultTargets;
 	}
@@ -90,6 +117,12 @@ export function targetsOf(profile: Profile | undefined): Targets {
 		calories: Math.round(Math.max(calories, 1200) / 10) * 10,
 		protein: Math.round(weight * proteinRate),
 		workoutMinutes: workoutMinutes[goal],
+		water: waterTarget[gender],
+		// 7 hours or more, as the AASM recommends for adults.
+		sleep: 420,
+		// Mortality stops falling at about 8,000 steps under 60, 7,000 from 60.
+		steps: age < 60 ? 8000 : 7000,
+		focusSessions: 4,
 	};
 }
 
@@ -101,13 +134,28 @@ export function adviceOf(
 	today: Today,
 	language: Language,
 	messages: Messages,
+	goals?: Goals,
 ): Advice[] {
-	const targets = targetsOf(profile);
+	const targets = targetsOf(profile, goals);
 	const goal = profile?.goal ?? "maintain";
 	const protein = targets.protein - today.protein;
 	const minutes = targets.workoutMinutes - today.workoutMinutes;
 	const calories = targets.calories - today.calories;
+	const water = targets.water - today.water;
 	const { health } = messages;
+	let sleep: Advice = { text: health.sleepUnknown, isDone: false };
+
+	if (today.sleepMinutes >= targets.sleep) {
+		sleep = { text: health.sleepDone, isDone: true };
+	} else if (today.sleepMinutes > 0) {
+		sleep = {
+			text: health.sleepShort(
+				durationOf(today.sleepMinutes, messages),
+				durationOf(targets.sleep, messages),
+			),
+			isDone: false,
+		};
+	}
 
 	return [
 		minutes > 0
@@ -128,5 +176,15 @@ export function adviceOf(
 					text: health.caloriesOver(formatNumber(language, -calories)),
 					isDone: false,
 				},
+		water > 0
+			? {
+					text: health.waterLeft(
+						formatNumber(language, water),
+						Math.ceil(water / 250),
+					),
+					isDone: false,
+				}
+			: { text: health.waterDone, isDone: true },
+		sleep,
 	];
 }

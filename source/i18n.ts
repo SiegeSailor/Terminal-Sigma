@@ -250,6 +250,13 @@ const en = {
 		workoutLeft: (minutes: number, suggestion: string) =>
 			`${minutes} more minutes of exercise today: ${suggestion}.`,
 		workoutDone: "Exercise target met for today.",
+		waterLeft: (milliliters: string, glasses: number) =>
+			`${milliliters} ml of water to go today, about ${glasses} ${glasses === 1 ? "glass" : "glasses"}.`,
+		waterDone: "Water target met for today.",
+		sleepUnknown: "Log last night's sleep, e.g. sl 23:30-7:10.",
+		sleepShort: (slept: string, target: string) =>
+			`You slept ${slept}; aim for ${target} tonight.`,
+		sleepDone: "You slept enough last night.",
 		suggestion: {
 			loseFat: "a brisk walk or an easy run",
 			maintain: "a walk or a bike ride",
@@ -628,6 +635,13 @@ const traditionalChinese: Messages = {
 		workoutLeft: (minutes, suggestion) =>
 			`今天還需運動 ${minutes} 分鐘：${suggestion}。`,
 		workoutDone: "今天的運動已達標。",
+		waterLeft: (milliliters, glasses) =>
+			`今天還要喝 ${milliliters} 毫升水，大約 ${glasses} 杯。`,
+		waterDone: "今天的喝水目標已達成。",
+		sleepUnknown: "記錄昨晚的睡眠，例如：sl 23:30-7:10。",
+		sleepShort: (slept, target) =>
+			`昨晚睡了 ${slept}，今晚試著睡滿 ${target}。`,
+		sleepDone: "昨晚睡得很充足。",
 		suggestion: {
 			loseFat: "快走或輕鬆慢跑",
 			maintain: "散步或騎單車",
@@ -1001,6 +1015,13 @@ const korean: Messages = {
 		workoutLeft: (minutes, suggestion) =>
 			`오늘 운동이 ${minutes}분 더 필요합니다: ${suggestion}.`,
 		workoutDone: "오늘 운동 목표를 달성했습니다.",
+		waterLeft: (milliliters, glasses) =>
+			`오늘 물을 ${milliliters}ml 더 마셔야 합니다. 약 ${glasses}잔입니다.`,
+		waterDone: "오늘 물 목표를 달성했습니다.",
+		sleepUnknown: "지난밤 수면을 기록하세요. 예: sl 23:30-7:10",
+		sleepShort: (slept, target) =>
+			`지난밤 ${slept} 잤습니다. 오늘 밤은 ${target}을 목표로 하세요.`,
+		sleepDone: "지난밤 충분히 잤습니다.",
 		suggestion: {
 			loseFat: "빠르게 걷기나 가벼운 달리기",
 			maintain: "산책이나 자전거 타기",

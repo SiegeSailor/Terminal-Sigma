@@ -66,6 +66,7 @@ import {
 	logsOf,
 	type Progress,
 	saveProgress,
+	profileNow,
 	todayOf,
 	workoutExperience,
 } from "./progress.js";
@@ -1018,7 +1019,7 @@ export default function App({
 		),
 		profile: (
 			<EntryForm
-				fields={profileFieldsOf(messages, progress.profile, name)}
+				fields={profileFieldsOf(messages, profileNow(progress), name)}
 				messages={messages}
 				title={messages.form.profileTitle}
 				onSubmit={submitProfile}
@@ -1148,7 +1149,7 @@ export default function App({
 						label={activityLabel}
 						level={messages.level(level)}
 						levelNumber={level}
-						look={lookOf(progress.profile)}
+						look={lookOf(profileNow(progress))}
 						mood={mood}
 						name={name}
 						width={characterWidth}
@@ -1229,8 +1230,8 @@ function HealthSummary({
 	progress,
 	today,
 }: HealthSummaryProps) {
-	const { profile } = progress;
-	const targets = targetsOf(profile);
+	const profile = profileNow(progress);
+	const targets = targetsOf(profile, progress.goals);
 	const { health } = messages;
 
 	return (
@@ -1245,14 +1246,16 @@ function HealthSummary({
 					targets.workoutMinutes,
 				)}
 			</Text>
-			{adviceOf(profile, today, language, messages).map((advice) => (
-				<Text key={advice.text}>
-					<Text color={advice.isDone ? palette.success : palette.accent}>
-						{"⏺ "}
+			{adviceOf(profile, today, language, messages, progress.goals).map(
+				(advice) => (
+					<Text key={advice.text}>
+						<Text color={advice.isDone ? palette.success : palette.accent}>
+							{"⏺ "}
+						</Text>
+						<Text>{advice.text}</Text>
 					</Text>
-					<Text>{advice.text}</Text>
-				</Text>
-			))}
+				),
+			)}
 		</Box>
 	);
 }

@@ -20,7 +20,6 @@ import {
 	workStyles,
 } from "./i18n.js";
 import {
-	dailyGoals,
 	type Event,
 	experienceOf,
 	experiencePerLevel,
@@ -28,6 +27,7 @@ import {
 	type Meal,
 	type Profile,
 	type Progress,
+	profileNow,
 	todayOf,
 	type Workout,
 } from "./progress.js";
@@ -144,11 +144,12 @@ export function sectionsOf(
 ): Section[] {
 	const messages = messagesOf(language);
 	const today = todayOf(progress, now);
-	const targets = targetsOf(progress.profile);
+	const profile = profileNow(progress);
+	const targets = targetsOf(profile, progress.goals);
 	const experience = experienceOf(progress);
 	const level = Math.floor(experience / experiencePerLevel) + 1;
 	const levelExperience = experience % experiencePerLevel;
-	const advice = adviceOf(progress.profile, today, language, messages);
+	const advice = adviceOf(profile, today, language, messages, progress.goals);
 	const format = (value: number) => formatNumber(language, value);
 
 	return [
@@ -167,9 +168,9 @@ export function sectionsOf(
 					label: messages.today.focus,
 					detail: messages.today.focusDetail(
 						today.focusSessions,
-						dailyGoals.focusSessions,
+						targets.focusSessions,
 					),
-					value: percentOf(today.focusSessions, dailyGoals.focusSessions),
+					value: percentOf(today.focusSessions, targets.focusSessions),
 					color: palette.metrics.focus,
 				},
 			],
@@ -219,11 +220,11 @@ export function sectionsOf(
 // happy once the targets are met.
 export function moodOf(progress: Progress, now: number): Mood {
 	const today = todayOf(progress, now);
-	const targets = targetsOf(progress.profile);
+	const targets = targetsOf(profileNow(progress), progress.goals);
 	const isMet =
 		(today.protein >= targets.protein &&
 			today.workoutMinutes >= targets.workoutMinutes) ||
-		today.focusSessions >= dailyGoals.focusSessions;
+		today.focusSessions >= targets.focusSessions;
 
 	if (
 		today.meals === 0 &&
@@ -289,7 +290,7 @@ export function menuEntriesOf(
 	}>,
 ): MenuEntry[] {
 	const { profile } = state.progress;
-	const targets = targetsOf(profile);
+	const targets = targetsOf(profileNow(state.progress), state.progress.goals);
 	const today = todayOf(state.progress, state.now);
 	const proteinLeft = targets.protein - today.protein;
 	const minutesLeft = targets.workoutMinutes - today.workoutMinutes;
@@ -793,7 +794,8 @@ export const profileFieldsOf = (
 		kind: "number",
 		minimum: 30,
 		maximum: 300,
-		defaultValue: profile ? String(profile.weight) : undefined,
+		// A weigh-in may carry a decimal; the field takes whole kilograms.
+		defaultValue: profile ? String(Math.round(profile.weight)) : undefined,
 	},
 	{
 		key: "bodyFat",
@@ -803,7 +805,9 @@ export const profileFieldsOf = (
 		maximum: 60,
 		optional: true,
 		defaultValue:
-			profile?.bodyFat === undefined ? undefined : String(profile.bodyFat),
+			profile?.bodyFat === undefined
+				? undefined
+				: String(Math.round(profile.bodyFat)),
 	},
 	{
 		key: "gender",
