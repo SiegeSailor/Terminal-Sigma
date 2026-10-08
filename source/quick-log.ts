@@ -91,7 +91,7 @@ function timeOf(
 	}
 
 	const match =
-		/^@(?<day>y|-\d+d)? ?(?:(?<hour>\d{1,2}):(?<minute>\d{2}))?(?: |$)/v.exec(
+		/^@(?<day>y|-\d{1,3}d)? ?(?:(?<hour>\d{1,2}):(?<minute>\d{2}))?(?: |$)/v.exec(
 			line,
 		);
 	const { day, hour, minute } = match?.groups ?? {};
@@ -153,7 +153,9 @@ export function parseQuickLog(
 	}
 
 	const [word = "", ...words] = timed.rest.split(" ");
-	const parser = parsers[word.toLowerCase()];
+	const parser = Object.hasOwn(parsers, word.toLowerCase())
+		? parsers[word.toLowerCase()]
+		: undefined;
 
 	return parser
 		? parser(words.join(" "), timed.at, context, word.toLowerCase())
@@ -163,10 +165,14 @@ export function parseQuickLog(
 const iso = (at: number) => new Date(at).toISOString();
 
 // Words that may follow a quantity, as in "2個", "1 碗", "2개", or "1 공기".
+const hangulCounter = String.raw`(?:공기|그릇|인분|조각|마리|[개잔장병캔])`;
+const chineseCounter = String.raw`[個颗顆杯碗片份塊條根盤隻]`;
 const counter = String.raw`공기|그릇|인분|조각|마리|[個颗顆杯碗片份塊條根盤隻개잔장병캔]`;
+// A weight, volume, or percent after the number is not a count of servings.
+const unit = String.raw`(?! ?(?:%|(?:kg|g|ml|l|oz|lbs|lb)(?![\p{L}\p{N}])))`;
 const quantity = String.raw`\d+[\/⁄]\d+|\d+(?:\.\d+)?`;
 const leadingQuantity = new RegExp(
-	String.raw`^(?<amount>${quantity}) ?(?:${counter}|[x×](?= ))? ?(?<food>.+)$`,
+	String.raw`^(?<amount>${quantity})(?!\d|\.\d)${unit} ?(?:${chineseCounter}|${hangulCounter}(?= |$)|[x×](?= ))? ?(?<food>.+)$`,
 	"v",
 );
 const trailingQuantity = new RegExp(
@@ -218,7 +224,12 @@ function mealOf(
 	const servings = amountOf(amount ?? times ?? "1");
 	const hasTyped = Object.keys(typed).length > 0;
 
-	if (servings === undefined || servings <= 0 || (!food && !hasTyped)) {
+	if (
+		servings === undefined ||
+		!Number.isFinite(servings) ||
+		servings <= 0 ||
+		(!food && !hasTyped)
+	) {
 		return undefined;
 	}
 

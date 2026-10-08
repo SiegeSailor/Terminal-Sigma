@@ -126,6 +126,18 @@ test("parses meals: quantities, known foods, and typed amounts", (t) => {
 			],
 		],
 		["0 eggs", "badNumber"],
+		["1/0 eggs", "badNumber"],
+		["@-1000d 450kcal", "badTime"],
+		["constructor 450kcal", [meal({ food: "constructor", calories: 450 })]],
+		[
+			"200g chicken breast",
+			[meal({ food: "200g chicken breast", isKnown: false })],
+		],
+		["2% milk", [meal({ food: "2% milk", isKnown: false })]],
+		[
+			"2 large eggs",
+			[meal({ food: "large eggs", servings: 2, isKnown: false })],
+		],
 		["   ", "empty"],
 	]);
 });
@@ -206,6 +218,7 @@ test("parses meals in Chinese and Korean, even in full width", (t) => {
 				],
 			],
 			["450kcal", [meal({ food: "빠른 기록", calories: 450 })]],
+			["2 장어", [meal({ food: "장어", servings: 2, isKnown: false })]],
 		],
 		{ language: "ko" },
 	);
