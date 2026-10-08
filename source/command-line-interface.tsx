@@ -6,6 +6,12 @@ import { render } from "ink";
 import meow from "meow";
 import zod from "zod";
 import App, { optionsSchema } from "./app.js";
+import {
+	applyConfig,
+	configFile,
+	loadConfig,
+	timerOptionsOf,
+} from "./config.js";
 import { loadProgress, progressFile } from "./progress.js";
 import { npmUpdater } from "./update.js";
 
@@ -30,23 +36,33 @@ const cli = meow(
 	},
 );
 
-const options = optionsSchema.safeParse(cli.flags);
+// Load before entering the alternate screen, which would swallow the error.
+// The config applies first: it may move the data folder and set the timer.
+const settingsFile = configFile();
+let initialConfig;
+let initialProgress;
+
+try {
+	initialConfig = loadConfig(settingsFile);
+	applyConfig(initialConfig);
+	initialProgress = loadProgress(progressFile());
+} catch (error) {
+	console.error(error instanceof Error ? error.message : error);
+	process.exit(1);
+}
+
+// Flags win over the environment, which wins over the defaults.
+const flags = Object.fromEntries(
+	Object.entries(cli.flags).filter(([, value]) => value !== undefined),
+);
+const options = optionsSchema.safeParse({ ...timerOptionsOf(), ...flags });
 
 if (!options.success) {
 	console.error(zod.prettifyError(options.error));
 	process.exit(2);
 }
 
-// Load before entering the alternate screen, which would swallow the error.
 const file = progressFile();
-let initialProgress;
-
-try {
-	initialProgress = loadProgress(file);
-} catch (error) {
-	console.error(error instanceof Error ? error.message : error);
-	process.exit(1);
-}
 
 let isRestarting = false;
 const updater = npmUpdater(() => {
@@ -55,7 +71,9 @@ const updater = npmUpdater(() => {
 
 const instance = render(
 	<App
+		configFile={settingsFile}
 		file={file}
+		initialConfig={initialConfig}
 		initialProgress={initialProgress}
 		options={options.data}
 		updater={updater}

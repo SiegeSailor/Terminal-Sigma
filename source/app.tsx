@@ -1,4 +1,5 @@
 import { homedir } from "node:os";
+import process from "node:process";
 import zod from "zod";
 import React from "react";
 import { ThemeProvider } from "@inkjs/ui";
@@ -11,6 +12,7 @@ import Footer, { type Tone } from "./components/footer.js";
 import LogsView, { LogRow } from "./components/logs-view.js";
 import MultiChoice from "./components/multi-choice.js";
 import TodayPanel from "./components/today-panel.js";
+import type { Config, Environment } from "./config.js";
 import {
 	categoryOptionsOf,
 	characterWidth,
@@ -95,6 +97,10 @@ export type AppOptions = zod.infer<typeof optionsSchema>;
 type AppProps = Readonly<{
 	options: AppOptions;
 	file: string;
+	configFile: string;
+	initialConfig: Config;
+	// The live environment; tests pass their own so they never touch the real one.
+	env?: Environment;
 	initialProgress: Progress;
 	updater: Updater;
 }>;
@@ -196,6 +202,7 @@ function Swatches({ palette }: Readonly<{ palette: Palette }>) {
 export default function App({
 	options,
 	file,
+	env = process.env,
 	initialProgress,
 	updater,
 }: AppProps) {
@@ -382,7 +389,7 @@ export default function App({
 	React.useEffect(() => {
 		let isMounted = true;
 		const refresh = async () => {
-			const next = await fetchQuote(quoteSettings);
+			const next = await fetchQuote(quoteSettings, env.API_NINJAS_KEY);
 
 			if (isMounted) {
 				setQuote(next);
@@ -390,7 +397,7 @@ export default function App({
 		};
 
 		// The bundled quote shown first is already fresh; only the API is worth a call.
-		if (hasQuoteApi()) {
+		if (hasQuoteApi(env)) {
 			void refresh();
 		}
 
@@ -408,7 +415,7 @@ export default function App({
 			isMounted = false;
 			clearInterval(interval);
 		};
-	}, [quoteSettings]);
+	}, [quoteSettings, env]);
 
 	const backToMenu = (text?: string) => {
 		setView("menu");
@@ -572,7 +579,7 @@ export default function App({
 	};
 
 	const drawQuote = (settings: QuoteSettings, base: Progress) => {
-		void fetchQuote(settings).then(setQuote);
+		void fetchQuote(settings, env.API_NINJAS_KEY).then(setQuote);
 		return withEvent(base, "quoteDrawn");
 	};
 

@@ -5,6 +5,7 @@ import test from "ava";
 import React from "react";
 import { render } from "ink-testing-library";
 import App from "../app.js";
+import { loadConfig } from "../config.js";
 import { loadProgress, type Progress } from "../progress.js";
 import type { Updater } from "../update.js";
 
@@ -68,17 +69,27 @@ const start = (
 	initialProgress: Progress = empty,
 	file = temporaryFile(),
 	{ updater } = fakeUpdater(),
-) => ({
-	file,
-	...render(
-		<App
-			file={file}
-			initialProgress={initialProgress}
-			options={options}
-			updater={updater}
-		/>,
-	),
-});
+	env: Record<string, string | undefined> = {},
+) => {
+	const configFile = path.join(path.dirname(file), "config.json");
+
+	return {
+		file,
+		configFile,
+		env,
+		...render(
+			<App
+				configFile={configFile}
+				env={env}
+				file={file}
+				initialConfig={loadConfig(configFile)}
+				initialProgress={initialProgress}
+				options={options}
+				updater={updater}
+			/>,
+		),
+	};
+};
 
 // Waits for async work, like an install, to reach the screen.
 const shows = async (lastFrame: () => string | undefined, text: string) => {

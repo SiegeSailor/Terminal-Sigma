@@ -6,6 +6,13 @@ import { render } from "ink";
 import React from "react";
 import App, { optionsSchema } from "../source/app.js";
 import {
+	applyConfig,
+	type Config,
+	configFile,
+	loadConfig,
+	timerOptionsOf,
+} from "../source/config.js";
+import {
 	loadProgress,
 	type Progress,
 	progressFile,
@@ -40,11 +47,14 @@ function terminalStreams(send: (data: string) => void, size: Size) {
 // The window must not be awaited at the top level: Electron emits "ready" only
 // after this ESM entry finishes evaluating, so a top-level await deadlocks.
 async function start() {
-	const file = progressFile();
+	const settingsFile = configFile();
+	let initialConfig: Config;
 	let initialProgress: Progress;
 
 	try {
-		initialProgress = loadProgress(file);
+		initialConfig = loadConfig(settingsFile);
+		applyConfig(initialConfig);
+		initialProgress = loadProgress(progressFile());
 	} catch (error) {
 		dialog.showErrorBox(
 			"Terminal Sigma",
@@ -53,6 +63,10 @@ async function start() {
 		app.exit(1);
 		return;
 	}
+
+	const file = progressFile();
+	const options =
+		optionsSchema.safeParse(timerOptionsOf()).data ?? optionsSchema.parse({});
 
 	const window = new BrowserWindow({
 		width: 1280,
@@ -88,9 +102,11 @@ async function start() {
 
 		const instance = render(
 			<App
+				configFile={settingsFile}
 				file={file}
+				initialConfig={initialConfig}
 				initialProgress={initialProgress}
-				options={optionsSchema.parse({})}
+				options={options}
 				updater={desktopUpdater()}
 			/>,
 			{
