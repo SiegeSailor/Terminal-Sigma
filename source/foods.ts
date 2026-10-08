@@ -253,7 +253,12 @@ export function matchFood(
 		`${query}s`,
 	]);
 	const isExact = (name: string) => forms.has(name.toLowerCase());
-	const isPartial = (name: string) => name.toLowerCase().includes(query);
+	// 1 Latin letter is too little to guess a food from, while 1 Chinese or
+	// Korean character, such as 蛋 or 밥, often names one.
+	const canBePartial =
+		[...query].length > 1 || /[\p{Script=Han}\p{Script=Hangul}]/v.test(query);
+	const isPartial = (name: string) =>
+		canBePartial && name.toLowerCase().includes(query);
 	const yours = meals.toReversed();
 	const shortest = (isMatch: (name: string) => boolean) =>
 		commonFoods

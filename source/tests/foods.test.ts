@@ -90,5 +90,7 @@ test("matches the food a name means, yours first", (t) => {
 	t.like(matchFood("chicken breast", "en", [pho]), { isYours: false });
 	t.like(matchFood("chicken", "en", [pho]), { label: "Chicken pho" });
 	t.is(matchFood("zzz", "en", []), undefined);
+	// 1 Latin letter is too little to guess a food from.
+	t.is(matchFood("u", "en", []), undefined);
 	t.is(matchFood("  ", "en", []), undefined);
 });

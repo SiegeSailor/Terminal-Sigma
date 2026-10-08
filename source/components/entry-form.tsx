@@ -7,12 +7,6 @@ import { usePalette } from "../theme.js";
 import AutocompleteInput, { type Suggestion } from "./autocomplete-input.js";
 import Choice, { type Option } from "./choice.js";
 
-// A combination fills several fields at once, such as a past workout.
-export type Combination = Readonly<{
-	label: string;
-	values: Readonly<Record<string, string>>;
-}>;
-
 export type Field = Readonly<
 	{ key: string; label: string; defaultValue?: string } & (
 		| {
@@ -21,11 +15,7 @@ export type Field = Readonly<
 				suggest?: (text: string) => readonly Suggestion[];
 		  }
 		| { kind: "number"; minimum: number; maximum: number; optional?: boolean }
-		| {
-				kind: "select";
-				options: readonly Option[];
-				combinations?: readonly Combination[];
-		  }
+		| { kind: "select"; options: readonly Option[] }
 	)
 >;
 
@@ -36,8 +26,6 @@ type EntryFormProps = Readonly<{
 	onSubmit: (values: Record<string, string>) => void;
 	onValues?: (values: Record<string, string>) => void;
 }>;
-
-const combinationPrefix = "combination:";
 
 export default function EntryForm({
 	title,
@@ -65,13 +53,6 @@ export default function EntryForm({
 
 	const accept = (value: string, suggestion?: Suggestion) => {
 		if (!field) {
-			return;
-		}
-
-		if (field.kind === "select" && value.startsWith(combinationPrefix)) {
-			const combination =
-				field.combinations?.[Number(value.slice(combinationPrefix.length))];
-			commit({ ...values, ...combination?.values });
 			return;
 		}
 
@@ -116,13 +97,7 @@ export default function EntryForm({
 				<Choice
 					key={current.key}
 					initialValue={defaultOf(current)}
-					options={[
-						...(current.combinations ?? []).map((combination, index) => ({
-							label: `↺ ${combination.label}`,
-							value: `${combinationPrefix}${index}`,
-						})),
-						...current.options,
-					]}
+					options={current.options}
 					onSelect={accept}
 				/>
 			);

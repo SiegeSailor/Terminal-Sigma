@@ -21,7 +21,8 @@ type LogViewProps = Readonly<{
 	now: number;
 	// The line of an entry being edited, logged again in its place on Enter.
 	initialLine?: string;
-	onLog: (line: string, drafts: Draft[]) => void;
+	// Whether the line was saved; a line that was not stays to try again.
+	onLog: (line: string, drafts: Draft[]) => boolean;
 	onUndo: () => void;
 }>;
 
@@ -84,7 +85,9 @@ export default function LogView({
 	const [picked, setPicked] = React.useState(-1);
 	const { log } = messages;
 	const isEditing = initialLine !== undefined;
-	const isUndo = !isEditing && text.trim() === "u";
+	// A full-width ｕ from an input method, or a capital U, undoes too.
+	const isUndo =
+		!isEditing && text.normalize("NFKC").trim().toLowerCase() === "u";
 	const context = { progress, now, language };
 	const options = isUndo ? [] : optionsOf(text, context, messages);
 	const highlighted = options[picked];
@@ -100,8 +103,7 @@ export default function LogView({
 			if (isUndo) {
 				onUndo();
 				setText("");
-			} else if (result?.ok) {
-				onLog(line, result.drafts);
+			} else if (result?.ok && onLog(line, result.drafts)) {
 				setText("");
 				setPicked(-1);
 			}

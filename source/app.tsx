@@ -246,7 +246,7 @@ export default function App({
 	}, [quote]);
 
 	const [view, setView] = React.useState<View>("menu");
-	const [focusedMenu, setFocusedMenu] = React.useState<MenuKey>("timer");
+	const [focusedMenu, setFocusedMenu] = React.useState<MenuKey>("log");
 	const [quoteEditor, setQuoteEditor] = React.useState<QuoteEditor>();
 	const [config, setConfig] = React.useState(initialConfig);
 	const [variableEditor, setVariableEditor] = React.useState<VariableName>();
@@ -574,6 +574,7 @@ export default function App({
 			messages.log.logged(
 				summaryOf(drafts, messages),
 				experienceOf(next) - experienceOf(progress),
+				added.length > 0,
 			),
 			activity,
 		);
@@ -583,6 +584,8 @@ export default function App({
 		if (isSaved && drafts.length > 0) {
 			setUndoStack((stack) => [...stack, added]);
 		}
+
+		return isSaved;
 	};
 
 	// Takes back the newest line logged since the Log view opened.

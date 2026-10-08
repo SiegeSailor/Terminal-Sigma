@@ -355,8 +355,9 @@ const en = {
 			"wo workout · goal · @y yesterday · @7:30 a time · . repeat · copy y · u undo",
 		more: (count: number) => `+${count} more`,
 		undoHint: "Enter undoes the last line logged here.",
-		logged: (summary: string, xp: number) =>
-			`Logged ${summary}${xp > 0 ? ` · +${xp} XP` : ""} · u to undo`,
+		// Only a line that added entries can be undone; a goal is typed back.
+		logged: (summary: string, xp: number, canUndo: boolean) =>
+			`Logged ${summary}${xp > 0 ? ` · +${xp} XP` : ""}${canUndo ? " · u to undo" : ""}`,
 		edited: (summary: string) => `Updated ${summary}.`,
 		undone: "Undid the last line.",
 		nothingToUndo: "Nothing to undo.",
@@ -774,8 +775,8 @@ const traditionalChinese: Messages = {
 			"wo 運動 · goal 目標 · @y 昨天 · @7:30 時間 · . 重複 · copy y 複製昨天 · u 復原",
 		more: (count) => `還有 ${count} 項`,
 		undoHint: "按 Enter 復原剛才在這裡記錄的上一行。",
-		logged: (summary, xp) =>
-			`已記錄 ${summary}${xp > 0 ? ` · +${xp} XP` : ""} · 輸入 u 復原`,
+		logged: (summary, xp, canUndo) =>
+			`已記錄 ${summary}${xp > 0 ? ` · +${xp} XP` : ""}${canUndo ? " · 輸入 u 復原" : ""}`,
 		edited: (summary) => `已更新 ${summary}。`,
 		undone: "已復原上一行。",
 		nothingToUndo: "沒有可復原的紀錄。",
@@ -1190,8 +1191,8 @@ const korean: Messages = {
 			"wo 운동 · goal 목표 · @y 어제 · @7:30 시각 · . 반복 · copy y 어제 복사 · u 되돌리기",
 		more: (count) => `외 ${count}개`,
 		undoHint: "Enter를 누르면 여기서 방금 기록한 줄을 되돌립니다.",
-		logged: (summary, xp) =>
-			`${summary} 기록함${xp > 0 ? ` · +${xp} XP` : ""} · u로 되돌리기`,
+		logged: (summary, xp, canUndo) =>
+			`${summary} 기록함${xp > 0 ? ` · +${xp} XP` : ""}${canUndo ? " · u로 되돌리기" : ""}`,
 		edited: (summary) => `${summary} 수정함.`,
 		undone: "마지막 줄을 되돌렸습니다.",
 		nothingToUndo: "되돌릴 기록이 없습니다.",

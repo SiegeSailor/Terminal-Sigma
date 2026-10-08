@@ -120,7 +120,8 @@ test("renders the dashboard with the menu in order", async (t) => {
 	].map((label) => frame.indexOf(label));
 
 	t.true(order.every((index, position) => index > (order[position - 1] ?? -1)));
-	t.true(frame.includes("Enter to open"));
+	t.true(frame.includes("❯ 1. Log"), "the cursor starts on Log");
+	t.true(frame.includes("0 logged today"));
 	t.true(frame.includes("Recent"));
 	t.deepEqual(actionsIn(file), ["appOpened"]);
 
@@ -256,8 +257,14 @@ test("undoes only the line u, and only while the Log view is open", async (t) =>
 	await type(stdin, ["u", "\r"]);
 	t.true((lastFrame() ?? "").includes("Nothing to undo."));
 
+	// A full-width u from an input method undoes too, never logging a food.
+	await type(stdin, ["w 500", "\r", "ｕ", "\r"]);
+	t.deepEqual(loadProgress(file).water, []);
+	t.deepEqual(loadProgress(file).meals, []);
+
 	// Leaving the view forgets what it could undo.
 	await type(stdin, ["w 500", "\r", escape, "\r", "u", "\r"]);
+	t.true((lastFrame() ?? "").includes("Nothing to undo."));
 	t.is(loadProgress(file).water.length, 1);
 
 	unmount();
@@ -267,7 +274,8 @@ test("keeps a pasted line whole until Enter", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
 	await type(stdin, ["1", "\r", "\u001B[200~2 eggs\ntoast\n\u001B[201~"]);
-	t.true((lastFrame() ?? "").includes("2 eggs, toast"));
+	t.true((lastFrame() ?? "").includes("2 × Egg"));
+	t.true((lastFrame() ?? "").includes("Whole wheat toast · 160 kcal"));
 	t.deepEqual(loadProgress(file).meals, []);
 
 	await type(stdin, ["\r"]);
