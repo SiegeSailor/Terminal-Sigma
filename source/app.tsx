@@ -1079,7 +1079,7 @@ export default function App({
 	};
 
 	const preview = focusedEntry ? (
-		<Box flexDirection="column">
+		<Box flexDirection="column" flexShrink={0}>
 			<Text bold color={palette.soft}>
 				{focusedEntry.status}
 			</Text>

@@ -342,7 +342,7 @@ test("saves a profile and turns it into targets", async (t) => {
 	t.true(actionsIn(file).includes("profileSaved"));
 
 	await type(stdin, ["1"]);
-	t.true((lastFrame() ?? "").includes("140 g of protein to go today"));
+	t.true((lastFrame() ?? "").includes("Log anything in 1 line"));
 
 	unmount();
 });
@@ -551,6 +551,33 @@ test("shows the whole new quote at once with reduced motion", async (t) => {
 	}
 
 	t.is(quoteLine(), before, "the quote does not type in");
+
+	unmount();
+});
+
+test("keeps the menu preview's lines apart when it overflows", async (t) => {
+	const { stdin, lastFrame, unmount } = start(
+		progressSchema.parse({
+			language: "en",
+			profile: {
+				name: "Ken",
+				age: 30,
+				height: 175,
+				weight: 80,
+				gender: "male",
+				workStyle: "desk",
+				goal: "loseFat",
+			},
+		}),
+	);
+
+	await type(stdin, ["1"]);
+	await settle();
+
+	t.true(
+		(lastFrame() ?? "").includes("usually log now."),
+		"the description text is visible and not overlapped",
+	);
 
 	unmount();
 });
