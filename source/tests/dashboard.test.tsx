@@ -342,7 +342,8 @@ test("saves a profile and turns it into targets", async (t) => {
 	t.true(actionsIn(file).includes("profileSaved"));
 
 	await type(stdin, ["1"]);
-	t.true((lastFrame() ?? "").includes("Log anything in 1 line"));
+	t.true((lastFrame() ?? "").includes("Daily targets:"));
+	t.true((lastFrame() ?? "").includes("140 g"));
 
 	unmount();
 });
