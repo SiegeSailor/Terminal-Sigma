@@ -357,6 +357,7 @@ const en = {
 			mono: "Mono",
 		} satisfies Record<ThemeName, string>,
 	},
+	log: { quickAdd: "Quick add" },
 	logs: {
 		title: "Logs",
 		all: "All",
@@ -740,6 +741,7 @@ const traditionalChinese: Messages = {
 			mono: "單色",
 		},
 	},
+	log: { quickAdd: "快速記錄" },
 	logs: {
 		title: "所有紀錄",
 		all: "全部",
@@ -1121,6 +1123,7 @@ const korean: Messages = {
 			mono: "모노",
 		},
 	},
+	log: { quickAdd: "빠른 기록" },
 	logs: {
 		title: "전체 기록",
 		all: "전체",
