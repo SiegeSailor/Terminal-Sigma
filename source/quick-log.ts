@@ -196,21 +196,24 @@ const iso = (at: number) => new Date(at).toISOString();
 
 // Words that may follow a quantity, as in "2個", "1 碗", "2개", or "1 공기".
 const hangulCounter = String.raw`(?:공기|그릇|인분|조각|마리|[개잔장병캔])`;
+// English counters need a space on both sides, like the Hangul ones.
+const englishCounter = String.raw`(?:slices?|bowls?|cups?|pieces?|servings?)(?= )`;
 const chineseCounter = String.raw`[個颗顆杯碗片份塊條根盤隻]`;
 const counter = String.raw`공기|그릇|인분|조각|마리|[個颗顆杯碗片份塊條根盤隻개잔장병캔]`;
 // A weight, volume, or percent after the number is not a count of servings.
 const unit = String.raw`(?! ?(?:%|(?:kg|g|ml|l|oz|lbs|lb)(?![\p{L}\p{N}])))`;
 const quantity = String.raw`\d+[\/⁄]\d+|\d+(?:\.\d+)?`;
 const leadingQuantity = new RegExp(
-	String.raw`^(?<amount>${quantity})(?!\d|\.\d)${unit} ?(?:${chineseCounter}|${hangulCounter}(?= |$)|[x×](?= ))? ?(?<food>.+)$`,
+	String.raw`^(?<amount>${quantity})(?!\d|\.\d)${unit} ?(?:${chineseCounter}|${hangulCounter}(?= |$)|${englishCounter}|[x×](?= ))? ?(?<food>.+)$`,
 	"v",
 );
 const trailingQuantity = new RegExp(
 	String.raw`^(?<food>.+?) ?(?:(?<amount>${quantity}) ?(?:${counter})|[x×](?<times>\d+))$`,
 	"v",
 );
+// The letters p, c, and f follow their number closely; "1 c rice" is a cup.
 const macroPattern =
-	/(?<value>\d+(?:\.\d+)?) ?(?<unit>kcal|cal|大卡|p|c|f)(?![\p{L}\p{N}])/giv;
+	/(?<value>\d+(?:\.\d+)?)(?:(?<short>[pcf])| ?(?<unit>kcal|cal|大卡))(?![\p{L}\p{N}])/giv;
 const macroOf: Partial<
 	Record<string, "calories" | "protein" | "carbs" | "fat">
 > = {
@@ -238,7 +241,7 @@ function mealOf(
 	> = {};
 
 	for (const { groups } of item.matchAll(macroPattern)) {
-		const field = macroOf[groups?.unit?.toLowerCase() ?? ""];
+		const field = macroOf[(groups?.short ?? groups?.unit ?? "").toLowerCase()];
 
 		if (field) {
 			typed[field] = Number(groups?.value);
@@ -434,6 +437,12 @@ function spanOf(
 	};
 }
 
+// A bare number up to 24 is hours, and a larger one is minutes.
+const sleepMinutesOf = (text: string) =>
+	/^\d+(?:\.\d+)?$/v.test(text)
+		? Number(text) * (Number(text) <= 24 ? 60 : 1)
+		: minutesOf(text);
+
 // "sl 23:30-7:10 q4" stamps the wake time; "sl 7.5h q3" woke up just now.
 const sleep: Parser = (text, at, { now }) => {
 	const [span = "", ...rest] = text.split(" ");
@@ -441,10 +450,7 @@ const sleep: Parser = (text, at, { now }) => {
 		(token) => /^q(?<score>[1-5])$/iv.exec(token)?.groups?.score,
 	);
 	const { minutes, wakeAt } = spanOf(span, at, now) ?? {
-		// A bare number up to 24 is hours, and a larger one is minutes.
-		minutes: /^\d+(?:\.\d+)?$/v.test(span)
-			? Number(span) * (Number(span) <= 24 ? 60 : 1)
-			: minutesOf(span),
+		minutes: sleepMinutesOf(span),
 		wakeAt: at,
 	};
 
@@ -573,7 +579,7 @@ const goalRules: Partial<
 	>
 > = {
 	water: ["water", millilitersOf, 250, 10_000],
-	sleep: ["sleep", minutesOf, 240, 720],
+	sleep: ["sleep", sleepMinutesOf, 240, 720],
 	steps: ["steps", wholeOf, 1000, 50_000],
 	focus: ["focusSessions", wholeOf, 1, 16],
 };
@@ -1295,7 +1301,7 @@ export function suggestionsOf(
 }
 
 const leadingCount = new RegExp(
-	String.raw`^ *(?:(?:${quantity}) ?(?:${counter}|[x×](?= ))? ?)?`,
+	String.raw`^ *(?:(?:${quantity}) ?(?:${counter}|${englishCounter}|[x×](?= ))? ?)?`,
 	"v",
 );
 

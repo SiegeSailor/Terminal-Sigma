@@ -268,6 +268,16 @@ test("puts a time typed after midnight on yesterday", (t) => {
 	]);
 });
 
+test("reads typed units and English counters the way people type them", (t) => {
+	const cup = parse("1 c rice");
+	t.true(Array.isArray(cup) && cup[0]?.kind === "meal" && !("carbs" in cup[0]));
+	t.like(parse("ramen 20c"), [{ kind: "meal", carbs: 20 }]);
+	t.like(parse("2 slices pizza"), [
+		{ kind: "meal", servings: 2, food: "Pepperoni pizza" },
+	]);
+	t.like(parse("goal sleep 8"), [{ kind: "goal", goal: "sleep", value: 480 }]);
+});
+
 test("reads 水餃 as a food, not as water", (t) => {
 	const result = parse("水餃");
 
