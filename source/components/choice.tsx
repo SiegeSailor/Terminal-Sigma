@@ -55,8 +55,9 @@ export default function Choice({
 				focus((index - 1 + count) % count);
 			} else if (key.downArrow || input === "j") {
 				focus((index + 1) % count);
-			} else if (isNumbered && /^[1-9]$/v.test(input)) {
-				focus(Math.min(Number(input), count) - 1);
+			} else if (isNumbered && /^[0-9]$/v.test(input)) {
+				// 1 to 9 pick the first 9 items, and 0 the 10th, like a keyboard row.
+				focus(Math.min(input === "0" ? 10 : Number(input), count) - 1);
 			} else if (key.return) {
 				const option = options[index];
 
@@ -91,7 +92,7 @@ export default function Choice({
 								color={isFocused ? palette.accent : undefined}
 							>
 								{isNumbered
-									? `${optionIndex + 1}. ${option.label}`
+									? `${(optionIndex + 1) % 10}. ${option.label}`
 									: option.label}
 							</Text>
 							{option.hint}

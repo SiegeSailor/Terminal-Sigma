@@ -60,6 +60,8 @@ export const eventActions = [
 	"quoteDrawn",
 	"quoteSettingsChanged",
 	"updateInstalled",
+	"variableSaved",
+	"variableCleared",
 ] as const;
 export type EventAction = (typeof eventActions)[number];
 

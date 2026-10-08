@@ -41,14 +41,14 @@ export const characterWidth = 36;
 export const menuListWidth = 26;
 
 // Header and footer take 5 rows. The character's panel is 25 rows tall,
-// Today 19 with its spacing or 16 compact, the menu 15 with its 4 headings,
-// and Recent 7.
+// Today 19 with its spacing or 16 compact, the menu 16 with its 4 headings
+// and 10 items, and Recent 7.
 const chromeRows = 5;
 const characterRows = 25;
 const todayRows = 19;
 const compactTodayRows = 16;
-const menuRows = 15;
-const compactMenuRows = 11;
+const menuRows = 16;
+const compactMenuRows = 12;
 const recentRows = 7;
 // The description beside the menu list needs at least this many columns.
 const descriptionColumns = 36;
@@ -240,6 +240,7 @@ export const menuOrder = [
 	"profile",
 	"theme",
 	"language",
+	"environment",
 	"logs",
 	"update",
 ] as const;
@@ -254,6 +255,7 @@ export const menuGroups = {
 	profile: "settings",
 	theme: "settings",
 	language: "settings",
+	environment: "settings",
 	logs: "system",
 	update: "system",
 } as const satisfies Record<MenuKey, string>;
@@ -278,6 +280,7 @@ export function menuEntriesOf(
 		focus: number;
 		rest: number;
 		version: string;
+		savedVariables: number;
 		newest?: string;
 	}>,
 ): MenuEntry[] {
@@ -306,6 +309,7 @@ export function menuEntriesOf(
 		profile: profile?.name ?? messages.signal.setUp,
 		theme: messages.themes.names[state.theme],
 		language: messages.languageName,
+		environment: messages.signal.saved(state.savedVariables),
 		update:
 			state.newest && isNewer(state.newest, state.version)
 				? messages.signal.updateAvailable(state.newest)
@@ -320,6 +324,7 @@ export function menuEntriesOf(
 		profile: messages.describe.profile,
 		theme: messages.describe.theme,
 		language: messages.describe.language,
+		environment: messages.describe.environment,
 		update: messages.describe.update,
 	};
 

@@ -8,11 +8,22 @@ import AutocompleteInput from "./components/autocomplete-input.js";
 import Character from "./components/character.js";
 import Choice from "./components/choice.js";
 import EntryForm from "./components/entry-form.js";
+import EnvironmentView from "./components/environment-view.js";
 import Footer, { type Tone } from "./components/footer.js";
 import LogsView, { LogRow } from "./components/logs-view.js";
 import MultiChoice from "./components/multi-choice.js";
 import TodayPanel from "./components/today-panel.js";
-import type { Config, Environment } from "./config.js";
+import {
+	type Config,
+	type Environment,
+	saveConfig,
+	sourceOf,
+	type VariableName,
+	variableOf,
+	variables,
+	withVariable,
+	writeVariable,
+} from "./config.js";
 import {
 	categoryOptionsOf,
 	characterWidth,
@@ -202,6 +213,8 @@ function Swatches({ palette }: Readonly<{ palette: Palette }>) {
 export default function App({
 	options,
 	file,
+	configFile,
+	initialConfig,
 	env = process.env,
 	initialProgress,
 	updater,
@@ -223,6 +236,10 @@ export default function App({
 	const [view, setView] = React.useState<View>("menu");
 	const [focusedMenu, setFocusedMenu] = React.useState<MenuKey>("timer");
 	const [quoteEditor, setQuoteEditor] = React.useState<QuoteEditor>();
+	const [config, setConfig] = React.useState(initialConfig);
+	const [variableEditor, setVariableEditor] = React.useState<VariableName>();
+	// The list's cursor comes back to the row just edited.
+	const [lastVariable, setLastVariable] = React.useState<VariableName>();
 	const [quoteOption, setQuoteOption] = React.useState("draw");
 	const [flash, setFlash] = React.useState<Flash>();
 	const [draftActivity, setDraftActivity] = React.useState<string>();
@@ -420,6 +437,7 @@ export default function App({
 	const backToMenu = (text?: string) => {
 		setView("menu");
 		setQuoteEditor(undefined);
+		setVariableEditor(undefined);
 		setDraftActivity(undefined);
 		setPreviewTheme(undefined);
 
@@ -434,6 +452,8 @@ export default function App({
 				exit();
 			} else if (view === "quotes" && quoteEditor && key.escape) {
 				setQuoteEditor(undefined);
+			} else if (view === "environment" && variableEditor && key.escape) {
+				setVariableEditor(undefined);
 			} else if (view !== "menu" && key.escape) {
 				const isForm = ["diet", "workout", "profile"].includes(view);
 				backToMenu(isForm ? messages.form.cancelled : undefined);
@@ -576,6 +596,45 @@ export default function App({
 		if (commit(withEvent({ ...progress, theme: next }, "themeChanged", next))) {
 			backToMenu(messages.themes.changed(messages.themes.names[next]));
 		}
+	};
+
+	// Saves 1 variable to config.json and the live environment, unless the shell
+	// set it, and logs only its name: the value may be a secret.
+	const changeVariable = (name: VariableName, value: string | undefined) => {
+		const next = withVariable(config, name, value);
+		const isShells = sourceOf(name, config, env) === "shell";
+
+		try {
+			saveConfig(configFile, next);
+		} catch (error) {
+			say(messages.notSaved(String(error)), "error");
+			return;
+		}
+
+		if (!isShells) {
+			writeVariable(env, name, value);
+		}
+
+		setConfig(next);
+		setVariableEditor(undefined);
+		const { environment } = messages;
+		let text = environment.cleared;
+
+		if (value !== undefined) {
+			text = variableOf(name)?.needsRestart
+				? environment.savedRestart
+				: environment.saved;
+		}
+
+		commit(
+			withEvent(
+				progress,
+				value === undefined ? "variableCleared" : "variableSaved",
+				name,
+			),
+			text,
+			"success",
+		);
 	};
 
 	const drawQuote = (settings: QuoteSettings, base: Progress) => {
@@ -741,6 +800,9 @@ export default function App({
 		rest: durations.break,
 		version: updater.current,
 		newest: release.newest,
+		savedVariables: variables.filter(
+			({ name }) => config.env[name] !== undefined,
+		).length,
 	});
 	const focusedEntry =
 		entries.find((entry) => entry.key === focusedMenu) ?? entries[0];
@@ -750,10 +812,16 @@ export default function App({
 		(view === "quotes" && (quoteEditor === "author" || quoteEditor === "work"));
 	let hint = messages.hints.select;
 
-	if (view === "menu") {
-		hint = messages.hints.menu;
-	} else if (view === "logs") {
-		hint = messages.hints.logs;
+	const viewHints: Partial<Record<View, string>> = {
+		menu: messages.hints.menu,
+		logs: messages.hints.logs,
+		environment: variableEditor
+			? messages.hints.edit
+			: messages.hints.environment,
+	};
+
+	if (viewHints[view]) {
+		hint = viewHints[view];
 	} else if (isTyping) {
 		hint = messages.hints.suggest;
 	} else if (view === "workout" || view === "profile") {
@@ -955,6 +1023,21 @@ export default function App({
 					onSelect={chooseTheme}
 				/>
 			</Titled>
+		),
+		environment: (
+			<EnvironmentView
+				key={variableEditor ?? "list"}
+				config={config}
+				editing={variableEditor}
+				env={env}
+				initialValue={lastVariable}
+				messages={messages}
+				onChange={changeVariable}
+				onEdit={(name) => {
+					setLastVariable(name);
+					setVariableEditor(name);
+				}}
+			/>
 		),
 		language: (
 			<Titled title={messages.menu.language}>

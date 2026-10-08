@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "ava";
@@ -120,8 +120,9 @@ test("renders the dashboard with the menu in order", async (t) => {
 		"5. Profile",
 		"6. Theme",
 		"7. Language",
-		"8. Logs",
-		"9. Software Update",
+		"8. Environment",
+		"9. Logs",
+		"0. Software Update",
 	].map((label) => frame.indexOf(label));
 
 	t.true(order.every((index, position) => index > (order[position - 1] ?? -1)));
@@ -337,7 +338,7 @@ test("shows recent logs and every action in the logs view", async (t) => {
 	await settle();
 	t.true((lastFrame() ?? "").includes("Oatmeal · 350 kcal"));
 
-	await type(stdin, ["8", "\r"]);
+	await type(stdin, ["9", "\r"]);
 	t.true((lastFrame() ?? "").includes("Opened Terminal Sigma"));
 
 	unmount();
@@ -352,7 +353,7 @@ test("updates to the newest version and restarts into it", async (t) => {
 	);
 	t.teardown(unmount);
 
-	await type(stdin, ["9"]);
+	await type(stdin, ["0"]);
 	t.true(await shows(lastFrame, "v1.1.0 available"));
 
 	await type(stdin, ["\r"]);
@@ -365,4 +366,64 @@ test("updates to the newest version and restarts into it", async (t) => {
 
 	await type(stdin, ["\r"]);
 	t.deepEqual(fake.calls, ["install 1.1.0", "restart"]);
+});
+
+test("saves an environment variable, leaving the shell's alone", async (t) => {
+	const { file, configFile, env, stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		{ TERMINAL_SIGMA_BREAK: "10" },
+	);
+
+	await type(stdin, ["8", "\r"]);
+	t.true((lastFrame() ?? "").includes("Focus minutes"));
+	t.true(
+		(lastFrame() ?? "").includes("shell"),
+		"the break comes from the shell",
+	);
+
+	// The data folder is first; Focus minutes is next.
+	await type(stdin, [down, "\r", "abc", "\r"]);
+	t.true((lastFrame() ?? "").includes("not allowed"));
+
+	await type(stdin, [backspace.repeat(3), "50", "\r"]);
+	t.deepEqual(loadConfig(configFile).env, {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		TERMINAL_SIGMA_FOCUS: "50",
+	});
+	t.is(env.TERMINAL_SIGMA_FOCUS, "50");
+	t.is(env.TERMINAL_SIGMA_BREAK, "10");
+	t.true((lastFrame() ?? "").includes("Restart Terminal Sigma"));
+	t.deepEqual(actionsIn(file).slice(1), ["variableSaved"]);
+	t.false(readFileSync(file, "utf8").includes('50"'), "no value in the logs");
+
+	unmount();
+});
+
+test("masks a saved secret and clears it with an empty value", async (t) => {
+	const { configFile, env, stdin, lastFrame, unmount } = start();
+
+	// Data, Focus, Break, Motion, then API Ninjas key.
+	await type(stdin, [
+		"8",
+		"\r",
+		down,
+		down,
+		down,
+		down,
+		"\r",
+		"ninja-key-123456",
+		"\r",
+	]);
+	t.is(loadConfig(configFile).env.API_NINJAS_KEY, "ninja-key-123456");
+	t.true((lastFrame() ?? "").includes("••••3456"));
+	t.false((lastFrame() ?? "").includes("ninja-key"));
+
+	await type(stdin, ["\r", "\r"]);
+	t.deepEqual(loadConfig(configFile).env, {});
+	t.is(env.API_NINJAS_KEY, undefined);
+
+	unmount();
 });

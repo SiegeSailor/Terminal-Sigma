@@ -1,3 +1,4 @@
+import type { Source, VariableGroup, VariableName } from "./config.js";
 import type { EventAction } from "./progress.js";
 import type { QuoteCategory, QuoteMode } from "./quotes.js";
 import type { ThemeName } from "./theme.js";
@@ -65,6 +66,8 @@ const en = {
 		form: "enter next · esc cancel",
 		suggest: "↑↓ pick · tab fill · enter next · esc cancel",
 		logs: "←→ filter · ↑↓ scroll · esc back",
+		environment: "↑↓ move · enter edit · esc back",
+		edit: "enter save · empty enter clears · esc keep",
 	},
 	groups: {
 		actions: "Actions",
@@ -82,6 +85,7 @@ const en = {
 		theme: "Theme",
 		language: "Language",
 		update: "Software Update",
+		environment: "Environment",
 	},
 	describe: {
 		quotes:
@@ -99,6 +103,8 @@ const en = {
 		update:
 			"See the version you run and the newest release, and update in place: through NPM for the command line, or by swapping in the new build for the desktop app.",
 		open: "Enter to open",
+		environment:
+			"See and change what environment variables control: the data folder, the timer, motion, and API keys. Your shell's variables always win.",
 	},
 	signal: {
 		ready: "Ready",
@@ -112,6 +118,7 @@ const en = {
 		onTrack: "On track",
 		version: (version: string) => `v${version}`,
 		updateAvailable: (version: string) => `v${version} available`,
+		saved: (count: number) => `${count} saved`,
 	},
 	today: {
 		title: "Today",
@@ -329,6 +336,8 @@ const en = {
 		quoteDrawn: () => "Drew a new quote",
 		quoteSettingsChanged: (setting: string) => `Changed quotes: ${setting}`,
 		updateInstalled: (version: string) => `Updated to v${version}`,
+		variableSaved: (name: string) => `Saved ${name}`,
+		variableCleared: (name: string) => `Cleared ${name}`,
 	} satisfies Record<EventAction, (detail: string) => string>,
 	themes: {
 		changed: (name: string) => `Theme set to ${name}.`,
@@ -361,6 +370,47 @@ const en = {
 		empty: "Nothing yet. Start a tomato or log a meal.",
 	},
 	quoteDrawn: "New quote drawn.",
+	/* eslint-disable @typescript-eslint/naming-convention */
+	environment: {
+		groups: {
+			data: "Data",
+			timer: "Tomato Timer",
+			display: "Display",
+			quotes: "Everyday Quotes",
+		} satisfies Record<VariableGroup, string>,
+		names: {
+			TERMINAL_SIGMA_HOME: "Data folder",
+			TERMINAL_SIGMA_FOCUS: "Focus minutes",
+			TERMINAL_SIGMA_BREAK: "Break minutes",
+			TERMINAL_SIGMA_MOTION: "Motion",
+			API_NINJAS_KEY: "API Ninjas key",
+		} satisfies Record<VariableName, string>,
+		describe: {
+			TERMINAL_SIGMA_HOME:
+				"The folder that holds progress.json, as an absolute path. Applies after a restart.",
+			TERMINAL_SIGMA_FOCUS:
+				"Minutes of each focus, from 1 to 180. Applies after a restart; --focus still wins.",
+			TERMINAL_SIGMA_BREAK:
+				"Minutes of each break, from 1 to 180. Applies after a restart; --break still wins.",
+			TERMINAL_SIGMA_MOTION:
+				"full, or reduced to show every change at once, without text effects.",
+			API_NINJAS_KEY:
+				"Your API Ninjas key, to fetch English quotes instead of the bundled ones.",
+		} satisfies Record<VariableName, string>,
+		sources: {
+			shell: "shell",
+			saved: "saved",
+			default: "default",
+		} satisfies Record<Source, string>,
+		unset: "–",
+		placeholder: (current: string) => `Now: ${current}`,
+		invalid: "That value is not allowed; see the line above.",
+		shellWins: "Your shell sets this variable, so it wins over a saved value.",
+		saved: "Saved.",
+		savedRestart: "Saved. Restart Terminal Sigma to apply it.",
+		cleared: "Cleared.",
+	},
+	/* eslint-enable @typescript-eslint/naming-convention */
 };
 
 export type Messages = typeof en;
@@ -378,6 +428,8 @@ const traditionalChinese: Messages = {
 		form: "enter 下一步 · esc 取消",
 		suggest: "↑↓ 挑選 · tab 填入 · enter 下一步 · esc 取消",
 		logs: "←→ 篩選 · ↑↓ 捲動 · esc 返回",
+		environment: "↑↓ 移動 · enter 編輯 · esc 返回",
+		edit: "enter 儲存 · 空白 enter 清除 · esc 保留",
 	},
 	groups: {
 		actions: "動作",
@@ -395,6 +447,7 @@ const traditionalChinese: Messages = {
 		theme: "主題",
 		language: "語言",
 		update: "軟體更新",
+		environment: "環境變數",
 	},
 	describe: {
 		quotes: "換一則語錄，或設定語錄多久更新一次、要看哪些類型。",
@@ -410,6 +463,8 @@ const traditionalChinese: Messages = {
 		update:
 			"查看目前版本與最新版本，並直接更新：命令列透過 NPM，桌面版則換上新的版本。",
 		open: "按 Enter 開啟",
+		environment:
+			"查看並修改環境變數控制的設定：資料夾、番茄鐘、動態效果與 API 金鑰。終端機設定的變數永遠優先。",
 	},
 	signal: {
 		ready: "就緒",
@@ -423,6 +478,7 @@ const traditionalChinese: Messages = {
 		onTrack: "達標",
 		version: (version) => `v${version}`,
 		updateAvailable: (version) => `可更新至 v${version}`,
+		saved: (count) => `已儲存 ${count} 項`,
 	},
 	today: {
 		title: "今日",
@@ -631,6 +687,8 @@ const traditionalChinese: Messages = {
 		quoteDrawn: () => "換了一則語錄",
 		quoteSettingsChanged: (setting) => `變更語錄設定：${setting}`,
 		updateInstalled: (version) => `更新至 v${version}`,
+		variableSaved: (name) => `儲存 ${name}`,
+		variableCleared: (name) => `清除 ${name}`,
 	},
 	themes: {
 		changed: (name) => `主題已設為${name}。`,
@@ -662,6 +720,42 @@ const traditionalChinese: Messages = {
 		empty: "還沒有紀錄。開始一顆番茄或記錄一餐吧。",
 	},
 	quoteDrawn: "已換一則語錄。",
+	/* eslint-disable @typescript-eslint/naming-convention */
+	environment: {
+		groups: {
+			data: "資料",
+			timer: "番茄鐘",
+			display: "顯示",
+			quotes: "每日語錄",
+		},
+		names: {
+			TERMINAL_SIGMA_HOME: "資料夾",
+			TERMINAL_SIGMA_FOCUS: "專注分鐘數",
+			TERMINAL_SIGMA_BREAK: "休息分鐘數",
+			TERMINAL_SIGMA_MOTION: "動態效果",
+			API_NINJAS_KEY: "API Ninjas 金鑰",
+		},
+		describe: {
+			TERMINAL_SIGMA_HOME:
+				"存放 progress.json 的資料夾，須為絕對路徑。重新啟動後生效。",
+			TERMINAL_SIGMA_FOCUS:
+				"每次專注的分鐘數，1 到 180。重新啟動後生效；--focus 仍優先。",
+			TERMINAL_SIGMA_BREAK:
+				"每次休息的分鐘數，1 到 180。重新啟動後生效；--break 仍優先。",
+			TERMINAL_SIGMA_MOTION:
+				"full，或 reduced 以立即顯示所有變化，不播放文字特效。",
+			API_NINJAS_KEY: "你的 API Ninjas 金鑰，用來改抓英文語錄，而非內建語錄。",
+		},
+		sources: { shell: "終端機", saved: "已儲存", default: "預設" },
+		unset: "–",
+		placeholder: (current) => `目前：${current}`,
+		invalid: "不接受這個值，請見上一行說明。",
+		shellWins: "終端機已設定這個變數，因此優先於儲存的值。",
+		saved: "已儲存。",
+		savedRestart: "已儲存。重新啟動 Terminal Sigma 後生效。",
+		cleared: "已清除。",
+	},
+	/* eslint-enable @typescript-eslint/naming-convention */
 };
 
 const korean: Messages = {
@@ -677,6 +771,8 @@ const korean: Messages = {
 		form: "enter 다음 · esc 취소",
 		suggest: "↑↓ 고르기 · tab 채우기 · enter 다음 · esc 취소",
 		logs: "←→ 필터 · ↑↓ 스크롤 · esc 뒤로",
+		environment: "↑↓ 이동 · enter 편집 · esc 뒤로",
+		edit: "enter 저장 · 빈 enter 지우기 · esc 유지",
 	},
 	groups: {
 		actions: "활동",
@@ -694,6 +790,7 @@ const korean: Messages = {
 		theme: "테마",
 		language: "언어",
 		update: "앱 업데이트",
+		environment: "환경 변수",
 	},
 	describe: {
 		quotes:
@@ -711,6 +808,8 @@ const korean: Messages = {
 		update:
 			"지금 쓰는 버전과 최신 버전을 보고 바로 업데이트합니다. 명령줄은 NPM으로, 데스크톱 앱은 새 빌드로 바꿉니다.",
 		open: "Enter로 열기",
+		environment:
+			"데이터 폴더, 타이머, 움직임, API 키처럼 환경 변수가 정하는 설정을 보고 바꿉니다. 셸에서 설정한 변수가 항상 우선합니다.",
 	},
 	signal: {
 		ready: "준비",
@@ -724,6 +823,7 @@ const korean: Messages = {
 		onTrack: "달성",
 		version: (version) => `v${version}`,
 		updateAvailable: (version) => `v${version} 업데이트 가능`,
+		saved: (count) => `${count}개 저장됨`,
 	},
 	today: {
 		title: "오늘",
@@ -936,6 +1036,8 @@ const korean: Messages = {
 		quoteDrawn: () => "새 명언 뽑기",
 		quoteSettingsChanged: (setting) => `명언 설정 변경: ${setting}`,
 		updateInstalled: (version) => `v${version}(으)로 업데이트`,
+		variableSaved: (name) => `${name} 저장`,
+		variableCleared: (name) => `${name} 지움`,
 	},
 	themes: {
 		changed: (name) => `테마를 ${name}(으)로 설정했습니다.`,
@@ -967,6 +1069,42 @@ const korean: Messages = {
 		empty: "아직 없습니다. 토마토를 시작하거나 식사를 기록해 보세요.",
 	},
 	quoteDrawn: "새 명언을 뽑았습니다.",
+	/* eslint-disable @typescript-eslint/naming-convention */
+	environment: {
+		groups: {
+			data: "데이터",
+			timer: "토마토 타이머",
+			display: "화면",
+			quotes: "오늘의 명언",
+		},
+		names: {
+			TERMINAL_SIGMA_HOME: "데이터 폴더",
+			TERMINAL_SIGMA_FOCUS: "집중 시간(분)",
+			TERMINAL_SIGMA_BREAK: "휴식 시간(분)",
+			TERMINAL_SIGMA_MOTION: "움직임",
+			API_NINJAS_KEY: "API Ninjas 키",
+		},
+		describe: {
+			TERMINAL_SIGMA_HOME:
+				"progress.json을 보관하는 폴더의 절대 경로입니다. 다시 시작하면 적용됩니다.",
+			TERMINAL_SIGMA_FOCUS:
+				"집중 1회의 시간(분), 1부터 180까지. 다시 시작하면 적용되며 --focus가 우선합니다.",
+			TERMINAL_SIGMA_BREAK:
+				"휴식 1회의 시간(분), 1부터 180까지. 다시 시작하면 적용되며 --break가 우선합니다.",
+			TERMINAL_SIGMA_MOTION:
+				"full, 또는 글자 효과 없이 모든 변화를 바로 보여 주는 reduced.",
+			API_NINJAS_KEY: "번들 명언 대신 영어 명언을 가져올 API Ninjas 키입니다.",
+		},
+		sources: { shell: "셸", saved: "저장됨", default: "기본값" },
+		unset: "–",
+		placeholder: (current) => `현재: ${current}`,
+		invalid: "허용되지 않는 값입니다. 위 설명을 확인하세요.",
+		shellWins: "셸에서 이 변수를 설정했으므로 저장된 값보다 우선합니다.",
+		saved: "저장했습니다.",
+		savedRestart: "저장했습니다. 적용하려면 Terminal Sigma를 다시 시작하세요.",
+		cleared: "지웠습니다.",
+	},
+	/* eslint-enable @typescript-eslint/naming-convention */
 };
 
 const messagesByLanguage: Record<Language, Messages> = {
