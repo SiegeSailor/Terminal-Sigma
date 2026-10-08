@@ -1266,6 +1266,36 @@ export function suggestionsOf(
 	].slice(0, limit);
 }
 
+const leadingCount = new RegExp(
+	String.raw`^ *(?:(?:${quantity}) ?(?:${counter}|[x×](?= ))? ?)?`,
+	"v",
+);
+
+// The food name being typed at the end of a meal line, and everything before
+// it, so a picked name can replace just that; nothing on a prefixed line.
+export function completionOf(
+	text: string,
+): Readonly<{ head: string; query: string }> | undefined {
+	const time = /^@\S+(?: \d{1,2}:\d{2})?(?: |$)/v.exec(text)?.[0] ?? "";
+	const word = text.slice(time.length).split(" ")[0]?.toLowerCase() ?? "";
+
+	if (Object.hasOwn(parsers, word)) {
+		return undefined;
+	}
+
+	const start = Math.max(
+		time.length,
+		...[",", "+", "、", "，"].map((mark) => text.lastIndexOf(mark) + 1),
+	);
+	const item = text.slice(start);
+	const count = leadingCount.exec(item)?.[0] ?? "";
+
+	return {
+		head: text.slice(0, start + count.length),
+		query: item.slice(count.length),
+	};
+}
+
 // The prefix of a line picks its parser; a line without 1 is a meal.
 const parsers: Partial<Record<string, Parser>> = {
 	w: water,

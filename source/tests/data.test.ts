@@ -5,7 +5,6 @@ import {
 	describeQuoteChange,
 	moodOf,
 	updateViewOf,
-	workoutCombinationsOf,
 } from "../content.js";
 import { commonFoodCount, foodSuggestions } from "../foods.js";
 import { type Language, messagesOf } from "../i18n.js";
@@ -45,25 +44,6 @@ test("suggests foods from the user's meals first, then common ones", (t) => {
 	});
 	t.like(foodSuggestions("雞胸", "ko", []), [{ label: "닭가슴살" }]);
 	t.deepEqual(foodSuggestions("", "en", []), []);
-});
-
-test("offers past workouts as 1-step combinations", (t) => {
-	const combinations = workoutCombinationsOf(english, [
-		{ at, activity: "running", minutes: 30, intensity: "moderate" },
-		{ at, activity: "yoga", minutes: 20, intensity: "light" },
-		{ at, activity: "running", minutes: 30, intensity: "moderate" },
-		{ at, activity: "Run", minutes: 10 },
-	]);
-
-	t.deepEqual(
-		combinations.map((combination) => combination.label),
-		["Running · 30 min · Moderate", "Yoga · 20 min · Light"],
-	);
-	t.deepEqual(combinations[1]?.values, {
-		activity: "yoga",
-		minutes: "20",
-		intensity: "light",
-	});
 });
 
 test("filters bundled quotes like the API would", (t) => {

@@ -3,6 +3,7 @@ import { type Language, messagesOf } from "../i18n.js";
 import { logsOf, type Progress, progressSchema } from "../progress.js";
 import {
 	applyDrafts,
+	completionOf,
 	describeDraft,
 	type Draft,
 	draftOf,
@@ -790,4 +791,20 @@ test("suggests the usual foods of this hour, water, last week's workout, and hab
 		suggestionsOf(progressSchema.parse({}), Date.parse(local(6))),
 		[],
 	);
+});
+
+test("finds the food name being typed, to complete it", (t) => {
+	t.deepEqual(completionOf("2 eggs, chi"), { head: "2 eggs, ", query: "chi" });
+	t.deepEqual(completionOf("@y 21:00 2 chi"), {
+		head: "@y 21:00 2 ",
+		query: "chi",
+	});
+	t.deepEqual(completionOf("계란 2개 + 김"), {
+		head: "계란 2개 + ",
+		query: "김",
+	});
+	t.deepEqual(completionOf("2個雞"), { head: "2個", query: "雞" });
+	t.deepEqual(completionOf("udon"), { head: "", query: "udon" });
+	t.is(completionOf("w 500"), undefined);
+	t.is(completionOf("wo bench"), undefined);
 });

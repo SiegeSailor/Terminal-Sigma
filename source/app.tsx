@@ -11,6 +11,7 @@ import EntryForm from "./components/entry-form.js";
 import EnvironmentView from "./components/environment-view.js";
 import Footer, { type Tone } from "./components/footer.js";
 import Header from "./components/header.js";
+import LogView from "./components/log-view.js";
 import LogsView, { LogRow } from "./components/logs-view.js";
 import MultiChoice from "./components/multi-choice.js";
 import TodayPanel from "./components/today-panel.js";
@@ -27,9 +28,9 @@ import {
 	writeVariable,
 } from "./config.js";
 import {
+	activityOfKind,
 	categoryOptionsOf,
 	characterWidth,
-	dietFieldsOf,
 	intervalOptionsOf,
 	layoutOf,
 	type MenuKey,
@@ -42,34 +43,36 @@ import {
 	type Release,
 	sectionsOf,
 	updateViewOf,
-	workoutFieldsOf,
 } from "./content.js";
 import { adviceOf, targetsOf } from "./health.js";
 import {
 	formatNumber,
 	genders,
 	healthGoals,
-	intensities,
 	type Language,
 	languages,
 	type Messages,
 	messagesOf,
-	workoutActivities,
 	workStyles,
 } from "./i18n.js";
 import { type Activity, lookOf } from "./pixel-art.js";
 import {
 	type EventAction,
 	experienceOf,
-	experiencePerMeal,
 	levelOf,
 	logsOf,
 	type Progress,
 	saveProgress,
 	profileNow,
 	todayOf,
-	workoutExperience,
 } from "./progress.js";
+import {
+	type Added,
+	applyDrafts,
+	type Draft,
+	summaryOf,
+	undoAdded,
+} from "./quick-log.js";
 import {
 	bundledQuotes,
 	defaultQuoteSettings,
@@ -251,7 +254,8 @@ export default function App({
 	const [lastVariable, setLastVariable] = React.useState<VariableName>();
 	const [quoteOption, setQuoteOption] = React.useState("draw");
 	const [flash, setFlash] = React.useState<Flash>();
-	const [draftActivity, setDraftActivity] = React.useState<string>();
+	// What each line logged in the open Log view added, newest last, for undo.
+	const [undoStack, setUndoStack] = React.useState<Added[][]>([]);
 	const language = progress.language ?? "en";
 	const messages = messagesOf(language);
 	const themeName = progress.theme ?? "ember";
@@ -346,19 +350,20 @@ export default function App({
 			}
 
 			const { form } = messagesOf(next.language ?? "en");
+			const isSaved = commit(
+				next,
+				leveledUp ? `${text} ${form.levelUp(after)}` : text,
+				"success",
+			);
 
-			if (
-				commit(
-					next,
-					leveledUp ? `${text} ${form.levelUp(after)}` : text,
-					"success",
-				)
-			) {
+			if (isSaved) {
 				setFlash({
 					activity: leveledUp ? "levelUp" : activity,
 					until: Date.now() + flashMilliseconds,
 				});
 			}
+
+			return isSaved;
 		},
 		[progress, commit],
 	);
@@ -451,7 +456,7 @@ export default function App({
 		setView("menu");
 		setQuoteEditor(undefined);
 		setVariableEditor(undefined);
-		setDraftActivity(undefined);
+		setUndoStack([]);
 		setPreviewTheme(undefined);
 
 		if (text) {
@@ -468,8 +473,7 @@ export default function App({
 			} else if (view === "environment" && variableEditor && key.escape) {
 				setVariableEditor(undefined);
 			} else if (view !== "menu" && key.escape) {
-				const isForm = ["diet", "workout", "profile"].includes(view);
-				backToMenu(isForm ? messages.form.cancelled : undefined);
+				backToMenu(view === "profile" ? messages.form.cancelled : undefined);
 			}
 		},
 		{ isActive: progress.language !== undefined },
@@ -540,44 +544,65 @@ export default function App({
 		}
 	};
 
-	const submitMeal = (values: Record<string, string>) => {
-		const food = values.food ?? "";
-		backToMenu();
-		record(
-			(current) => ({
-				...current,
-				meals: [
-					...current.meals,
-					{
-						at: new Date().toISOString(),
-						food,
-						calories: Number(values.calories),
-						protein: Number(values.protein),
-					},
-				],
-			}),
-			messages.form.mealLogged(food, experiencePerMeal),
-			"eat",
+	// Saves what 1 line logged, says what and how much XP it earned, and keeps
+	// it for undo; a goal is logged as an event instead.
+	const logLine = (_line: string, drafts: Draft[]) => {
+		const { next, added } = applyDrafts(progress, drafts);
+		let withGoals = next;
+
+		for (const draft of drafts) {
+			if (draft.kind === "goal") {
+				withGoals = withEvent(
+					withGoals,
+					"goalChanged",
+					`${draft.goal}:${draft.value}`,
+				);
+			}
+		}
+
+		const [first] = drafts;
+		let activity: Activity = "idle";
+
+		if (first?.kind === "workout") {
+			activity = workoutAnimation(first.activity);
+		} else if (first && first.kind !== "goal") {
+			activity = activityOfKind(first.kind);
+		}
+
+		const isSaved = record(
+			() => withGoals,
+			messages.log.logged(
+				summaryOf(drafts, messages),
+				experienceOf(next) - experienceOf(progress),
+			),
+			activity,
 		);
+
+		// A goal-only line keeps an empty frame, so undo stops at it instead of
+		// reaching the line before; a goal is changed back by typing it.
+		if (isSaved && drafts.length > 0) {
+			setUndoStack((stack) => [...stack, added]);
+		}
 	};
 
-	const submitWorkout = (values: Record<string, string>) => {
-		const workout = {
-			at: new Date().toISOString(),
-			activity: pick(workoutActivities, values.activity, "other"),
-			minutes: Number(values.minutes),
-			intensity: pick(intensities, values.intensity, "moderate"),
-		};
-		backToMenu();
-		record(
-			(current) => ({ ...current, workouts: [...current.workouts, workout] }),
-			messages.form.workoutLogged(
-				messages.workoutActivity[workout.activity],
-				workout.minutes,
-				workoutExperience(workout),
-			),
-			workoutAnimation(workout.activity),
+	// Takes back the newest line logged since the Log view opened.
+	const undoLine = () => {
+		const added = undoStack.at(-1);
+
+		if (!added?.length) {
+			say(messages.log.nothingToUndo);
+			return;
+		}
+
+		const next = withEvent(
+			undoAdded(progress, added),
+			"logDeleted",
+			added[0]?.kind,
 		);
+
+		if (commit(next, messages.log.undone, "success")) {
+			setUndoStack((stack) => stack.slice(0, -1));
+		}
 	};
 
 	const submitProfile = (values: Record<string, string>) => {
@@ -784,13 +809,9 @@ export default function App({
 	const activity: Activity =
 		flash && flash.until > now
 			? flash.activity
-			: view === "diet"
-				? "eat"
-				: view === "workout"
-					? workoutAnimation(draftActivity)
-					: isRunning
-						? ({ focus: "focus", break: "break" } as const)[timer.phase]
-						: "idle";
+			: isRunning
+				? ({ focus: "focus", break: "break" } as const)[timer.phase]
+				: "idle";
 
 	let activityLabel = messages.activity[activity];
 
@@ -824,26 +845,21 @@ export default function App({
 	const focusedEntry =
 		entries.find((entry) => entry.key === focusedMenu) ?? entries[0];
 
-	const isTyping =
-		view === "diet" ||
-		(view === "quotes" && (quoteEditor === "author" || quoteEditor === "work"));
-	let hint = messages.hints.select;
-
-	const viewHints: Partial<Record<View, string>> = {
+	// The keys of the open view; any view not named here picks from a list.
+	const hints: Partial<Record<View, string>> = {
 		menu: messages.hints.menu,
+		log: messages.hints.log,
 		logs: messages.hints.logs,
+		profile: messages.hints.form,
 		environment: variableEditor
 			? messages.hints.edit
 			: messages.hints.environment,
+		quotes:
+			quoteEditor === "author" || quoteEditor === "work"
+				? messages.hints.suggest
+				: undefined,
 	};
-
-	if (viewHints[view]) {
-		hint = viewHints[view];
-	} else if (isTyping) {
-		hint = messages.hints.suggest;
-	} else if (view === "workout" || view === "profile") {
-		hint = messages.hints.form;
-	}
+	const hint = hints[view] ?? messages.hints.select;
 
 	const shownQuote = localizedQuote(quote, language);
 
@@ -998,23 +1014,15 @@ export default function App({
 				messages={messages}
 			/>
 		),
-		diet: (
-			<EntryForm
-				fields={dietFieldsOf(messages, language, progress.meals)}
+		log: (
+			<LogView
+				key="log"
+				language={language}
 				messages={messages}
-				title={messages.form.dietTitle}
-				onSubmit={submitMeal}
-			/>
-		),
-		workout: (
-			<EntryForm
-				fields={workoutFieldsOf(messages, progress.workouts)}
-				messages={messages}
-				title={messages.form.workoutTitle}
-				onSubmit={submitWorkout}
-				onValues={(values) => {
-					setDraftActivity(values.activity);
-				}}
+				now={now}
+				progress={progress}
+				onLog={logLine}
+				onUndo={undoLine}
 			/>
 		),
 		profile: (
@@ -1075,7 +1083,7 @@ export default function App({
 			<Box marginTop={1}>
 				<Text dimColor>{focusedEntry.description}</Text>
 			</Box>
-			{focusedEntry.key === "diet" || focusedEntry.key === "workout" ? (
+			{focusedEntry.key === "log" ? (
 				<HealthSummary
 					language={language}
 					messages={messages}
@@ -1164,7 +1172,8 @@ export default function App({
 						<Box
 							borderColor={view === "menu" ? palette.accent : palette.border}
 							borderStyle="round"
-							display={view === "logs" ? "none" : "flex"}
+							// The Log and History views need the width more than the menu.
+							display={view === "log" || view === "logs" ? "none" : "flex"}
 							flexShrink={0}
 							paddingX={1}
 							width={layout.isMenuSplit ? menuListWidth : undefined}
@@ -1222,7 +1231,7 @@ type HealthSummaryProps = Readonly<{
 	today: ReturnType<typeof todayOf>;
 }>;
 
-// Today's targets and what is left of them, under the meal and workout items.
+// Today's targets and what is left of them, under the Log item.
 function HealthSummary({
 	language,
 	messages,

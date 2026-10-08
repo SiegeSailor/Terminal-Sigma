@@ -1,5 +1,6 @@
 import type { Source, VariableGroup, VariableName } from "./config.js";
 import type { EventAction, Goals, LogKind } from "./progress.js";
+import type { ParseError } from "./quick-log.js";
 import type { QuoteCategory, QuoteMode } from "./quotes.js";
 import type { ThemeName } from "./theme.js";
 import type { Updater } from "./update.js";
@@ -68,19 +69,19 @@ const en = {
 		logs: "←→ filter · ↑↓ scroll · esc back",
 		environment: "↑↓ move · enter edit · esc back",
 		edit: "enter save · empty enter clears · esc keep",
+		log: "↑↓ pick · tab complete · enter log · esc back",
 	},
 	groups: {
-		actions: "Actions",
-		health: "Health",
+		today: "Today",
+		journal: "Journal",
 		settings: "Settings",
 		system: "System",
 	},
 	menu: {
+		log: "Log",
 		quotes: "Everyday Quotes",
 		timer: "Tomato Timer",
-		diet: "Log a Meal",
-		workout: "Log a Workout",
-		logs: "Logs",
+		logs: "History",
 		profile: "Profile",
 		theme: "Theme",
 		language: "Language",
@@ -92,9 +93,7 @@ const en = {
 			"Draw a new quote, or choose how often quotes refresh and which kinds you see.",
 		timer: (focus: number, rest: number) =>
 			`A ${focus}-minute focus earns ${focus} XP, then a ${rest}-minute break begins. Start, pause, resume, or stop it here.`,
-		diet: "Log what you ate. Your past meals and 112 common foods are suggested as you type, with their calories and protein.",
-		workout:
-			"Log an activity, its minutes, and its intensity, or repeat 1 of your latest workouts in 1 step.",
+		log: "Log anything in 1 line, e.g. 2 eggs, toast · w 500 · wo run 30m · sl 23:30-7:10. While the line is empty, it suggests what you usually log now.",
 		logs: "Browse every focus, meal, workout, and action you have taken.",
 		profile:
 			"Your name, body, work style, and health goal, which set your daily targets and shape your character.",
@@ -113,9 +112,7 @@ const en = {
 		quotesAuto: (interval: string) => `Auto · every ${interval}`,
 		quotesManual: "Manual refresh",
 		setUp: "Set up",
-		proteinLeft: (grams: number) => `${grams} g protein left`,
-		minutesLeft: (minutes: number) => `${minutes} min of exercise left`,
-		onTrack: "On track",
+		loggedToday: (count: number) => `${count} logged today`,
 		version: (version: string) => `v${version}`,
 		updateAvailable: (version: string) => `v${version} available`,
 		saved: (count: number) => `${count} saved`,
@@ -172,19 +169,10 @@ const en = {
 		breakOver: "Break over. Select Tomato Timer to focus again.",
 	},
 	form: {
-		dietTitle: "Log a meal",
-		workoutTitle: "Log a workout",
 		profileTitle: "Profile",
-		food: "Food",
-		foodExample: "Type to search, e.g. chicken",
 		yours: "yours",
 		nutrition: (calories: string, protein: string) =>
 			`${calories} kcal · ${protein} g protein`,
-		calories: "Calories (kcal)",
-		protein: "Protein (g)",
-		activity: "Activity",
-		minutes: "Minutes",
-		intensity: "Intensity",
 		name: "Name",
 		age: "Age",
 		height: "Height (cm)",
@@ -197,9 +185,6 @@ const en = {
 		wholeNumber: (minimum: number, maximum: number) =>
 			`Enter a whole number from ${minimum} to ${maximum}.`,
 		cancelled: "Nothing changed.",
-		mealLogged: (food: string, xp: number) => `Logged ${food}, +${xp} XP.`,
-		workoutLogged: (activity: string, minutes: number, xp: number) =>
-			`Logged ${activity} for ${minutes} minutes, +${xp} XP.`,
 		profileSaved: "Profile saved. Your daily targets are updated.",
 		levelUp: (level: number) => `Level up! Lv ${level}.`,
 	},
@@ -346,6 +331,9 @@ const en = {
 		updateInstalled: (version: string) => `Updated to v${version}`,
 		variableSaved: (name: string) => `Saved ${name}`,
 		variableCleared: (name: string) => `Cleared ${name}`,
+		goalChanged: (setting: string) => `Changed a goal · ${setting}`,
+		logDeleted: (kind: string) => `Deleted a log · ${kind}`,
+		logEdited: (kind: string) => `Edited a log · ${kind}`,
 	} satisfies Record<EventAction, (detail: string) => string>,
 	themes: {
 		changed: (name: string) => `Theme set to ${name}.`,
@@ -358,6 +346,35 @@ const en = {
 		} satisfies Record<ThemeName, string>,
 	},
 	log: {
+		title: "Log",
+		editTitle: "Edit a log",
+		placeholder: "2 eggs, toast · w 500 · wo run 30m",
+		prefixes:
+			"w water · wt weight · waist · bf body fat · sl sleep · m mood · h habit · st steps · n note",
+		shortcuts:
+			"wo workout · goal · @y yesterday · @7:30 a time · . repeat · copy y · u undo",
+		more: (count: number) => `+${count} more`,
+		undoHint: "Enter undoes the last line logged here.",
+		logged: (summary: string, xp: number) =>
+			`Logged ${summary}${xp > 0 ? ` · +${xp} XP` : ""} · u to undo`,
+		edited: (summary: string) => `Updated ${summary}.`,
+		undone: "Undid the last line.",
+		nothingToUndo: "Nothing to undo.",
+		errors: {
+			empty: "Type what to log, e.g. 2 eggs, toast.",
+			badTime: "A time looks like @y, @-2d, @7:30, or @y 21:00.",
+			badNumber: "A number is missing or unreadable.",
+			outOfRange: "That number is out of range.",
+			badSleep: "Sleep looks like sl 23:30-7:10 q4 or sl 7.5h.",
+			badMood: "A mood looks like m 4 e3 s2 #work.",
+			badGoal: "Goals are water, sleep, steps, or focus, e.g. goal water 2.5l.",
+			noMinutes: "Add the minutes, e.g. wo run 30m.",
+			noPreviousSets:
+				"No earlier sets to repeat; add them, e.g. wo bench 60x5x3.",
+			nothingToRepeat: "Nothing logged yet to repeat.",
+			nothingToCopy: "Nothing was eaten yesterday to copy.",
+			tooLong: "A note holds up to 2,000 characters.",
+		} satisfies Record<ParseError, string>,
 		quickAdd: "Quick add",
 		unknownFood: (food: string) =>
 			`${food}: not a food I know yet; add its kcal, e.g. ${food} 500kcal`,
@@ -481,19 +498,19 @@ const traditionalChinese: Messages = {
 		logs: "←→ 篩選 · ↑↓ 捲動 · esc 返回",
 		environment: "↑↓ 移動 · enter 編輯 · esc 返回",
 		edit: "enter 儲存 · 空白 enter 清除 · esc 保留",
+		log: "↑↓ 挑選 · tab 補全 · enter 記錄 · esc 返回",
 	},
 	groups: {
-		actions: "動作",
-		health: "健康",
+		today: "今日",
+		journal: "日誌",
 		settings: "設定",
 		system: "系統",
 	},
 	menu: {
+		log: "記錄",
 		quotes: "每日語錄",
 		timer: "番茄鐘",
-		diet: "記錄飲食",
-		workout: "記錄運動",
-		logs: "所有紀錄",
+		logs: "歷史紀錄",
 		profile: "個人資料",
 		theme: "主題",
 		language: "語言",
@@ -504,8 +521,7 @@ const traditionalChinese: Messages = {
 		quotes: "換一則語錄，或設定語錄多久更新一次、要看哪些類型。",
 		timer: (focus, rest) =>
 			`完成 ${focus} 分鐘專注可獲得 ${focus} XP，接著休息 ${rest} 分鐘。在這裡開始、暫停、繼續或停止。`,
-		diet: "記錄吃了什麼。輸入時會建議你吃過的餐點與 112 種常見食物，並附上熱量與蛋白質。",
-		workout: "記錄運動項目、分鐘數與強度，或一步重複最近的運動。",
+		log: "用一行記錄任何事，例如：2 顆蛋, 吐司 · w 500 · wo 跑步 30m · sl 23:30-7:10。輸入列空白時，會建議你這個時段常記錄的內容。",
 		logs: "瀏覽所有專注、飲食、運動與操作紀錄。",
 		profile:
 			"你的名字、身體數據、工作型態與健康目標，用來計算每日目標並決定角色的樣子。",
@@ -524,9 +540,7 @@ const traditionalChinese: Messages = {
 		quotesAuto: (interval) => `自動 · 每 ${interval}`,
 		quotesManual: "手動更新",
 		setUp: "設定",
-		proteinLeft: (grams) => `還差蛋白質 ${grams} 克`,
-		minutesLeft: (minutes) => `還差運動 ${minutes} 分鐘`,
-		onTrack: "達標",
+		loggedToday: (count) => `今天記錄 ${count} 筆`,
 		version: (version) => `v${version}`,
 		updateAvailable: (version) => `可更新至 v${version}`,
 		saved: (count) => `已儲存 ${count} 項`,
@@ -579,18 +593,9 @@ const traditionalChinese: Messages = {
 		breakOver: "休息結束。選擇番茄鐘開始下一次專注。",
 	},
 	form: {
-		dietTitle: "記錄一餐",
-		workoutTitle: "記錄運動",
 		profileTitle: "個人資料",
-		food: "食物",
-		foodExample: "輸入以搜尋，例如：雞",
 		yours: "你的",
 		nutrition: (calories, protein) => `${calories} 大卡 · 蛋白質 ${protein} 克`,
-		calories: "熱量（大卡）",
-		protein: "蛋白質（克）",
-		activity: "運動項目",
-		minutes: "分鐘數",
-		intensity: "強度",
 		name: "名字",
 		age: "年齡",
 		height: "身高（公分）",
@@ -603,9 +608,6 @@ const traditionalChinese: Messages = {
 		wholeNumber: (minimum, maximum) =>
 			`請輸入 ${minimum} 到 ${maximum} 的整數。`,
 		cancelled: "沒有任何變更。",
-		mealLogged: (food, xp) => `已記錄 ${food}，+${xp} XP。`,
-		workoutLogged: (activity, minutes, xp) =>
-			`已記錄${activity} ${minutes} 分鐘，+${xp} XP。`,
 		profileSaved: "個人資料已儲存，每日目標已更新。",
 		levelUp: (level) => `升級了！Lv ${level}。`,
 	},
@@ -748,6 +750,9 @@ const traditionalChinese: Messages = {
 		updateInstalled: (version) => `更新至 v${version}`,
 		variableSaved: (name) => `儲存 ${name}`,
 		variableCleared: (name) => `清除 ${name}`,
+		goalChanged: (setting) => `變更目標 · ${setting}`,
+		logDeleted: (kind) => `刪除紀錄 · ${kind}`,
+		logEdited: (kind) => `編輯紀錄 · ${kind}`,
 	},
 	themes: {
 		changed: (name) => `主題已設為${name}。`,
@@ -760,6 +765,35 @@ const traditionalChinese: Messages = {
 		},
 	},
 	log: {
+		title: "記錄",
+		editTitle: "編輯紀錄",
+		placeholder: "2 顆蛋, 吐司 · w 500 · wo 跑步 30m",
+		prefixes:
+			"w 喝水 · wt 體重 · waist 腰圍 · bf 體脂 · sl 睡眠 · m 心情 · h 習慣 · st 步數 · n 筆記",
+		shortcuts:
+			"wo 運動 · goal 目標 · @y 昨天 · @7:30 時間 · . 重複 · copy y 複製昨天 · u 復原",
+		more: (count) => `還有 ${count} 項`,
+		undoHint: "按 Enter 復原剛才在這裡記錄的上一行。",
+		logged: (summary, xp) =>
+			`已記錄 ${summary}${xp > 0 ? ` · +${xp} XP` : ""} · 輸入 u 復原`,
+		edited: (summary) => `已更新 ${summary}。`,
+		undone: "已復原上一行。",
+		nothingToUndo: "沒有可復原的紀錄。",
+		errors: {
+			empty: "輸入要記錄的內容，例如：2 顆蛋, 吐司。",
+			badTime: "時間的寫法是 @y、@-2d、@7:30 或 @y 21:00。",
+			badNumber: "缺少數字，或數字無法辨識。",
+			outOfRange: "這個數字超出範圍。",
+			badSleep: "睡眠的寫法是 sl 23:30-7:10 q4 或 sl 7.5h。",
+			badMood: "心情的寫法是 m 4 e3 s2 #工作。",
+			badGoal:
+				"目標可以是 water、sleep、steps 或 focus，例如 goal water 2.5l。",
+			noMinutes: "請加上分鐘數，例如 wo 跑步 30m。",
+			noPreviousSets: "沒有可以重複的組數，請輸入，例如 wo 臥推 60x5x3。",
+			nothingToRepeat: "還沒有可以重複的紀錄。",
+			nothingToCopy: "昨天沒有可以複製的餐點。",
+			tooLong: "筆記最多 2,000 個字。",
+		},
 		quickAdd: "快速記錄",
 		unknownFood: (food) =>
 			`${food}：還不認識這個食物，請加上熱量，例如 ${food} 500kcal`,
@@ -875,19 +909,19 @@ const korean: Messages = {
 		logs: "←→ 필터 · ↑↓ 스크롤 · esc 뒤로",
 		environment: "↑↓ 이동 · enter 편집 · esc 뒤로",
 		edit: "enter 저장 · 빈 enter 지우기 · esc 유지",
+		log: "↑↓ 고르기 · tab 완성 · enter 기록 · esc 뒤로",
 	},
 	groups: {
-		actions: "활동",
-		health: "건강",
+		today: "오늘",
+		journal: "일지",
 		settings: "설정",
 		system: "시스템",
 	},
 	menu: {
+		log: "기록하기",
 		quotes: "오늘의 명언",
 		timer: "토마토 타이머",
-		diet: "식사 기록",
-		workout: "운동 기록",
-		logs: "전체 기록",
+		logs: "지난 기록",
 		profile: "프로필",
 		theme: "테마",
 		language: "언어",
@@ -899,9 +933,7 @@ const korean: Messages = {
 			"새 명언을 뽑거나, 명언이 얼마나 자주 바뀌고 어떤 종류를 볼지 정합니다.",
 		timer: (focus, rest) =>
 			`${focus}분 집중을 마치면 ${focus} XP를 얻고 ${rest}분 휴식이 시작됩니다. 여기서 시작, 일시정지, 재개, 중지합니다.`,
-		diet: "먹은 것을 기록합니다. 입력하는 동안 지난 식사와 흔한 음식 112가지를 열량, 단백질과 함께 제안합니다.",
-		workout:
-			"운동 종목, 시간, 강도를 기록하거나 최근 운동을 한 번에 반복합니다.",
+		log: "한 줄로 무엇이든 기록합니다. 예: 계란 2개, 토스트 · w 500 · wo 달리기 30m · sl 23:30-7:10. 줄이 비어 있으면 지금 자주 기록하는 항목을 제안합니다.",
 		logs: "기록한 모든 집중, 식사, 운동, 활동을 봅니다.",
 		profile:
 			"이름, 신체 정보, 업무 형태, 건강 목표로 하루 목표를 정하고 캐릭터의 모습을 바꿉니다.",
@@ -920,9 +952,7 @@ const korean: Messages = {
 		quotesAuto: (interval) => `자동 · ${interval}마다`,
 		quotesManual: "수동 새로고침",
 		setUp: "설정",
-		proteinLeft: (grams) => `단백질 ${grams}g 남음`,
-		minutesLeft: (minutes) => `운동 ${minutes}분 남음`,
-		onTrack: "달성",
+		loggedToday: (count) => `오늘 ${count}개 기록`,
 		version: (version) => `v${version}`,
 		updateAvailable: (version) => `v${version} 업데이트 가능`,
 		saved: (count) => `${count}개 저장됨`,
@@ -976,18 +1006,9 @@ const korean: Messages = {
 		breakOver: "휴식이 끝났습니다. 토마토 타이머를 선택해 다시 집중하세요.",
 	},
 	form: {
-		dietTitle: "식사 기록",
-		workoutTitle: "운동 기록",
 		profileTitle: "프로필",
-		food: "음식",
-		foodExample: "입력해서 검색, 예: 닭",
 		yours: "내 기록",
 		nutrition: (calories, protein) => `${calories} kcal · 단백질 ${protein}g`,
-		calories: "칼로리 (kcal)",
-		protein: "단백질 (g)",
-		activity: "운동 종류",
-		minutes: "시간 (분)",
-		intensity: "강도",
 		name: "이름",
 		age: "나이",
 		height: "키 (cm)",
@@ -1000,9 +1021,6 @@ const korean: Messages = {
 		wholeNumber: (minimum, maximum) =>
 			`${minimum}부터 ${maximum}까지의 정수를 입력하세요.`,
 		cancelled: "바뀐 것이 없습니다.",
-		mealLogged: (food, xp) => `${food}을(를) 기록했습니다, +${xp} XP.`,
-		workoutLogged: (activity, minutes, xp) =>
-			`${activity} ${minutes}분을 기록했습니다, +${xp} XP.`,
 		profileSaved: "프로필을 저장했습니다. 하루 목표가 갱신되었습니다.",
 		levelUp: (level) => `레벨 업! Lv ${level}.`,
 	},
@@ -1148,6 +1166,9 @@ const korean: Messages = {
 		updateInstalled: (version) => `v${version}(으)로 업데이트`,
 		variableSaved: (name) => `${name} 저장`,
 		variableCleared: (name) => `${name} 지움`,
+		goalChanged: (setting) => `목표 변경 · ${setting}`,
+		logDeleted: (kind) => `기록 삭제 · ${kind}`,
+		logEdited: (kind) => `기록 수정 · ${kind}`,
 	},
 	themes: {
 		changed: (name) => `테마를 ${name}(으)로 설정했습니다.`,
@@ -1160,6 +1181,35 @@ const korean: Messages = {
 		},
 	},
 	log: {
+		title: "기록하기",
+		editTitle: "기록 수정",
+		placeholder: "계란 2개, 토스트 · w 500 · wo 달리기 30m",
+		prefixes:
+			"w 물 · wt 체중 · waist 허리 · bf 체지방 · sl 수면 · m 기분 · h 습관 · st 걸음 · n 메모",
+		shortcuts:
+			"wo 운동 · goal 목표 · @y 어제 · @7:30 시각 · . 반복 · copy y 어제 복사 · u 되돌리기",
+		more: (count) => `외 ${count}개`,
+		undoHint: "Enter를 누르면 여기서 방금 기록한 줄을 되돌립니다.",
+		logged: (summary, xp) =>
+			`${summary} 기록함${xp > 0 ? ` · +${xp} XP` : ""} · u로 되돌리기`,
+		edited: (summary) => `${summary} 수정함.`,
+		undone: "마지막 줄을 되돌렸습니다.",
+		nothingToUndo: "되돌릴 기록이 없습니다.",
+		errors: {
+			empty: "기록할 내용을 입력하세요. 예: 계란 2개, 토스트",
+			badTime: "시각은 @y, @-2d, @7:30, @y 21:00처럼 씁니다.",
+			badNumber: "숫자가 없거나 읽을 수 없습니다.",
+			outOfRange: "숫자가 허용 범위를 벗어났습니다.",
+			badSleep: "수면은 sl 23:30-7:10 q4 또는 sl 7.5h처럼 씁니다.",
+			badMood: "기분은 m 4 e3 s2 #일처럼 씁니다.",
+			badGoal:
+				"목표는 water, sleep, steps, focus 중 하나입니다. 예: goal water 2.5l",
+			noMinutes: "시간을 함께 입력하세요. 예: wo 달리기 30m",
+			noPreviousSets: "반복할 이전 세트가 없습니다. 예: wo 벤치프레스 60x5x3",
+			nothingToRepeat: "반복할 기록이 아직 없습니다.",
+			nothingToCopy: "어제 먹은 기록이 없어 복사할 수 없습니다.",
+			tooLong: "메모는 2,000자까지 쓸 수 있습니다.",
+		},
 		quickAdd: "빠른 기록",
 		unknownFood: (food) =>
 			`${food}: 아직 모르는 음식입니다. 열량을 함께 입력하세요. 예: ${food} 500kcal`,

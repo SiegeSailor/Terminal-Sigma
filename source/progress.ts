@@ -127,6 +127,9 @@ export const eventActions = [
 	"updateInstalled",
 	"variableSaved",
 	"variableCleared",
+	"goalChanged",
+	"logDeleted",
+	"logEdited",
 ] as const;
 export type EventAction = (typeof eventActions)[number];
 
@@ -177,6 +180,7 @@ export const progressSchema = zod.object({
 });
 
 export type Progress = zod.infer<typeof progressSchema>;
+export const goalKeys = goalsSchema.keyof().options;
 export type Profile = zod.infer<typeof profileSchema>;
 export type Goals = zod.infer<typeof goalsSchema>;
 export type Focus = zod.infer<typeof focusSchema>;

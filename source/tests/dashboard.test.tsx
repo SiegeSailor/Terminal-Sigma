@@ -108,16 +108,15 @@ test("renders the dashboard with the menu in order", async (t) => {
 	await settle();
 	const frame = lastFrame() ?? "";
 	const order = [
-		"1. Tomato Timer",
-		"2. Log a Meal",
-		"3. Log a Workout",
+		"1. Log",
+		"2. Tomato Timer",
+		"3. History",
 		"4. Everyday Quotes",
 		"5. Profile",
 		"6. Theme",
 		"7. Language",
 		"8. Environment",
-		"9. Logs",
-		"0. Software Update",
+		"9. Software Update",
 	].map((label) => frame.indexOf(label));
 
 	t.true(order.every((index, position) => index > (order[position - 1] ?? -1)));
@@ -152,34 +151,40 @@ test("switches to Korean from the menu", async (t) => {
 	unmount();
 });
 
-test("logs a typed meal, rejecting a bad number", async (t) => {
+test("logs a line, saying what it cannot read", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["2", "\r", "Oatmeal", "\r", "lots", "\r"]);
-	t.true((lastFrame() ?? "").includes("Enter a whole number"));
+	await type(stdin, ["1", "\r", "w lots"]);
+	t.true((lastFrame() ?? "").includes("A number is missing or unreadable."));
 
-	await type(stdin, [backspace.repeat(4), "350", "\r", "12", "\r"]);
-	t.like(loadProgress(file).meals[0], {
-		food: "Oatmeal",
-		calories: 350,
-		protein: 12,
-	});
-	t.true((lastFrame() ?? "").includes("Logged Oatmeal"));
+	await type(stdin, ["\r"]);
+	t.deepEqual(loadProgress(file).water, []);
+
+	await type(stdin, [backspace.repeat(6), "2 eggs, toast"]);
+	t.true((lastFrame() ?? "").includes("2 × Egg · 144 kcal · 12 g protein"));
+
+	await type(stdin, ["\r"]);
+	t.like(loadProgress(file).meals, [
+		{ food: "Egg", servings: 2, calories: 144 },
+		{ food: "Whole wheat toast", calories: 160 },
+	]);
+	t.true((lastFrame() ?? "").includes("Logged 2 Egg, Whole wheat toast"));
 
 	unmount();
 });
 
-test("autocompletes a common food and its nutrition", async (t) => {
+test("completes a food name and logs the pick", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["2", "\r", "chick"]);
+	await type(stdin, ["1", "\r", "2 chick"]);
 	t.true((lastFrame() ?? "").includes("Chicken breast"));
 
-	await type(stdin, [down, "\r", "\r", "\r"]);
+	await type(stdin, [down, "\r"]);
 	t.like(loadProgress(file).meals[0], {
 		food: "Chicken breast",
-		calories: 248,
-		protein: 46,
+		servings: 2,
+		calories: 496,
+		protein: 92,
 	});
 
 	unmount();
@@ -188,7 +193,7 @@ test("autocompletes a common food and its nutrition", async (t) => {
 test("logs a workout and scales its experience", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["3", "\r", "\r", "30", "\r", down, down, "\r"]);
+	await type(stdin, ["1", "\r", "wo run 30m hard", "\r"]);
 	t.like(loadProgress(file).workouts[0], {
 		activity: "running",
 		minutes: 30,
@@ -199,7 +204,7 @@ test("logs a workout and scales its experience", async (t) => {
 	unmount();
 });
 
-test("repeats a past workout in 1 step", async (t) => {
+test("repeats the last line with a dot", async (t) => {
 	const { file, stdin, unmount } = start({
 		...empty,
 		workouts: [
@@ -212,12 +217,86 @@ test("repeats a past workout in 1 step", async (t) => {
 		],
 	});
 
-	await type(stdin, ["3", "\r", "\r"]);
+	await type(stdin, ["1", "\r", ".", "\r"]);
 	t.like(loadProgress(file).workouts[1], {
 		activity: "cycling",
 		minutes: 45,
 		intensity: "moderate",
 	});
+
+	unmount();
+});
+
+test("logs a suggestion for this hour with Enter", async (t) => {
+	const yesterday = new Date(Date.now() - 86_400_000).toISOString();
+	const { file, stdin, lastFrame, unmount } = start({
+		...empty,
+		meals: [{ at: yesterday, food: "Oatmeal", calories: 300, protein: 10 }],
+	});
+
+	await type(stdin, ["1", "\r"]);
+	t.true((lastFrame() ?? "").includes("usual around now"));
+
+	await type(stdin, [down, "\r"]);
+	t.like(loadProgress(file).meals[1], { food: "Oatmeal", calories: 300 });
+
+	unmount();
+});
+
+test("undoes only the line u, and only while the Log view is open", async (t) => {
+	const { file, stdin, lastFrame, unmount } = start();
+
+	await type(stdin, ["1", "\r", "udon", "\r"]);
+	t.is(loadProgress(file).meals[0]?.food, "Udon", "udon is a food");
+
+	await type(stdin, ["u", "\r"]);
+	t.deepEqual(loadProgress(file).meals, []);
+	t.true(actionsIn(file).includes("logDeleted"));
+
+	await type(stdin, ["u", "\r"]);
+	t.true((lastFrame() ?? "").includes("Nothing to undo."));
+
+	// Leaving the view forgets what it could undo.
+	await type(stdin, ["w 500", "\r", escape, "\r", "u", "\r"]);
+	t.is(loadProgress(file).water.length, 1);
+
+	unmount();
+});
+
+test("keeps a pasted line whole until Enter", async (t) => {
+	const { file, stdin, lastFrame, unmount } = start();
+
+	await type(stdin, ["1", "\r", "\u001B[200~2 eggs\ntoast\n\u001B[201~"]);
+	t.true((lastFrame() ?? "").includes("2 eggs, toast"));
+	t.deepEqual(loadProgress(file).meals, []);
+
+	await type(stdin, ["\r"]);
+	t.is(loadProgress(file).meals.length, 2);
+
+	unmount();
+});
+
+test("sets a goal and logs the change", async (t) => {
+	const { file, stdin, unmount } = start();
+
+	await type(stdin, ["1", "\r", "goal water 2.5l", "\r"]);
+	t.deepEqual(loadProgress(file).goals, { water: 2500 });
+	t.like(loadProgress(file).events.at(-1), {
+		action: "goalChanged",
+		detail: "water:2500",
+	});
+
+	unmount();
+});
+
+test("never undoes past a goal line", async (t) => {
+	const { file, stdin, lastFrame, unmount } = start();
+
+	await type(stdin, ["1", "\r", "w 500", "\r", "goal water 3l", "\r"]);
+	await type(stdin, ["u", "\r"]);
+	t.true((lastFrame() ?? "").includes("Nothing to undo."));
+	t.is(loadProgress(file).goals?.water, 3000);
+	t.is(loadProgress(file).water.length, 1, "the line before stays");
 
 	unmount();
 });
@@ -254,8 +333,8 @@ test("saves a profile and turns it into targets", async (t) => {
 	});
 	t.true(actionsIn(file).includes("profileSaved"));
 
-	await type(stdin, ["2"]);
-	t.true((lastFrame() ?? "").includes("140 g protein left"));
+	await type(stdin, ["1"]);
+	t.true((lastFrame() ?? "").includes("140 g of protein to go today"));
 
 	unmount();
 });
@@ -281,7 +360,7 @@ test("previews a theme while browsing and saves the chosen one", async (t) => {
 test("starts and stops a tomato, logging both", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["1", "\r", "\r"]);
+	await type(stdin, ["2", "\r", "\r"]);
 	t.true((lastFrame() ?? "").includes("Focus started."));
 
 	await type(stdin, ["\r", down, "\r"]);
@@ -328,7 +407,7 @@ test("shows recent logs and every action in the logs view", async (t) => {
 	await settle();
 	t.true((lastFrame() ?? "").includes("Oatmeal · 350 kcal"));
 
-	await type(stdin, ["9", "\r"]);
+	await type(stdin, ["3", "\r"]);
 	t.true((lastFrame() ?? "").includes("Opened Terminal Sigma"));
 
 	unmount();
@@ -343,7 +422,7 @@ test("updates to the newest version and restarts into it", async (t) => {
 	);
 	t.teardown(unmount);
 
-	await type(stdin, ["0"]);
+	await type(stdin, ["9"]);
 	t.true(await shows(lastFrame, "v1.1.0 available"));
 
 	await type(stdin, ["\r"]);

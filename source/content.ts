@@ -1,15 +1,13 @@
 import type { Option } from "./components/choice.js";
-import type { Combination, Field } from "./components/entry-form.js";
+import type { Field } from "./components/entry-form.js";
 import type { Section } from "./components/today-panel.js";
 import { exerciseName, setGroupsOf } from "./exercises.js";
-import { foodSuggestions } from "./foods.js";
 import { adviceOf, targetsOf } from "./health.js";
 import {
 	durationOf,
 	formatNumber,
 	genders,
 	healthGoals,
-	intensities,
 	type Language,
 	languages,
 	type Messages,
@@ -23,9 +21,12 @@ import {
 	type Event,
 	experienceOf,
 	experiencePerLevel,
+	goalKeys,
 	type Goals,
 	type Logged,
-	type Meal,
+	type LogKind,
+	logKinds,
+	logsOf,
 	type Profile,
 	type Progress,
 	profileNow,
@@ -39,6 +40,7 @@ import {
 	quoteModes,
 	type QuoteSettings,
 } from "./quotes.js";
+import type { Activity } from "./pixel-art.js";
 import { type Palette, type ThemeName, themeNames } from "./theme.js";
 import { isNewer, type Updater } from "./update.js";
 
@@ -46,14 +48,14 @@ export const characterWidth = 36;
 export const menuListWidth = 26;
 
 // Header and footer take 5 rows. The character's panel is 25 rows tall,
-// Today 19 with its spacing or 16 compact, the menu 16 with its 4 headings
-// and 10 items, and Recent 7.
+// Today 19 with its spacing or 16 compact, the menu 15 with its 4 headings
+// and 9 items, and Recent 7.
 const chromeRows = 5;
 const characterRows = 25;
 const todayRows = 19;
 const compactTodayRows = 16;
-const menuRows = 16;
-const compactMenuRows = 12;
+const menuRows = 15;
+const compactMenuRows = 11;
 const recentRows = 7;
 // The description beside the menu list needs at least this many columns.
 const descriptionColumns = 36;
@@ -239,30 +241,28 @@ export function moodOf(progress: Progress, now: number): Mood {
 }
 
 export const menuOrder = [
+	"log",
 	"timer",
-	"diet",
-	"workout",
+	"logs",
 	"quotes",
 	"profile",
 	"theme",
 	"language",
 	"environment",
-	"logs",
 	"update",
 ] as const;
 export type MenuKey = (typeof menuOrder)[number];
 
 // The headings the menu is grouped under; they only label, never open.
 export const menuGroups = {
-	timer: "actions",
-	diet: "health",
-	workout: "health",
+	log: "today",
+	timer: "today",
+	logs: "journal",
 	quotes: "settings",
 	profile: "settings",
 	theme: "settings",
 	language: "settings",
 	environment: "settings",
-	logs: "system",
 	update: "system",
 } as const satisfies Record<MenuKey, string>;
 
@@ -286,15 +286,18 @@ export function menuEntriesOf(
 		focus: number;
 		rest: number;
 		version: string;
-		savedVariables: number;
 		newest?: string;
+		savedVariables: number;
 	}>,
 ): MenuEntry[] {
 	const { profile } = state.progress;
-	const targets = targetsOf(profileNow(state.progress), state.progress.goals);
-	const today = todayOf(state.progress, state.now);
-	const proteinLeft = targets.protein - today.protein;
-	const minutesLeft = targets.workoutMinutes - today.workoutMinutes;
+	const day = new Date(state.now).toDateString();
+	const loggedToday = logsOf(state.progress).filter(
+		(log) =>
+			log.kind !== "event" &&
+			log.kind !== "focus" &&
+			new Date(log.at).toDateString() === day,
+	).length;
 
 	const statuses: Record<MenuKey, string> = {
 		quotes: state.quotes.autoRefresh
@@ -302,15 +305,8 @@ export function menuEntriesOf(
 					messages.quotes.intervals(state.quotes.interval),
 				)
 			: messages.signal.quotesManual,
+		log: messages.signal.loggedToday(loggedToday),
 		timer: state.timerSignal,
-		diet:
-			proteinLeft > 0
-				? messages.signal.proteinLeft(proteinLeft)
-				: messages.signal.onTrack,
-		workout:
-			minutesLeft > 0
-				? messages.signal.minutesLeft(minutesLeft)
-				: messages.signal.onTrack,
 		logs: messages.signal.entries(state.logs),
 		profile: profile?.name ?? messages.signal.setUp,
 		theme: messages.themes.names[state.theme],
@@ -324,8 +320,7 @@ export function menuEntriesOf(
 	const descriptions: Record<MenuKey, string> = {
 		quotes: messages.describe.quotes,
 		timer: messages.describe.timer(state.focus, state.rest),
-		diet: messages.describe.diet,
-		workout: messages.describe.workout,
+		log: messages.describe.log,
 		logs: messages.describe.logs,
 		profile: messages.describe.profile,
 		theme: messages.describe.theme,
@@ -508,6 +503,23 @@ export function describeQuoteChange(messages: Messages, detail: string) {
 	}
 }
 
+// What the character does when a kind is logged.
+const activityByKind: Record<LogKind, Activity> = {
+	focus: "focus",
+	meal: "eat",
+	workout: "run",
+	water: "eat",
+	sleep: "break",
+	body: "stretch",
+	mood: "break",
+	habit: "focus",
+	steps: "run",
+	note: "focus",
+	event: "idle",
+};
+
+export const activityOfKind = (kind: LogKind): Activity => activityByKind[kind];
+
 export function describeEvent(messages: Messages, event: Event) {
 	const detail = event.detail ?? "";
 	const { events } = messages;
@@ -526,6 +538,19 @@ export function describeEvent(messages: Messages, event: Event) {
 
 	if (event.action === "quoteSettingsChanged") {
 		return events.quoteSettingsChanged(describeQuoteChange(messages, detail));
+	}
+
+	if (event.action === "goalChanged") {
+		const [goal = "", value = ""] = detail.split(":");
+		const key = goalKeys.find((option) => option === goal);
+		return events.goalChanged(
+			key ? goalText(key, Number(value), messages) : detail,
+		);
+	}
+
+	if (event.action === "logDeleted" || event.action === "logEdited") {
+		const kind = logKinds.find((option) => option === detail);
+		return events[event.action](kind ? messages.logs.kinds[kind] : detail);
 	}
 
 	return events[event.action](detail);
@@ -660,119 +685,6 @@ export function goalText(goal: keyof Goals, value: number, messages: Messages) {
 
 	return log.goalSet(log.goals[goal], shown[goal]);
 }
-
-export const dietFieldsOf = (
-	messages: Messages,
-	language: Language,
-	meals: readonly Meal[],
-): Field[] => [
-	{
-		key: "food",
-		label: messages.form.food,
-		kind: "text",
-		placeholder: messages.form.foodExample,
-		suggest: (text) =>
-			foodSuggestions(text, language, meals).map((suggestion) => {
-				const calories = suggestion.calories ?? 0;
-				const protein = suggestion.protein ?? 0;
-
-				return {
-					label: suggestion.label,
-					detail: messages.form.nutrition(
-						formatNumber(language, calories),
-						formatNumber(language, protein),
-					),
-					tag: suggestion.isYours ? messages.form.yours : undefined,
-					values: { calories: String(calories), protein: String(protein) },
-				};
-			}),
-	},
-	{
-		key: "calories",
-		label: messages.form.calories,
-		kind: "number",
-		minimum: 0,
-		maximum: 5000,
-	},
-	{
-		key: "protein",
-		label: messages.form.protein,
-		kind: "number",
-		minimum: 0,
-		maximum: 500,
-	},
-];
-
-// The 3 newest distinct workouts, to log again in 1 step.
-export function workoutCombinationsOf(
-	messages: Messages,
-	workouts: readonly Workout[],
-): Combination[] {
-	const seen = new Set<string>();
-	const combinations: Combination[] = [];
-
-	for (const workout of workouts.toReversed()) {
-		const activity = workoutActivities.find(
-			(option) => option === workout.activity,
-		);
-		const key = `${workout.activity}|${workout.minutes}|${workout.intensity}`;
-
-		if (
-			activity &&
-			workout.intensity &&
-			!seen.has(key) &&
-			combinations.length < 3
-		) {
-			seen.add(key);
-			combinations.push({
-				label: messages.logs.workoutEntry(
-					messages.workoutActivity[activity],
-					workout.minutes,
-					messages.intensity[workout.intensity],
-				),
-				values: {
-					activity,
-					minutes: String(workout.minutes),
-					intensity: workout.intensity,
-				},
-			});
-		}
-	}
-
-	return combinations;
-}
-
-export const workoutFieldsOf = (
-	messages: Messages,
-	workouts: readonly Workout[],
-): Field[] => [
-	{
-		key: "activity",
-		label: messages.form.activity,
-		kind: "select",
-		combinations: workoutCombinationsOf(messages, workouts),
-		options: workoutActivities.map((option) => ({
-			label: messages.workoutActivity[option],
-			value: option,
-		})),
-	},
-	{
-		key: "minutes",
-		label: messages.form.minutes,
-		kind: "number",
-		minimum: 1,
-		maximum: 600,
-	},
-	{
-		key: "intensity",
-		label: messages.form.intensity,
-		kind: "select",
-		options: intensities.map((option) => ({
-			label: messages.intensity[option],
-			value: option,
-		})),
-	},
-];
 
 // Saved values come back as defaults, so editing the profile is a run of Enter.
 export const profileFieldsOf = (
