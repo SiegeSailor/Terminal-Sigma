@@ -1005,10 +1005,15 @@ export function lineOf(log: Logged, language: Language): string {
 
 	switch (log.kind) {
 		case "meal": {
+			// The serving count leads, so no food name reads as something else.
+			// ponytail: a comma in a food name splits it on parsing, and the grammar has no escape, so such a meal edits as 2 items.
 			const { food, servings, calories, protein, carbs, fat } = log.entry;
+			const count = String(Math.round((servings ?? 1) * 100) / 100);
+			const plainly = `${count} ${food}`;
 			return words(
-				optional(servings, plain),
-				food,
+				leadingQuantity.exec(plainly)?.groups?.food === food
+					? plainly
+					: `${count} x ${food}`,
 				optional(calories, (value) => `${plain(value)}kcal`),
 				optional(protein, (value) => `${plain(value)}p`),
 				optional(carbs, (value) => `${plain(value)}c`),

@@ -599,6 +599,7 @@ test("applies drafts, undoes exactly them, and restores a deleted entry", (t) =>
 		...(result.ok ? result.drafts : []),
 		...(goal.ok ? goal.drafts : []),
 	];
+	const snapshot = structuredClone(before);
 	const { next, added } = applyDrafts(before, drafts);
 
 	t.deepEqual(added, [
@@ -620,6 +621,7 @@ test("applies drafts, undoes exactly them, and restores a deleted entry", (t) =>
 	t.deepEqual(next.goals, { water: 2500 });
 	t.deepEqual(undoAdded(next, added).meals, before.meals);
 	t.deepEqual(undoAdded(next, added).water, before.water);
+	t.deepEqual(before, snapshot);
 
 	const [toast] = logsOf(
 		progressSchema.parse({ meals: [{ at: local(8), food: "Toast" }] }),
@@ -645,6 +647,11 @@ test("writes every kind back as a line that parses to the same entry", (t) => {
 				fat: 10,
 			},
 			{ at, food: "Quick add", calories: 450, protein: 30 },
+			{ at, food: "7UP", calories: 140 },
+			{ at, food: "n stuff", calories: 100 },
+			{ at, food: "Vitamin x3", calories: 5 },
+			{ at, food: "杯子", calories: 50 },
+			{ at, food: "Milk", servings: 0.25, calories: 40 },
 		],
 		workouts: [
 			{
