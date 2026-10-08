@@ -673,6 +673,7 @@ test("deletes a log, puts it back, and logs it again now", async (t) => {
 	await type(stdin, ["r"]);
 	t.is(loadProgress(file).water.length, 2);
 	t.true((lastFrame() ?? "").includes("Logged Water"));
+	t.false((lastFrame() ?? "").includes("u to undo"));
 
 	// The Actions filter is the last of 12, 7 after Water.
 	await type(stdin, [...Array.from({ length: 7 }, () => right), "e"]);

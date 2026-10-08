@@ -560,7 +560,7 @@ export default function App({
 
 	// Saves what 1 line logged, says what and how much XP it earned, and keeps
 	// it for undo; a goal is logged as an event instead.
-	const logLine = (_line: string, drafts: Draft[]) => {
+	const logLine = (_line: string, drafts: Draft[], isUndoable = true) => {
 		const { next, added } = applyDrafts(progress, drafts);
 		let withGoals = next;
 
@@ -588,7 +588,7 @@ export default function App({
 			messages.log.logged(
 				summaryOf(drafts, messages),
 				experienceOf(next) - experienceOf(progress),
-				added.length > 0,
+				isUndoable && added.length > 0,
 			),
 			activity,
 		);
@@ -713,7 +713,8 @@ export default function App({
 		const draft = draftOf(log);
 
 		if (draft) {
-			logLine("", [{ ...draft, at: new Date().toISOString() }]);
+			// History's u only puts back deletes, so the message skips the hint.
+			logLine("", [{ ...draft, at: new Date().toISOString() }], false);
 		} else {
 			say(messages.logs.cannotEdit);
 		}
