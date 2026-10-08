@@ -511,6 +511,9 @@ export default function App({
 		</paletteContext.Provider>
 	);
 
+	const experience = React.useMemo(() => experienceOf(progress), [progress]);
+	const logs = React.useMemo(() => logsOf(progress), [progress]);
+
 	if (progress.language === undefined) {
 		return providers(
 			<Box
@@ -912,10 +915,8 @@ export default function App({
 		}
 	};
 
-	const experience = experienceOf(progress);
 	const level = levelOf(experience);
 	const today = todayOf(progress, now);
-	const logs = logsOf(progress);
 	const columns = size.columns || 100;
 	const rows = size.rows || 40;
 	const layout = layoutOf(columns, rows);
@@ -947,7 +948,7 @@ export default function App({
 		progress,
 		quotes: quoteSettings,
 		now,
-		logs: logs.length,
+		logs,
 		theme: themeName,
 		focus: durations.focus,
 		rest: durations.break,

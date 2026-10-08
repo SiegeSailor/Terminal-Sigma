@@ -23,10 +23,10 @@ import {
 	experiencePerLevel,
 	goalKeys,
 	type Goals,
+	type Log,
 	type Logged,
 	type LogKind,
 	logKinds,
-	logsOf,
 	type Profile,
 	type Progress,
 	profileNow,
@@ -299,7 +299,7 @@ export function menuEntriesOf(
 		progress: Progress;
 		quotes: QuoteSettings;
 		now: number;
-		logs: number;
+		logs: readonly Log[];
 		theme: ThemeName;
 		focus: number;
 		rest: number;
@@ -310,7 +310,7 @@ export function menuEntriesOf(
 ): MenuEntry[] {
 	const { profile } = state.progress;
 	const day = new Date(state.now).toDateString();
-	const loggedToday = logsOf(state.progress).filter(
+	const loggedToday = state.logs.filter(
 		(log) =>
 			log.kind !== "event" &&
 			log.kind !== "focus" &&
@@ -325,7 +325,7 @@ export function menuEntriesOf(
 			: messages.signal.quotesManual,
 		log: messages.signal.loggedToday(loggedToday),
 		timer: state.timerSignal,
-		logs: messages.signal.entries(state.logs),
+		logs: messages.signal.entries(state.logs.length),
 		profile: profile?.name ?? messages.signal.setUp,
 		theme: messages.themes.names[state.theme],
 		language: messages.languageName,

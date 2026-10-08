@@ -32,11 +32,12 @@ type Option = Readonly<{ label: string; line: string; detail: string }>;
 // the foods it matches, each completing the line.
 function optionsOf(
 	text: string,
-	{ progress, now, language }: ParseContext,
+	{ progress, language }: ParseContext,
 	messages: Messages,
+	suggestions: ReturnType<typeof suggestionsOf>,
 ): Option[] {
 	if (!text) {
-		return suggestionsOf(progress, now).map((suggestion) => ({
+		return suggestions.map((suggestion) => ({
 			label: suggestion.line,
 			line: suggestion.line,
 			detail: suggestion.label,
@@ -89,7 +90,12 @@ export default function LogView({
 	const isUndo =
 		!isEditing && text.normalize("NFKC").trim().toLowerCase() === "u";
 	const context = { progress, now, language };
-	const options = isUndo ? [] : optionsOf(text, context, messages);
+	const minute = Math.floor(now / 60_000);
+	const suggestions = React.useMemo(
+		() => suggestionsOf(progress, minute * 60_000),
+		[progress, minute],
+	);
+	const options = isUndo ? [] : optionsOf(text, context, messages, suggestions);
 	const highlighted = options[picked];
 	const line = highlighted?.line ?? text;
 	const result = line.trim() ? parseQuickLog(line, context) : undefined;

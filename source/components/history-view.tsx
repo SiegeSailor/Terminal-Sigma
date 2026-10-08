@@ -259,6 +259,13 @@ export default function HistoryView({
 	const [filter, setFilter] = React.useState<Filter>("all");
 	const [cursor, setCursor] = React.useState(0);
 	const [offset, setOffset] = React.useState(0);
+	// The week only changes with the data or the day.
+	const dayKey = new Date(now).toDateString();
+	const week = React.useMemo(
+		() => weekOf(progress, now),
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[progress, dayKey],
+	);
 	const shown = logs.filter((log) => filter === "all" || log.kind === filter);
 	// Title, summary, and their spacing take 3 rows.
 	const pageSize = Math.max(height - 3, 3);
@@ -339,11 +346,7 @@ export default function HistoryView({
 			</Box>
 			<Box flexDirection="column" marginTop={1}>
 				{filter === "week" ? (
-					<WeekView
-						language={language}
-						messages={messages}
-						week={weekOf(progress, now)}
-					/>
+					<WeekView language={language} messages={messages} week={week} />
 				) : (
 					<>
 						{shown.length === 0 ? (
