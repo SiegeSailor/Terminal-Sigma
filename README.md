@@ -92,20 +92,20 @@ A stopped focus earns nothing. The dashboard opens with **Log** focused.
 
 **Log** takes 1 line. Without a prefix, a line is a meal: its items split on `,`, `+`, or `、`, each with an optional quantity, matched against your own past meals first and then 155 common foods in any of the 3 languages. A partial name needs at least 2 characters, unless it is Chinese or Korean. Typed amounts win: `ramen 500kcal 20p` logs exactly that. Every other kind starts with a short prefix, in ASCII so it works through a Chinese or Korean input method:
 
-| Prefix  | Logs                                                     | Examples                                                |
-| ------- | -------------------------------------------------------- | ------------------------------------------------------- |
-| None    | A meal                                                   | `2 eggs, toast` · `牛肉麵` · `계란 2개` · `450kcal 30p` |
-| `bf`    | Body fat, in %                                           | `bf 18`                                                 |
-| `goal`  | Your own target for water, sleep, steps, or focus        | `goal water 2.5l` · `goal sleep 8h` · `goal focus 6`    |
-| `h`     | A habit done, with an optional amount, or `s` to skip it | `h read` · `h read 30` · `h read s`                     |
-| `m`     | Your mood, 1 to 5, with energy, stress, and tags         | `m 4 e3 s2 #work`                                       |
-| `n`     | A note                                                   | `n grateful for the sun`                                |
-| `sl`    | Last night's sleep, with its quality from 1 to 5         | `sl 23:30-7:10 q4` · `sl 7.5h` · `sl 8`                 |
-| `st`    | Today's steps so far                                     | `st 8400`                                               |
-| `w`     | Water: 1 glass of 250 ml, or an amount                   | `w` · `w 500` · `w 0.5l` · `w 2 glasses`                |
-| `waist` | Your waist, in cm                                        | `waist 82`                                              |
-| `wo`    | A workout: minutes, intensity, distance, or sets         | `wo run 30m hard 5k` · `wo bench 60x5x3` · `wo bench`   |
-| `wt`    | Your weight, in kg                                       | `wt 72.4`                                               |
+| Prefix  | Logs                                                                     | Examples                                                |
+| ------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
+| None    | A meal                                                                   | `2 eggs, toast` · `牛肉麵` · `계란 2개` · `450kcal 30p` |
+| `bf`    | Body fat, in %                                                           | `bf 18`                                                 |
+| `goal`  | Your own target for water, sleep, steps, or focus                        | `goal water 2.5l` · `goal sleep 8h` · `goal focus 6`    |
+| `h`     | A habit done, with an optional amount, or `s` to skip it                 | `h read` · `h read 30` · `h read s`                     |
+| `m`     | Your mood, 1 to 5, with energy, stress, and tags                         | `m 4 e3 s2 #work`                                       |
+| `n`     | A note                                                                   | `n grateful for the sun`                                |
+| `sl`    | Last night's sleep, with its quality from 1 to 5                         | `sl 23:30-7:10 q4` · `sl 7.5h` · `sl 8`                 |
+| `st`    | Today's steps so far                                                     | `st 8400`                                               |
+| `w`     | Water: 1 glass of 250 ml, or an amount; `water`, `水`, and `물` work too | `w` · `w 500` · `w 0.5l` · `w 2 glasses`                |
+| `waist` | Your waist, in cm                                                        | `waist 82`                                              |
+| `wo`    | A workout: minutes, intensity, distance, or sets                         | `wo run 30m hard 5k` · `wo bench 60x5x3` · `wo bench`   |
+| `wt`    | Your weight, in kg; 1 line can carry several body fields                 | `wt 72.4` · `wt 72.4 bf 18`                             |
 
 In `sl`, a bare number up to 24 is hours, so `sl 8` is 8 hours, and a larger one is minutes. Start any line with a time to log it then: `@y` for yesterday, `@-2d` for 2 days ago, `@7:30`, or `@y 21:00`; a time later than now means yesterday. `.` logs your last line again, `copy y` copies yesterday's meals to today, and `u` alone undoes the last line you logged since opening Log, though never a `goal`, which you set back by typing it again. While the line is empty, Log suggests the foods you usually eat around now, water when you are behind, last week's workout for today, and your regular habits; ↑↓ and Enter log one. While you type a food, ↑↓ picks a match and Tab completes it. A workout of known lifts without sets, such as `wo bench`, repeats the sets of your last session, and with a profile every workout counts its calories from the 2024 Compendium of Physical Activities.
 
@@ -180,18 +180,18 @@ The targets are general guidance for healthy adults, not medical advice.
 
 Every view shows its keys at the bottom right:
 
-| Key                       | Action                                                                      |
-| ------------------------- | --------------------------------------------------------------------------- |
-| `1` to `9`                | Jump to a menu item                                                         |
-| Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters             |
-| Enter                     | Open the item, choose the option, or go to the next field                   |
-| `.`                       | In Log: log your last line again                                            |
-| Esc                       | Go back to the menu, or out of a quote setting, without logging anything    |
-| `q` or Ctrl+C             | Quit from the menu                                                          |
-| `e` `d` `r` `u`           | In History: edit, delete, repeat, or put back a log                         |
-| Space                     | Tick a category                                                             |
-| `u`                       | In Log, as the whole line: undo the last line logged                        |
-| Tab                       | Copy the picked suggestion into the field, or complete the food name in Log |
+| Key                       | Action                                                                                                         |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `.`                       | In Log: log your last line again                                                                               |
+| `1` to `9`                | Jump to a menu item                                                                                            |
+| Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters                                                |
+| `e` `d` `r` `u`           | In History: edit, delete, repeat, or put back a log                                                            |
+| Enter                     | Open the item, choose the option, or go to the next field                                                      |
+| Esc                       | Go back to the menu, or out of a quote setting, without logging anything; while editing a log, back to History |
+| `q` or Ctrl+C             | Quit from the menu                                                                                             |
+| Space                     | Tick a category                                                                                                |
+| Tab                       | Copy the picked suggestion into the field, or complete the food name in Log; in History, cycle the filter      |
+| `u`                       | In Log, as the whole line: undo the last line logged                                                           |
 
 When a focus or break ends, the terminal rings its bell.
 
@@ -317,7 +317,7 @@ Each setting takes 1 of a fixed set of values:
 | `steps.count`                                 | A whole number from `1` to `100,000`, the day's count so far                                                                                                                                                                                                                                    |
 | `theme`                                       | `dusk`, `ember`, `frost`, `mono`, or `moss`                                                                                                                                                                                                                                                     |
 | `water.milliliters`                           | From `1` to `5,000`                                                                                                                                                                                                                                                                             |
-| `workouts.activity`                           | `cycling`, `other`, `running`, `strength`, `swimming`, `walking`, or `yoga`                                                                                                                                                                                                                     |
+| `workouts.activity`                           | `cycling`, `other`, `running`, `strength`, `swimming`, `walking`, `yoga`, or any name you type                                                                                                                                                                                                  |
 | `workouts.intensity`                          | `light`, `moderate`, or `vigorous`                                                                                                                                                                                                                                                              |
 
 Every setting is optional, and files written by version 1 still load as they are.

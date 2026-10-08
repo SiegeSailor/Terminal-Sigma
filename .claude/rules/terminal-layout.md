@@ -9,41 +9,41 @@ The dashboard fills the whole terminal in the alternate screen buffer, like htop
 
 ```text
 ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Terminal Sigma                                                                                                              01:53:50 │
-│ “It is not that we have a short time to live, but that we waste a lot of it.” — Seneca                                                 │
+│ ✻ Terminal Sigma                                                                                                              11:13:51 │
+│ “No man is free who is not master of himself.” — Epictetus                                                                             │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭──────────────────────────────────╮╭──────────────────────────────────────╮╭────────────────────────╮╭──────────────────────────────────╮
-│ Ken                         Lv 1 ││                                      ││ Actions                ││ Ready                            │
-│                                  ││  Today                               ││ ❯ 1. Tomato Timer      ││                                  │
-│                                  ││                                      ││ Health                 ││ A 25-minute focus earns 25 XP,   │
-│                                  ││  Character        25 XP to Lv 2 75%  ││   2. Log a Meal        ││ then a 5-minute break begins.    │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   3. Log a Workout     ││ Start, pause, resume, or stop it │
-│                                  ││  Focus          1 of 4 sessions 25%  ││ Settings               ││  here.                           │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   4. Everyday Quotes   ││                                  │
-│                                  ││                                      ││   5. Profile           ││ Enter to open                    │
-│                                  ││  Health · Build muscle               ││   6. Theme             ││                                  │
-│                                  ││  Protein             12 of 156 g 8%  ││   7. Language          ││                                  │
-│               ▄▄▄▄▄              ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││ System                 ││                                  │
-│              ▀▀▀▀▀▀▀             ││  Calories 350 of 2,480 kcal · … 14%  ││   8. Logs              ││                                  │
-│             ▀▀▀▀▀▀▀▀▀            ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   9. Software Update   ││                                  │
-│              ▀▀▀▀▀▀▀             ││  Workout       30 of 45 minutes 67%  ││                        ││                                  │
-│          ▄▄▄▄▀▀▀▀▀▀▀▄▄▄▄         ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││                                  │
-│        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀       ││  ⏺ 15 more minutes of exercise tod…  ││                        ││                                  │
-│        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀       ││                                      ││                        ││                                  │
-│        ▀▀▀  ▀▀▀▀▀▀▀▀▀  ▀▀▀       ││                                      ││                        ││                                  │
-│         ▀▀  ▀▀▀▀▀▀▀▀▀  ▀▀        ││                                      ││                        ││                                  │
-│         ▀▀  ▀▀▀▀▀▀▀▀▀  ▀▀        ││                                      ││                        ││                                  │
-│         ▀▀   ▀▀▀▀▀▀▀   ▀▀        ││                                      ││                        ││                                  │
-│              ▀▀▀ ▀▀▀             ││                                      ││                        ││                                  │
+│ Ken                         Lv 1 ││                                      ││ Today                  ││ 2 logged today                   │
+│                                  ││  Today                               ││ ❯ 1. Log               ││                                  │
+│                                  ││                                      ││   2. Tomato Timer      ││ Log anything in 1 line, e.g. 2   │
+│                                  ││  Character        25 XP to Lv 2 75%  ││ Journal                ││ eggs, toast · w 500 · wo run 30m │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   3. History           ││  · sl 23:30-7:10. While the line │
+│                                  ││  Focus          1 of 4 sessions 25%  ││ Settings               ││  is empty, it suggests what you  │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   4. Everyday Quotes   ││ usually log now.                 │
+│                                  ││                                      ││   5. Profile           ││                                  │
+│                                  ││  Health · Build muscle               ││   6. Theme             ││ Health · Build muscle            │
+│                                  ││  Protein             12 of 140 g 9%  ││   7. Language          ││ Daily targets: 2,280 kcal, 140 g │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   8. Environment       ││  protein, 45 minutes of          │
+│              ▄▀▀▀▀▀▄             ││  Calories 350 of 2,280 kcal · … 15%  ││ System                 ││ exercise.                        │
+│             ▄▀▀▀▀▀▀▀▄            ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   9. Software Update   ││ ⏺ 15 more minutes of exercise    │
+│             ▀▀▀▀▀▀▀▀▀            ││  Workout       30 of 45 minutes 67%  ││                        ││ today: a strength session.       │
+│              ▄▀▀▀▀▀▄             ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││ ⏺ 128 g of protein to go today,  │
+│        ▄▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄▄       ││  Water             0 of 3,000 ml 0%  ││                        ││ e.g. a chicken breast has about  │
+│        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀       ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││ 30 g.                            │
+│        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀       ││  Sleep                  0m of 7h 0%  ││                        ││ ⏺ 1,930 kcal left in today's     │
+│        ▀▀▀  ▀▀▀▀▀▀▀▀▀  ▀▀▀       ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││ budget.                          │
+│         ▀▀  ▀▀▀▀▀▀▀▀▀  ▀▀        ││  ⏺ 15 more minutes of exercise tod…  ││                        ││ ⏺ 3,000 ml of water to go today, │
+│         ▀▀   ▀▀▀▀▀▀▀   ▀▀        ││                                      ││                        ││  about 12 glasses.               │
+│         ▀▀   ▀▀▀ ▀▀▀   ▀▀        ││                                      ││                        ││ ⏺ Log last night's sleep, e.g.   │
 │              ▀▀▀ ▀▀▀             ││                                      │╰────────────────────────╯╰──────────────────────────────────╯
 │               ▀▀ ▀▀              ││                                      │╭────────────────────────────────────────────────────────────╮
 │               ▀▀ ▀▀              ││                                      ││ Recent                                                     │
-│        ▄▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄▄       ││                                      ││ 10/05, 01:53 Action   Opened Terminal Sigma                │
-│         ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀        ││                                      ││ 10/05, 01:52 Focus    25-minute focus               +25 XP │
-│                                  ││                                      ││ 10/05, 01:52 Diet     Oatmeal · 350 kcal · 12 g …    +5 XP │
-│ ✻ Wandering…                     ││                                      ││ 10/05, 01:52 Workout  Running · 30 min · Moderate   +45 XP │
+│        ▄▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄▄       ││                                      ││ 10/08, 11:13 Action   Opened Terminal Sigma                │
+│         ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀        ││                                      ││ 10/08, 11:13 Focus    25-minute focus               +25 XP │
+│                                  ││                                      ││ 10/08, 11:13 Diet     Oatmeal · 350 kcal · 12 g …    +5 XP │
+│ ✳ Wandering…                     ││                                      ││ 10/08, 11:13 Workout  Running · 30 min · Moderate   +45 XP │
 ╰──────────────────────────────────╯╰──────────────────────────────────────╯╰────────────────────────────────────────────────────────────╯
- ⏺ Progress is saved to ~/.terminal-sigma/progress.json                                                                  ↑↓ move · enter open · q quit
+ ⏺ Progress is saved to ~/.terminal-sigma/progress.json                                                     ↑↓ move · enter open · q quit
 ```
 
 The regions of the dashboard:
@@ -56,7 +56,7 @@ The regions of the dashboard:
 | Header      | `✻ Terminal Sigma`, the clock, and the everyday quote on 1 truncated line, marked ✦ New for 8 seconds after it changes                                       |
 | Menu        | The left box: the 9 numbered items under 4 headings: Today, Journal, Settings, and System, highlighted while it takes the input, padded evenly on both sides |
 | Recent      | Its own block under the menu: the 4 latest logs                                                                                                              |
-| Today       | Character and Focus bars, then the Health group: protein, calories, workout, water, and last night's sleep, with the most urgent advice                      |
+| Today       | Character and Focus bars, then protein, calories, workout, water, and last night's sleep, with the most urgent advice                                        |
 
 History takes the place of the Menu, the Description, and Recent while it is open, and the Log view the place of the Menu and the Description, with Recent under it. Today draws each bar with `▀`, half a row tall, right under its label, which carries the percentage because text centers in its row; there is no blank row between items, only a group gets a blank row above it, and the border padding goes when `layoutOf` marks it compact.
 
