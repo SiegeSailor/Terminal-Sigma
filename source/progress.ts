@@ -347,7 +347,7 @@ const listed = <Kind extends LogKind>(
 ): Array<Logged<Kind>> =>
 	entries.map((entry, index) => ({ kind, at: entry.at, index, entry }));
 
-const byTime = (left: { at: string }, right: { at: string }) =>
+export const byTime = (left: { at: string }, right: { at: string }) =>
 	Date.parse(left.at) - Date.parse(right.at);
 
 // Every entry, newest first, with the experience it earned. Entries earn in

@@ -494,3 +494,34 @@ test("refuses workout values the schema would reject", (t) => {
 		["wo 60x5", "empty"],
 	]);
 });
+
+test("repeats the newest session by time, not by position", (t) => {
+	const session = (at: string, reps: number) => ({
+		at,
+		activity: "strength",
+		minutes: 30,
+		sets: [{ exercise: "bench", reps, weight: 60 }],
+	});
+	const progress = progressSchema.parse({
+		workouts: [session(local(18, 0, 2), 8), session(local(9, 0, 1), 3)],
+	});
+	const drafts = parse("wo bench 20m", { progress });
+	const draft = Array.isArray(drafts) ? drafts[0] : undefined;
+
+	t.deepEqual(draft?.kind === "workout" ? draft.sets : undefined, [
+		{ exercise: "bench", reps: 8, weight: 60 },
+	]);
+});
+
+test("keeps sets typed after an activity word", (t) => {
+	t.deepEqual(parse("wo lift 60x5"), [
+		{
+			kind: "workout",
+			at: local(12),
+			activity: "strength",
+			minutes: 3,
+			intensity: "moderate",
+			sets: [{ exercise: "lift", reps: 5, weight: 60 }],
+		},
+	]);
+});

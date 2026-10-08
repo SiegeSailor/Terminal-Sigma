@@ -13,6 +13,7 @@ import {
 	workoutActivities,
 } from "./i18n.js";
 import {
+	byTime,
 	type EntryOf,
 	type Goals,
 	type Progress,
@@ -655,7 +656,12 @@ function subjectOf(text: string): Subject {
 	const activity = leadingActivity(text);
 
 	if (activity) {
-		return { activity: activity.value, rest: activity.rest };
+		// The words as typed name the exercise when sets follow.
+		return {
+			activity: activity.value,
+			name: text.slice(0, text.length - activity.rest.length).trim(),
+			rest: activity.rest,
+		};
 	}
 
 	const exercise = leadingExercise(text);
@@ -690,10 +696,12 @@ function setsOf(subject: Subject, parts: WorkoutParts, progress: Progress) {
 	return parts.sets.length > 0 || !subject.exercise
 		? parts.sets.map((set) => ({ exercise, ...set }))
 		: (progress.workouts
+				.toSorted(byTime)
 				.findLast((logged) =>
 					logged.sets?.some((set) => set.exercise === exercise),
 				)
-				?.sets?.filter((set) => set.exercise === exercise) ?? []);
+				?.sets?.filter((set) => set.exercise === exercise)
+				.map((set) => ({ ...set })) ?? []);
 }
 
 // "wo run 30m hard 5k" for cardio; "wo bench 60x5x3" for 3 sets of 5 at 60
