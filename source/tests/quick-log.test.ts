@@ -348,3 +348,149 @@ test("matches a habit spelled in full width", (t) => {
 		{ kind: "habit", at: local(12), name: "Read" },
 	]);
 });
+
+test("parses workouts in every language, with their calories", (t) => {
+	const at = local(12);
+	const profile = {
+		name: "Ken",
+		age: 30,
+		height: 175,
+		weight: 70,
+		gender: "male",
+		workStyle: "desk",
+		goal: "maintain",
+	} as const;
+	const bench = (weight: number, reps: number) => ({
+		exercise: "bench",
+		reps,
+		weight,
+	});
+	const run = { kind: "workout", at, activity: "running" } as const;
+
+	check(t, [
+		["wo run 30m hard", [{ ...run, minutes: 30, intensity: "vigorous" }]],
+		[
+			"wo jog 5k 30 easy",
+			[{ ...run, minutes: 30, intensity: "light", distance: 5 }],
+		],
+		[
+			"wo bench 60x5x3",
+			[
+				{
+					kind: "workout",
+					at,
+					activity: "strength",
+					minutes: 9,
+					intensity: "moderate",
+					sets: [bench(60, 5), bench(60, 5), bench(60, 5)],
+				},
+			],
+		],
+		[
+			"wo farmer carry 40x20x2 10m",
+			[
+				{
+					kind: "workout",
+					at,
+					activity: "strength",
+					minutes: 10,
+					intensity: "moderate",
+					sets: [
+						{ exercise: "farmer carry", reps: 20, weight: 40 },
+						{ exercise: "farmer carry", reps: 20, weight: 40 },
+					],
+				},
+			],
+		],
+		[
+			"wo frisbee 45m",
+			[
+				{
+					kind: "workout",
+					at,
+					activity: "frisbee",
+					minutes: 45,
+					intensity: "moderate",
+				},
+			],
+		],
+		["wo run", "noMinutes"],
+		["wo run fast", "badNumber"],
+		["wo bench", "noPreviousSets"],
+		["wo bench 60x0", "outOfRange"],
+		["wo run 900m", "outOfRange"],
+		["wo", "empty"],
+	]);
+	check(
+		t,
+		[["wo 跑步 30m 高強度", [{ ...run, minutes: 30, intensity: "vigorous" }]]],
+		{
+			language: "zh-TW",
+		},
+	);
+	check(
+		t,
+		[
+			[
+				"wo 달리기 30분 격렬하게",
+				[{ ...run, minutes: 30, intensity: "vigorous" }],
+			],
+		],
+		{ language: "ko" },
+	);
+	check(
+		t,
+		[
+			[
+				"wo run 30m hard",
+				// 11.8 METs × 70 kg × 0.5 h.
+				[{ ...run, minutes: 30, intensity: "vigorous", calories: 413 }],
+			],
+		],
+		{ progress: progressSchema.parse({ profile }) },
+	);
+});
+
+test("repeats the sets of the last session of an exercise", (t) => {
+	const progress = progressSchema.parse({
+		workouts: [
+			{
+				at: local(18, 0, 1),
+				activity: "strength",
+				minutes: 30,
+				sets: [
+					{ exercise: "bench", reps: 5, weight: 60 },
+					{ exercise: "squat", reps: 5, weight: 80 },
+					{ exercise: "bench", reps: 3, weight: 65 },
+				],
+			},
+		],
+	});
+
+	t.deepEqual(parse("wo bench 20m", { progress }), [
+		{
+			kind: "workout",
+			at: local(12),
+			activity: "strength",
+			minutes: 20,
+			intensity: "moderate",
+			sets: [
+				{ exercise: "bench", reps: 5, weight: 60 },
+				{ exercise: "bench", reps: 3, weight: 65 },
+			],
+		},
+	]);
+});
+
+test("refuses workout values the schema would reject", (t) => {
+	check(t, [
+		["wo run 1/0", "badNumber"],
+		["wo bench 60x0", "outOfRange"],
+		["wo run 99999", "outOfRange"],
+		["wo bench 1e9x5", "badNumber"],
+		["wo bench 99999999999999999999999999x5", "outOfRange"],
+		["wo bench 60x5x999999", "outOfRange"],
+		["wo run 30m 0k", "outOfRange"],
+		["wo 60x5", "empty"],
+	]);
+});

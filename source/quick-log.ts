@@ -1,6 +1,23 @@
+import {
+	caloriesOf,
+	intensityOf,
+	leadingActivity,
+	leadingExercise,
+} from "./exercises.js";
 import { matchFood } from "./foods.js";
-import { type Language, messagesOf } from "./i18n.js";
-import type { EntryOf, Goals, Progress } from "./progress.js";
+import {
+	type Intensity,
+	type Language,
+	messagesOf,
+	type WorkoutActivity,
+	workoutActivities,
+} from "./i18n.js";
+import {
+	type EntryOf,
+	type Goals,
+	type Progress,
+	profileNow,
+} from "./progress.js";
 
 export type ParseContext = Readonly<{
 	progress: Progress;
@@ -570,6 +587,174 @@ const goal: Parser = (text, at) => {
 		: failed("outOfRange");
 };
 
+const setPattern =
+	/^(?<weight>\d+(?:\.\d+)?)[x×*](?<reps>\d+)(?:[x×*](?<count>\d+))?$/iv;
+
+type WorkoutParts = {
+	sets: Array<Readonly<{ reps: number; weight: number }>>;
+	minutes?: number;
+	distance?: number;
+	intensity: Intensity;
+};
+
+// The sets, minutes, distance, and intensity after a workout's name.
+function workoutPartsOf(tokens: readonly string[]): WorkoutParts | ParseError {
+	const parts: WorkoutParts = { sets: [], intensity: "moderate" };
+
+	for (const token of tokens) {
+		const set = setPattern.exec(token)?.groups;
+		const kilometers = /^(?<value>\d+(?:\.\d+)?)km?$/iv.exec(token)?.groups;
+		const intensity = intensityOf(token);
+		const minutes = minutesOf(token);
+
+		if (set) {
+			const reps = Number(set.reps);
+			const count = Number(set.count ?? 1);
+
+			const weight = Number(set.weight);
+
+			if (
+				!isWithin(reps, 1, 1000) ||
+				!isWithin(count, 1, 100) ||
+				weight > 1000
+			) {
+				return "outOfRange";
+			}
+
+			parts.sets.push(
+				...Array.from({ length: count }, () => ({ reps, weight })),
+			);
+		} else if (kilometers) {
+			parts.distance = Number(kilometers.value);
+
+			if (!isWithin(parts.distance, 0.01, 1000)) {
+				return "outOfRange";
+			}
+		} else if (intensity) {
+			parts.intensity = intensity;
+		} else if (minutes === undefined) {
+			return "badNumber";
+		} else {
+			parts.minutes = minutes;
+		}
+	}
+
+	return parts;
+}
+
+type Subject = Readonly<{
+	activity?: WorkoutActivity;
+	exercise?: string;
+	name?: string;
+	rest: string;
+}>;
+
+// What a workout line names: a known activity, a known exercise, or new words
+// that run until the first number or intensity.
+function subjectOf(text: string): Subject {
+	const activity = leadingActivity(text);
+
+	if (activity) {
+		return { activity: activity.value, rest: activity.rest };
+	}
+
+	const exercise = leadingExercise(text);
+
+	if (exercise) {
+		return { exercise: exercise.value, rest: exercise.rest };
+	}
+
+	const words = text.split(" ");
+	const end = words.findIndex(
+		(word) => /^\d/v.test(word) || intensityOf(word) !== undefined,
+	);
+	const cut = end === -1 ? words.length : end;
+
+	return {
+		name: words.slice(0, cut).join(" "),
+		rest: words.slice(cut).join(" "),
+	};
+}
+
+// The typed sets of an exercise, or else the sets of its last session, the
+// way Hevy prefills them.
+function setsOf(subject: Subject, parts: WorkoutParts, progress: Progress) {
+	const exercise =
+		subject.exercise ??
+		(parts.sets.length > 0 ? subject.name?.toLowerCase() : undefined);
+
+	if (exercise === undefined) {
+		return [];
+	}
+
+	return parts.sets.length > 0 || !subject.exercise
+		? parts.sets.map((set) => ({ exercise, ...set }))
+		: (progress.workouts
+				.findLast((logged) =>
+					logged.sets?.some((set) => set.exercise === exercise),
+				)
+				?.sets?.filter((set) => set.exercise === exercise) ?? []);
+}
+
+// "wo run 30m hard 5k" for cardio; "wo bench 60x5x3" for 3 sets of 5 at 60
+// kg; "wo bench" alone repeats the sets of the last bench session.
+const workout: Parser = (text, at, { progress }) => {
+	const subject = subjectOf(text);
+	const parts = workoutPartsOf(subject.rest.split(" ").filter(Boolean));
+
+	if (typeof parts === "string") {
+		return failed(parts);
+	}
+
+	const sets = setsOf(subject, parts, progress);
+
+	if (sets.length > 200) {
+		return failed("outOfRange");
+	}
+
+	// A new name with sets is an exercise; without them, an activity.
+	const activity =
+		subject.activity ?? (sets.length > 0 ? "strength" : subject.name);
+
+	if (subject.exercise && sets.length === 0) {
+		return failed("noPreviousSets");
+	}
+
+	if (!activity || (sets.length > 0 && !sets[0]?.exercise)) {
+		return failed("empty");
+	}
+
+	// Lifting and resting take about 3 minutes a set when no time is typed.
+	// ponytail: a fixed pace; time the session with a typed "40m" for more.
+	const minutes =
+		parts.minutes ?? (sets.length > 0 ? sets.length * 3 : undefined);
+
+	if (minutes === undefined) {
+		return failed("noMinutes");
+	}
+
+	if (!isWithin(minutes, 1, 600)) {
+		return failed("outOfRange");
+	}
+
+	const weight = profileNow(progress)?.weight;
+	const met =
+		workoutActivities.find((option) => option === activity) ?? "other";
+
+	return parsed({
+		kind: "workout",
+		at: iso(at),
+		activity,
+		minutes,
+		intensity: parts.intensity,
+		...(weight === undefined
+			? {}
+			: { calories: caloriesOf(met, parts.intensity, minutes, weight) }),
+		...(parts.distance === undefined ? {} : { distance: parts.distance }),
+		...(sets.length > 0 ? { sets } : {}),
+	});
+};
+
 // The prefix of a line picks its parser; a line without 1 is a meal.
 const parsers: Partial<Record<string, Parser>> = {
 	w: water,
@@ -582,4 +767,5 @@ const parsers: Partial<Record<string, Parser>> = {
 	st: steps,
 	n: note,
 	goal,
+	wo: workout,
 };
