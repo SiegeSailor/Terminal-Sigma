@@ -17,6 +17,13 @@ const up = "\u001B[A";
 const backspace = "\u007F";
 const escape = "\u001B";
 
+// A local calendar day back, which a DST change cannot turn into today.
+const daysAgo = (days: number) => {
+	const date = new Date();
+	date.setDate(date.getDate() - days);
+	return date.toISOString();
+};
+
 // Every test gets its own file, never the real ~/.terminal-sigma.
 const temporaryFile = () =>
 	path.join(
@@ -229,7 +236,7 @@ test("repeats the last line with a dot", async (t) => {
 });
 
 test("logs a suggestion for this hour with Enter", async (t) => {
-	const yesterday = new Date(Date.now() - 86_400_000).toISOString();
+	const yesterday = daysAgo(1);
 	const { file, stdin, lastFrame, unmount } = start({
 		...empty,
 		meals: [{ at: yesterday, food: "Oatmeal", calories: 300, protein: 10 }],
@@ -586,7 +593,7 @@ test("keeps the menu preview's lines apart when it overflows", async (t) => {
 const right = "\u001B[C";
 
 test("edits an older log in place, keeping its day and its neighbor", async (t) => {
-	const at = new Date(Date.now() - 3 * 86_400_000).toISOString();
+	const at = daysAgo(3);
 	const { file, stdin, lastFrame, unmount } = start({
 		...empty,
 		meals: [
@@ -614,7 +621,7 @@ test("edits an older log in place, keeping its day and its neighbor", async (t) 
 });
 
 test("keeps an edited log's kind", async (t) => {
-	const at = new Date(Date.now() - 3 * 86_400_000).toISOString();
+	const at = daysAgo(3);
 	const { file, stdin, lastFrame, unmount } = start({
 		...empty,
 		meals: [{ at, food: "Toast", calories: 160 }],
@@ -631,7 +638,7 @@ test("keeps an edited log's kind", async (t) => {
 });
 
 test("cannot edit a workout of several exercises", async (t) => {
-	const at = new Date(Date.now() - 3 * 86_400_000).toISOString();
+	const at = daysAgo(3);
 	const { stdin, lastFrame, unmount } = start({
 		...empty,
 		workouts: [
@@ -656,7 +663,7 @@ test("cannot edit a workout of several exercises", async (t) => {
 });
 
 test("deletes a log, puts it back, and logs it again now", async (t) => {
-	const at = new Date(Date.now() - 86_400_000).toISOString();
+	const at = daysAgo(1);
 	const { file, stdin, lastFrame, unmount } = start({
 		...empty,
 		water: [{ at, milliliters: 500 }],

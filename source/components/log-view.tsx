@@ -221,12 +221,8 @@ export default function LogView({
 				</Box>
 			) : null}
 			<Box flexDirection="column" marginTop={1}>
-				<Text dimColor wrap="truncate-end">
-					{log.prefixes}
-				</Text>
-				<Text dimColor wrap="truncate-end">
-					{log.shortcuts}
-				</Text>
+				<Text dimColor>{log.prefixes}</Text>
+				<Text dimColor>{log.shortcuts}</Text>
 			</Box>
 		</Box>
 	);

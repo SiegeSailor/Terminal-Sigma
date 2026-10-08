@@ -18,8 +18,6 @@ import {
 import { type Log, logKinds, type Progress, type Today } from "../progress.js";
 import { usePalette } from "../theme.js";
 
-export { describeLog } from "../content.js";
-
 const filters = ["all", ...logKinds, "week"] as const;
 type Filter = (typeof filters)[number];
 
@@ -294,7 +292,10 @@ export default function HistoryView({
 		};
 
 		const moveCursor = (step: number) => {
-			const next = Math.min(Math.max(at + step, 0), shown.length - 1);
+			const next = Math.min(
+				Math.max(at + step, 0),
+				Math.max(shown.length - 1, 0),
+			);
 			setCursor(next);
 			setOffset(Math.min(Math.max(top, next - pageSize + 1), next));
 		};
