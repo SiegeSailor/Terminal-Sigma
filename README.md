@@ -107,7 +107,7 @@ Each setting is saved as soon as you choose it:
 
 Without an API key, the settings filter the 28 bundled quotes, which cover every category in all 3 languages, and fall back to all of them when nothing matches. With `API_NINJAS_KEY`, they become the query to API Ninjas.
 
-Every new quote marks itself with **✦ New** for 8 seconds and types itself in, whether you drew it or it refreshed on its own. A random draw never repeats the quote on screen. With `TERMINAL_SIGMA_MOTION=reduced`, it appears whole at once.
+Every new quote marks itself with **✦ New** for 8 seconds and types itself in, whether you drew it or it refreshed on its own. Without an API key, a random draw never repeats the quote on screen unless only 1 quote matches the filters. With `TERMINAL_SIGMA_MOTION=reduced`, it appears whole at once.
 
 ### Character
 
