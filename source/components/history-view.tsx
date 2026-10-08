@@ -304,7 +304,7 @@ export default function HistoryView({
 			moveCursor(-pageSize);
 		} else if (key.pageDown) {
 			moveCursor(pageSize);
-		} else if (input === "u") {
+		} else if (filter !== "week" && input === "u") {
 			onUndo();
 		} else if (picked && input === "e") {
 			onEdit(picked);
@@ -328,12 +328,14 @@ export default function HistoryView({
 					</Text>
 					<Text dimColor>{" ›"}</Text>
 				</Text>
-				<Text dimColor wrap="truncate-end">
-					{messages.logs.summary(
-						shown.length,
-						shown.reduce((total, log) => total + log.experience, 0),
-					)}
-				</Text>
+				{filter === "week" ? null : (
+					<Text dimColor wrap="truncate-end">
+						{messages.logs.summary(
+							shown.length,
+							shown.reduce((total, log) => total + log.experience, 0),
+						)}
+					</Text>
+				)}
 			</Box>
 			<Box flexDirection="column" marginTop={1}>
 				{filter === "week" ? (

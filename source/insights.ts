@@ -126,20 +126,32 @@ export function habitStrengthsOf(
 			.map((habit) => [keyOf(habit.name), habit.name]),
 	);
 
+	// Bucket once: which habit-days have an entry, and which have a done one.
+	const entered = new Set<string>();
+	const done = new Set<string>();
+
+	for (const habit of progress.habits) {
+		const bucket = `${keyOf(habit.name)}|${dayOf(Date.parse(habit.at))}`;
+		entered.add(bucket);
+
+		if (!habit.skipped) {
+			done.add(bucket);
+		}
+	}
+
+	const days = Array.from({ length: 90 }, (_, index) =>
+		dayOf(shifted(now, index - 89)),
+	);
+
 	return [...names]
 		.map(([key, name]) => {
 			let score = 0;
 
-			for (let back = 89; back >= 0; back--) {
-				const day = dayOf(shifted(now, -back));
-				const that = progress.habits.filter(
-					(habit) =>
-						keyOf(habit.name) === key && dayOf(Date.parse(habit.at)) === day,
-				);
-				const isDone = that.some((habit) => !habit.skipped);
+			for (const day of days) {
+				const isDone = done.has(`${key}|${day}`);
 
 				// A skipped day leaves the score as it was.
-				if (isDone || that.length === 0) {
+				if (isDone || !entered.has(`${key}|${day}`)) {
 					score = score * habitMultiplier + (isDone ? 1 - habitMultiplier : 0);
 				}
 			}
@@ -205,8 +217,17 @@ export function correlationsOf(progress: Progress, now: number): Correlation[] {
 		add({ kind: "workout", name: workout.activity }, workout.at);
 	}
 
+	const spellings = new Map(
+		progress.habits
+			.toSorted(byTime)
+			.map((habit) => [keyOf(habit.name), habit.name]),
+	);
+
 	for (const habit of progress.habits.filter((habit) => !habit.skipped)) {
-		add({ kind: "habit", name: keyOf(habit.name) }, habit.at);
+		add(
+			{ kind: "habit", name: spellings.get(keyOf(habit.name)) ?? habit.name },
+			habit.at,
+		);
 	}
 
 	return [...daysWith.values()]
