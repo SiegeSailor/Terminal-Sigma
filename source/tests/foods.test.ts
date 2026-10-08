@@ -5,7 +5,7 @@ import { commonFoods, foodsOf, matchFood } from "../foods.js";
 const alcoholic = new Set(["Beer", "Red wine", "Soju", "Makgeolli"]);
 
 test("gives every food 3 names, a serving in 3 languages, and its macros", (t) => {
-	t.is(commonFoods.length, 154);
+	t.is(commonFoods.length, 155);
 
 	for (const food of commonFoods) {
 		t.true(
@@ -79,6 +79,8 @@ test("matches the food a name means, yours first", (t) => {
 	t.like(matchFood("雞蛋", "ko", []), { label: "계란" });
 	t.like(matchFood("rice", "en", []), { label: "White rice" });
 	t.like(matchFood("蛋", "zh-TW", []), { label: "雞蛋" });
+	t.like(matchFood("tea", "en", []), { label: "Tea" });
+	t.like(matchFood("茶", "zh-TW", []), { label: "茶" });
 	t.like(matchFood("볶음밥", "en", []), { label: "Fried rice" });
 	t.like(matchFood("toast", "en", []), { label: "Whole wheat toast" });
 	t.like(matchFood("chicken pho", "en", [pho]), {

@@ -268,6 +268,12 @@ test("puts a time typed after midnight on yesterday", (t) => {
 	]);
 });
 
+test("reads 水餃 as a food, not as water", (t) => {
+	const result = parse("水餃");
+
+	t.true(Array.isArray(result) && result[0]?.kind === "meal");
+});
+
 test("parses water, body, sleep, mood, habits, steps, notes, and goals", (t) => {
 	const at = local(12);
 
@@ -279,6 +285,10 @@ test("parses water, body, sleep, mood, habits, steps, notes, and goals", (t) => 
 		["w 2 glasses", [{ kind: "water", at, milliliters: 500 }]],
 		["w 2杯", [{ kind: "water", at, milliliters: 500 }]],
 		["ｗ　５００", [{ kind: "water", at, milliliters: 500 }]],
+		["water", [{ kind: "water", at, milliliters: 250 }]],
+		["water 500", [{ kind: "water", at, milliliters: 500 }]],
+		["水 500", [{ kind: "water", at, milliliters: 500 }]],
+		["물", [{ kind: "water", at, milliliters: 250 }]],
 		["w lots", "badNumber"],
 		["w 6000", "outOfRange"],
 		["wt 72.4", [{ kind: "body", at, weight: 72.4 }]],

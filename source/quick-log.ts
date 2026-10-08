@@ -1327,6 +1327,9 @@ export function completionOf(
 // The prefix of a line picks its parser; a line without 1 is a meal.
 const parsers: Partial<Record<string, Parser>> = {
 	w: water,
+	water,
+	水: water,
+	물: water,
 	wt: body,
 	waist: body,
 	bf: body,
