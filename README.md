@@ -8,15 +8,15 @@
 
 Terminal-Sigma is a terminal-based application that gives game-style feedback on your self-development journey. Though it is a CLI, it is meant to stay open: it fills the terminal, updates in real time, and is operated through menus rather than commands. It speaks English, Traditional Chinese, and Korean, and it features 5 main components:
 
-| Component             | What It Does                                                                                                  |
-| --------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Character Progression | A pixel-art you, shaped by your profile, dressed by your level, and woken up by what you log today            |
-| Everyday Quotes       | An inspiring quote that refreshes on your schedule, filtered by category, author, or work                     |
-| Health                | Your meals and workouts against daily targets worked out from your profile, with advice for the rest of today |
-| Logs                  | Every focus, meal, workout, and action you took, with the latest 4 in a Recent block under the menu           |
-| Tomato Timer          | A Pomodoro timer: 25 minutes of focus, then a 5-minute break, against a daily goal of 4 focus sessions        |
+| Component             | What It Does                                                                                                                                                                |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Character Progression | A pixel-art you, shaped by your profile, dressed by your level, and woken up by what you log today                                                                          |
+| Everyday Quotes       | An inspiring quote that refreshes on your schedule, filtered by category, author, or work                                                                                   |
+| History               | Every log and action, newest first, filtered by kind, where you edit, delete, or repeat a log, plus a Week tab of trends, streaks, habits, and what goes with a better mood |
+| Log                   | 1 line that logs meals, workouts, water, sleep, weight, mood, habits, steps, and notes, suggesting what you usually log at this hour                                        |
+| Tomato Timer          | A Pomodoro timer: 25 minutes of focus, then a 5-minute break, against a daily goal of 4 focus sessions                                                                      |
 
-Underneath, your journey and your settings are written to the local file `~/.terminal-sigma/progress.json`. There is no plan to support logging at this point, and we chose JSON as a readable format, so that you can port it easily.
+Underneath, your journey and your settings are written to the local file `~/.terminal-sigma/progress.json`. We chose JSON as a readable format, so that you can port it easily.
 
 ## Installation
 
@@ -74,20 +74,46 @@ The menu drives everything. It sits in 2 boxes: the items on the left, grouped u
 
 | Key | Group    | Item            | Enter Opens                                                                                         |
 | --- | -------- | --------------- | --------------------------------------------------------------------------------------------------- |
-| `1` | Actions  | Tomato Timer    | Start a focus, or pause, resume, or stop the running one                                            |
-| `2` | Health   | Log a Meal      | The meal form; while focused, today's targets and advice show on the right                          |
-| `3` | Health   | Log a Workout   | The workout form, with the same targets and advice                                                  |
+| `1` | Today    | Log             | The Log line; while focused, today's targets and advice show on the right                           |
+| `2` | Today    | Tomato Timer    | Start a focus, or pause, resume, or stop the running one                                            |
+| `3` | Journal  | History         | Every log and action, newest first, with the Week tab                                               |
 | `4` | Settings | Everyday Quotes | A new quote, and the settings below                                                                 |
 | `5` | Settings | Profile         | Your name, age, height, weight, body fat, gender, work style, and health goal, showing saved values |
 | `6` | Settings | Theme           | The color tone of the dashboard and your character, previewing each one as the cursor moves         |
 | `7` | Settings | Language        | English, Traditional Chinese, or Korean                                                             |
 | `8` | Settings | Environment     | Every environment variable with its value and source; Enter edits 1, an empty value clears it       |
-| `9` | System   | Logs            | Every log and action, newest first, with a filter per kind                                          |
-| `0` | System   | Software Update | The version you run and the newest one, with an update when there is one                            |
+| `9` | System   | Software Update | The version you run and the newest one, with an update when there is one                            |
 
-The headings give way to Recent on a terminal shorter than 28 rows. Body fat is optional: press Enter to skip it.
+The headings give way to Recent on a terminal shorter than 27 rows. Body fat is optional: press Enter to skip it.
 
-A meal asks for the food, its calories, and its protein; a workout asks for the activity, its minutes, and its intensity, one at a time. The food field suggests as you type, your past meals first and then 112 common foods matched in any of the 3 languages, and picking one fills in its calories and protein. The activity offers your 3 latest workouts to repeat in 1 step. A stopped focus earns nothing.
+A stopped focus earns nothing. The dashboard opens with **Log** focused.
+
+### Log
+
+**Log** takes 1 line. Without a prefix, a line is a meal: its items split on `,`, `+`, or `、`, each with an optional quantity, matched against your own past meals first and then 154 common foods in any of the 3 languages. A partial name needs at least 2 characters, unless it is Chinese or Korean. Typed amounts win: `ramen 500kcal 20p` logs exactly that. Every other kind starts with a short prefix, in ASCII so it works through a Chinese or Korean input method:
+
+| Prefix  | Logs                                                     | Examples                                                |
+| ------- | -------------------------------------------------------- | ------------------------------------------------------- |
+| None    | A meal                                                   | `2 eggs, toast` · `牛肉麵` · `계란 2개` · `450kcal 30p` |
+| `bf`    | Body fat, in %                                           | `bf 18`                                                 |
+| `goal`  | Your own target for water, sleep, steps, or focus        | `goal water 2.5l` · `goal sleep 8h` · `goal focus 6`    |
+| `h`     | A habit done, with an optional amount, or `s` to skip it | `h read` · `h read 30` · `h read s`                     |
+| `m`     | Your mood, 1 to 5, with energy, stress, and tags         | `m 4 e3 s2 #work`                                       |
+| `n`     | A note                                                   | `n grateful for the sun`                                |
+| `sl`    | Last night's sleep, with its quality from 1 to 5         | `sl 23:30-7:10 q4` · `sl 7.5h` · `sl 8`                 |
+| `st`    | Today's steps so far                                     | `st 8400`                                               |
+| `w`     | Water: 1 glass of 250 ml, or an amount                   | `w` · `w 500` · `w 0.5l` · `w 2 glasses`                |
+| `waist` | Your waist, in cm                                        | `waist 82`                                              |
+| `wo`    | A workout: minutes, intensity, distance, or sets         | `wo run 30m hard 5k` · `wo bench 60x5x3` · `wo bench`   |
+| `wt`    | Your weight, in kg                                       | `wt 72.4`                                               |
+
+In `sl`, a bare number up to 24 is hours, so `sl 8` is 8 hours, and a larger one is minutes. Start any line with a time to log it then: `@y` for yesterday, `@-2d` for 2 days ago, `@7:30`, or `@y 21:00`; a time later than now means yesterday. `.` logs your last line again, `copy y` copies yesterday's meals to today, and `u` alone undoes the last line you logged since opening Log, though never a `goal`, which you set back by typing it again. While the line is empty, Log suggests the foods you usually eat around now, water when you are behind, last week's workout for today, and your regular habits; ↑↓ and Enter log one. While you type a food, ↑↓ picks a match and Tab completes it. A workout of known lifts without sets, such as `wo bench`, repeats the sets of your last session, and with a profile every workout counts its calories from the 2024 Compendium of Physical Activities.
+
+### History
+
+**History** lists every log and action, newest first. ←→ cycles the filter through every kind, and ↑↓ moves the cursor: `e` edits the log under it, keeping its day and time, `d` deletes it, `u` puts the last deleted log back, and `r` logs it again now. Focus sessions and actions cannot change. `e` also refuses a log that cannot be written back as 1 line, such as a workout mixing 2 exercises or a meal whose food contains a comma; delete it and log it again instead. The last filter, **Week**, draws the last 7 days as sparklines against your targets for calories, protein, exercise, water, sleep, and steps, then your streak, your weight trend, your habits' strength, what goes with a better mood, and your best lifts; `e`, `d`, `r`, and `u` do nothing there.
+
+Your streak counts days in a row with any log, and today counts until it is over. Every 7 days in a row bank a grace day, at most 2, that covers a missed day. The weight trend moves 10% of the way to each day's weight, as the Hacker's Diet does, so 1 heavy morning barely moves it. A habit's strength follows Loop Habit Tracker: a month of daily checks reaches about 80%, and a skipped day leaves it alone. A mood difference shows only after at least 3 days with and 3 without.
 
 Everything else you do is logged too, without experience: opening the app, starting, pausing, resuming, or stopping a tomato, finishing a break, leveling up, drawing a quote, changing the language, the theme, the profile, or a quote setting, saving or clearing an environment variable, and updating.
 
@@ -134,13 +160,19 @@ The desktop app waits until the release has its file for your system, a few minu
 
 ### Health Targets
 
-The Health group works out 3 daily targets from your profile, in metric units, and falls back to 2,000 kcal, 50 g of protein, and 30 minutes of exercise until you fill it in:
+**Today** works out 7 daily targets from your profile, in metric units, and falls back to 2,000 kcal, 50 g of protein, 30 minutes of exercise, 2,600 ml of water, 7 hours of sleep, 8,000 steps, and 4 focus sessions until you fill it in:
 
 | Target   | How It Is Worked Out                                                                                                                                                                                                        |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Calories | The resting rate, times 1.2 to 1.725 by work style, then 500 less to lose fat or 200 to 300 more to build; the resting rate is Katch-McArdle from your lean mass when you give your body fat, and Mifflin-St Jeor otherwise |
 | Exercise | 30 minutes to stay healthy, 45 to lose fat or build muscle, and 60 to build endurance                                                                                                                                       |
+| Focus    | 4 Tomato Timer sessions                                                                                                                                                                                                     |
 | Protein  | 1.0 to 2.0 g per kg of body weight by goal, plus up to 0.3 g for a physical job, never above 2.2 g                                                                                                                          |
+| Sleep    | 7 hours, as the American Academy of Sleep Medicine recommends for adults                                                                                                                                                    |
+| Steps    | 8,000 under 60 and 7,000 from 60, where studies find mortality stops falling                                                                                                                                                |
+| Water    | 3,000 ml for men, 2,200 ml for women, and 2,600 ml otherwise: the drinks share of the National Academies' adequate intake                                                                                                   |
+
+Calories and protein follow your latest weigh-in. `goal water 2.5l`, `goal sleep 8h`, `goal steps 9000`, or `goal focus 6` in Log replaces a default with your own.
 
 The targets are general guidance for healthy adults, not medical advice.
 
@@ -148,15 +180,18 @@ The targets are general guidance for healthy adults, not medical advice.
 
 Every view shows its keys at the bottom right:
 
-| Key                       | Action                                                                   |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `0` to `9`                | Jump to a menu item; `0` is the 10th                                     |
-| Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters          |
-| Enter                     | Open the item, choose the option, or go to the next field                |
-| Esc                       | Go back to the menu, or out of a quote setting, without logging anything |
-| `q` or Ctrl+C             | Quit from the menu                                                       |
-| Space                     | Tick a category                                                          |
-| Tab                       | Copy the picked suggestion into the field                                |
+| Key                       | Action                                                                      |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `1` to `9`                | Jump to a menu item                                                         |
+| Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters             |
+| Enter                     | Open the item, choose the option, or go to the next field                   |
+| `.`                       | In Log: log your last line again                                            |
+| Esc                       | Go back to the menu, or out of a quote setting, without logging anything    |
+| `q` or Ctrl+C             | Quit from the menu                                                          |
+| `e` `d` `r` `u`           | In History: edit, delete, repeat, or put back a log                         |
+| Space                     | Tick a category                                                             |
+| `u`                       | In Log, as the whole line: undo the last line logged                        |
+| Tab                       | Copy the picked suggestion into the field, or complete the food name in Log |
 
 When a focus or break ends, the terminal rings its bell.
 
@@ -198,9 +233,37 @@ Every variable is optional, and **Environment** in the menu shows and edits each
 			"at": "2026-10-03T08:00:00.000Z",
 			"food": "Oatmeal",
 			"calories": 350,
-			"protein": 12
+			"protein": 12,
+			"servings": 1
 		}
 	],
+	"water": [{ "at": "2026-10-03T10:00:00.000Z", "milliliters": 500 }],
+	"sleep": [{ "at": "2026-10-03T06:30:00.000Z", "minutes": 450, "quality": 4 }],
+	"body": [
+		{
+			"at": "2026-10-03T06:45:00.000Z",
+			"weight": 70.4,
+			"waist": 82,
+			"bodyFat": 18
+		}
+	],
+	"moods": [
+		{
+			"at": "2026-10-03T12:00:00.000Z",
+			"score": 4,
+			"energy": 3,
+			"stress": 2,
+			"tags": ["work"]
+		}
+	],
+	"habits": [
+		{ "at": "2026-10-03T08:30:00.000Z", "name": "read", "amount": 30 }
+	],
+	"steps": [{ "at": "2026-10-03T18:00:00.000Z", "count": 8400 }],
+	"notes": [
+		{ "at": "2026-10-03T20:00:00.000Z", "text": "Grateful for the sun" }
+	],
+	"goals": { "water": 2500, "sleep": 480, "steps": 9000, "focusSessions": 6 },
 	"workouts": [
 		{
 			"at": "2026-10-03T07:00:00.000Z",
@@ -230,34 +293,58 @@ Every variable is optional, and **Environment** in the menu shows and edits each
 
 Each setting takes 1 of a fixed set of values:
 
-| Field                                  | Values                                                                                                                                                                                                                  |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `events.action`                        | `appOpened`, `breakOver`, `languageChanged`, `levelUp`, `profileSaved`, `quoteDrawn`, `quoteSettingsChanged`, `themeChanged`, `timerPaused`, `timerResumed`, `timerStarted`, `timerStopped`, or `updateInstalled`       |
-| `language`                             | `en`, `ko`, or `zh-TW`                                                                                                                                                                                                  |
-| `profile.bodyFat`                      | A whole percentage from `3` to `60`, or left out                                                                                                                                                                        |
-| `profile.gender`                       | `female`, `male`, or `other`                                                                                                                                                                                            |
-| `profile.goal`                         | `buildMuscle`, `endurance`, `loseFat`, or `maintain`                                                                                                                                                                    |
-| `profile.workStyle`                    | `active`, `athlete`, `desk`, or `standing`                                                                                                                                                                              |
-| `quotes.categories`, `quotes.excluded` | `art`, `courage`, `death`, `faith`, `fear`, `freedom`, `happiness`, `humor`, `inspirational`, `leadership`, `life`, `love`, `nature`, `philosophy`, `relationships`, `success`, `time`, `truth`, `wisdom`, or `writing` |
-| `quotes.interval`                      | Seconds: `15`, `60`, `300`, `900`, `1500`, or `3600`                                                                                                                                                                    |
-| `quotes.mode`                          | `daily` or `random`                                                                                                                                                                                                     |
-| `theme`                                | `dusk`, `ember`, `frost`, `mono`, or `moss`                                                                                                                                                                             |
-| `workouts.activity`                    | `cycling`, `other`, `running`, `strength`, `swimming`, `walking`, or `yoga`                                                                                                                                             |
-| `workouts.intensity`                   | `light`, `moderate`, or `vigorous`                                                                                                                                                                                      |
+| Field                                         | Values                                                                                                                                                                                                                                                                                          |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `body`                                        | `weight` from `30` to `300` kg, `waist` from `40` to `250` cm, and `bodyFat` from `3` to `60` %, at least 1 of them                                                                                                                                                                             |
+| `events.action`                               | `appOpened`, `breakOver`, `goalChanged`, `languageChanged`, `levelUp`, `logDeleted`, `logEdited`, `profileSaved`, `quoteDrawn`, `quoteSettingsChanged`, `themeChanged`, `timerPaused`, `timerResumed`, `timerStarted`, `timerStopped`, `updateInstalled`, `variableCleared`, or `variableSaved` |
+| `goals.focusSessions`                         | A whole number from `1` to `16`                                                                                                                                                                                                                                                                 |
+| `goals.sleep`                                 | Minutes, from `240` to `720`                                                                                                                                                                                                                                                                    |
+| `goals.steps`                                 | A whole number from `1,000` to `50,000`                                                                                                                                                                                                                                                         |
+| `goals.water`                                 | Milliliters, from `250` to `10,000`                                                                                                                                                                                                                                                             |
+| `habits.skipped`                              | `true`, or left out                                                                                                                                                                                                                                                                             |
+| `language`                                    | `en`, `ko`, or `zh-TW`                                                                                                                                                                                                                                                                          |
+| `meals.servings`                              | A positive number, with the amounts already multiplied by it                                                                                                                                                                                                                                    |
+| `moods.score`, `moods.energy`, `moods.stress` | A whole number from `1` to `5`                                                                                                                                                                                                                                                                  |
+| `profile.bodyFat`                             | A whole percentage from `3` to `60`, or left out                                                                                                                                                                                                                                                |
+| `profile.gender`                              | `female`, `male`, or `other`                                                                                                                                                                                                                                                                    |
+| `profile.goal`                                | `buildMuscle`, `endurance`, `loseFat`, or `maintain`                                                                                                                                                                                                                                            |
+| `profile.workStyle`                           | `active`, `athlete`, `desk`, or `standing`                                                                                                                                                                                                                                                      |
+| `quotes.categories`, `quotes.excluded`        | `art`, `courage`, `death`, `faith`, `fear`, `freedom`, `happiness`, `humor`, `inspirational`, `leadership`, `life`, `love`, `nature`, `philosophy`, `relationships`, `success`, `time`, `truth`, `wisdom`, or `writing`                                                                         |
+| `quotes.interval`                             | Seconds: `15`, `60`, `300`, `900`, `1500`, or `3600`                                                                                                                                                                                                                                            |
+| `quotes.mode`                                 | `daily` or `random`                                                                                                                                                                                                                                                                             |
+| `sleep.minutes`                               | A whole number from `1` to `1,440`; `at` is the wake time                                                                                                                                                                                                                                       |
+| `sleep.quality`                               | A whole number from `1` to `5`                                                                                                                                                                                                                                                                  |
+| `steps.count`                                 | A whole number from `1` to `100,000`, the day's count so far                                                                                                                                                                                                                                    |
+| `theme`                                       | `dusk`, `ember`, `frost`, `mono`, or `moss`                                                                                                                                                                                                                                                     |
+| `water.milliliters`                           | From `1` to `5,000`                                                                                                                                                                                                                                                                             |
+| `workouts.activity`                           | `cycling`, `other`, `running`, `strength`, `swimming`, `walking`, or `yoga`                                                                                                                                                                                                                     |
+| `workouts.intensity`                          | `light`, `moderate`, or `vigorous`                                                                                                                                                                                                                                                              |
 
 Every setting is optional, and files written by version 1 still load as they are.
 
 Every 100 XP is a level, and every level from level 2 to level 9 gives your character 1 piece of gear. Experience is earned as follows:
 
-| Entry          | Experience                                                            |
-| -------------- | --------------------------------------------------------------------- |
-| Action         | None                                                                  |
-| Finished focus | 1 XP per minute                                                       |
-| Meal           | 5 XP                                                                  |
-| Workout        | Per minute: 1 XP when light, 1.5 XP when moderate, 2 XP when vigorous |
+| Entry          | Experience                                                            | Daily Cap |
+| -------------- | --------------------------------------------------------------------- | --------- |
+| Action         | None                                                                  |           |
+| Body           | 5 XP                                                                  | 5 XP      |
+| Finished focus | 1 XP per minute                                                       |           |
+| Habit          | 5 XP, none when skipped                                               | 25 XP     |
+| Meal           | 5 XP                                                                  |           |
+| Mood           | 3 XP                                                                  | 6 XP      |
+| Note           | 3 XP                                                                  | 3 XP      |
+| Sleep          | 10 XP                                                                 | 10 XP     |
+| Steps          | 1 XP per 1,000, counting only what a later count adds                 | 20 XP     |
+| Water          | 1 XP                                                                  | 8 XP      |
+| Workout        | Per minute: 1 XP when light, 1.5 XP when moderate, 2 XP when vigorous |           |
+
+Caps reset at your local midnight, and entries earn in the order they happened.
 
 > [!important]
 > If `progress.json` is not valid, Terminal-Sigma refuses to start rather than overwrite it. Fix or move the file, then start again.
+
+> [!warning]
+> An older version that loads a `progress.json` with the new kinds drops them when it saves, so update the CLI and the desktop app together.
 
 ## Config File
 
@@ -279,3 +366,5 @@ See [`CONTRIBUTING.md`](./.github/CONTRIBUTING.md) to work on Terminal-Sigma, an
 ## License
 
 [MIT](./LICENSE.md)
+
+Bundled nutrition and exercise data keep their own licenses, listed in [`DATA-LICENSES.md`](./DATA-LICENSES.md).
