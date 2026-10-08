@@ -638,3 +638,25 @@ test("deletes a log, puts it back, and logs it again now", async (t) => {
 
 	unmount();
 });
+
+const left = "\u001B[D";
+
+test("shows the week's trends, streak, and habits", async (t) => {
+	const day = 86_400_000;
+	const at = (back: number) => new Date(Date.now() - back * day).toISOString();
+	const { stdin, lastFrame, unmount } = start({
+		...empty,
+		water: [0, 1, 2].map((back) => ({ at: at(back), milliliters: 2000 })),
+		habits: [0, 1, 2].map((back) => ({ at: at(back), name: "read" })),
+	});
+
+	// History, then left from All to Week, the last filter.
+	await type(stdin, ["3", "\r", left]);
+	const frame = lastFrame() ?? "";
+	t.true(frame.includes("‹ Week ›"));
+	t.true(frame.includes("avg 857 of 2,600 ml"));
+	t.true(frame.includes("Streak: 3 days"));
+	t.true(frame.includes("read 15%"));
+
+	unmount();
+});

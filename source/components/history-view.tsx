@@ -1,13 +1,26 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
 import { describeLog } from "../content.js";
-import type { Language, Messages } from "../i18n.js";
-import { type Log, logKinds } from "../progress.js";
+import { exerciseName } from "../exercises.js";
+import {
+	durationOf,
+	formatNumber,
+	type Language,
+	type Messages,
+	workoutActivities,
+} from "../i18n.js";
+import {
+	type Correlation,
+	sparklineOf,
+	type Week,
+	weekOf,
+} from "../insights.js";
+import { type Log, logKinds, type Progress, type Today } from "../progress.js";
 import { usePalette } from "../theme.js";
 
 export { describeLog } from "../content.js";
 
-const filters = ["all", ...logKinds] as const;
+const filters = ["all", ...logKinds, "week"] as const;
 type Filter = (typeof filters)[number];
 
 type LogRowProps = Readonly<{
@@ -61,8 +74,163 @@ export function LogRow({ log, language, messages }: LogRowProps) {
 	);
 }
 
+type WeekViewProps = Readonly<{
+	week: Week;
+	language: Language;
+	messages: Messages;
+}>;
+
+// 1 sparkline row per target, then the streak, the weight trend, the habits,
+// what goes with a better mood, and this week's best lifts.
+function WeekView({ week, language, messages }: WeekViewProps) {
+	const palette = usePalette();
+	const words = messages.week;
+	const format = (value: number) => formatNumber(language, Math.round(value));
+	const tenths = (value: number) =>
+		formatNumber(language, Math.round(value * 10) / 10);
+	const averageOf = (pick: (today: Today) => number) =>
+		week.days.reduce((total, day) => total + pick(day.today), 0) /
+		week.days.length;
+	const rows: Array<
+		Readonly<{
+			label: string;
+			pick: (today: Today) => number;
+			target: number;
+			show: (value: number) => string;
+			unit: string;
+		}>
+	> = [
+		{
+			label: words.calories,
+			pick: (today) => today.calories,
+			target: week.targets.calories,
+			show: format,
+			unit: "kcal",
+		},
+		{
+			label: words.protein,
+			pick: (today) => today.protein,
+			target: week.targets.protein,
+			show: format,
+			unit: "g",
+		},
+		{
+			label: words.exercise,
+			pick: (today) => today.workoutMinutes,
+			target: week.targets.workoutMinutes,
+			show: (value) => durationOf(value, messages),
+			unit: "",
+		},
+		{
+			label: words.water,
+			pick: (today) => today.water,
+			target: week.targets.water,
+			show: format,
+			unit: "ml",
+		},
+		{
+			label: words.sleep,
+			pick: (today) => today.sleepMinutes,
+			target: week.targets.sleep,
+			show: (value) => durationOf(value, messages),
+			unit: "",
+		},
+		{
+			label: words.steps,
+			pick: (today) => today.steps,
+			target: week.targets.steps,
+			show: format,
+			unit: "",
+		},
+	];
+	const factorName = ({ factor }: Correlation) => {
+		const activity = workoutActivities.find((option) => option === factor.name);
+
+		if (factor.kind === "tag") {
+			return `#${factor.name}`;
+		}
+
+		return activity ? messages.workoutActivity[activity] : factor.name;
+	};
+
+	const [firstTrend] = week.trend;
+	const lastTrend = week.trend.at(-1);
+
+	return (
+		<Box flexDirection="column">
+			<Text dimColor>{words.subtitle}</Text>
+			{rows.map((row) => (
+				<Box key={row.label} gap={1}>
+					<Box flexShrink={0} width={10}>
+						<Text wrap="truncate-end">{row.label}</Text>
+					</Box>
+					<Box flexShrink={0}>
+						<Text color={palette.accent}>
+							{sparklineOf(
+								week.days.map((day) => row.pick(day.today)),
+								row.target,
+							)}
+						</Text>
+					</Box>
+					<Text dimColor wrap="truncate-end">
+						{words.average(
+							row.show(averageOf(row.pick)),
+							row.show(row.target),
+							row.unit,
+						)}
+					</Text>
+				</Box>
+			))}
+			<Box flexDirection="column" marginTop={1}>
+				<Text>{words.streak(week.streak)}</Text>
+				{firstTrend !== undefined &&
+				lastTrend !== undefined &&
+				week.trend.length > 1 ? (
+					<Text>{words.trend(tenths(firstTrend), tenths(lastTrend))}</Text>
+				) : null}
+				{week.habits.length > 0 ? (
+					<Text wrap="truncate-end">
+						{words.habits(
+							week.habits
+								.slice(0, 3)
+								.map((habit) => `${habit.name} ${habit.strength}%`)
+								.join(" · "),
+						)}
+					</Text>
+				) : null}
+				{week.correlations.slice(0, 2).map((correlation) => (
+					<Text
+						key={`${correlation.factor.kind}-${correlation.factor.name}`}
+						wrap="truncate-end"
+					>
+						{words.correlation(
+							`${correlation.difference > 0 ? "+" : ""}${tenths(correlation.difference)}`,
+							factorName(correlation),
+							correlation.withDays,
+							correlation.withoutDays,
+						)}
+					</Text>
+				))}
+				{week.lifts.slice(0, 3).map((lift) => (
+					<Text key={lift.exercise} wrap="truncate-end">
+						{words.lift(
+							exerciseName(lift.exercise, language),
+							tenths(lift.best),
+							lift.before === undefined
+								? ""
+								: `${lift.best >= lift.before ? "+" : ""}${tenths(lift.best - lift.before)}`,
+						)}
+					</Text>
+				))}
+			</Box>
+		</Box>
+	);
+}
+
 type HistoryViewProps = Readonly<{
 	logs: readonly Log[];
+	progress: Progress;
+	now: number;
 	language: Language;
 	messages: Messages;
 	height: number;
@@ -77,6 +245,8 @@ type HistoryViewProps = Readonly<{
 // deleted one. App does the saving through the callbacks.
 export default function HistoryView({
 	logs,
+	progress,
+	now,
 	language,
 	messages,
 	height,
@@ -95,7 +265,11 @@ export default function HistoryView({
 	const at = Math.min(cursor, Math.max(shown.length - 1, 0));
 	const top = Math.min(offset, at);
 	const label = (option: Filter) =>
-		option === "all" ? messages.logs.all : messages.logs.kinds[option];
+		option === "all"
+			? messages.logs.all
+			: option === "week"
+				? messages.logs.week
+				: messages.logs.kinds[option];
 
 	useInput((input, key) => {
 		const picked = shown[at];
@@ -162,19 +336,31 @@ export default function HistoryView({
 				</Text>
 			</Box>
 			<Box flexDirection="column" marginTop={1}>
-				{shown.length === 0 ? (
-					<Text dimColor>{messages.logs.empty}</Text>
-				) : null}
-				{shown.slice(top, top + pageSize).map((log, row) => (
-					<Box key={`${log.kind}-${log.index}`} gap={1}>
-						<Box flexShrink={0}>
-							<Text color={palette.accent}>{top + row === at ? "❯" : " "}</Text>
-						</Box>
-						<Box flexGrow={1}>
-							<LogRow language={language} log={log} messages={messages} />
-						</Box>
-					</Box>
-				))}
+				{filter === "week" ? (
+					<WeekView
+						language={language}
+						messages={messages}
+						week={weekOf(progress, now)}
+					/>
+				) : (
+					<>
+						{shown.length === 0 ? (
+							<Text dimColor>{messages.logs.empty}</Text>
+						) : null}
+						{shown.slice(top, top + pageSize).map((log, row) => (
+							<Box key={`${log.kind}-${log.index}`} gap={1}>
+								<Box flexShrink={0}>
+									<Text color={palette.accent}>
+										{top + row === at ? "❯" : " "}
+									</Text>
+								</Box>
+								<Box flexGrow={1}>
+									<LogRow language={language} log={log} messages={messages} />
+								</Box>
+							</Box>
+						))}
+					</>
+				)}
 			</Box>
 		</Box>
 	);

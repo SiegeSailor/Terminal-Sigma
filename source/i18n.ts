@@ -315,6 +315,29 @@ const en = {
 			writing: "Writing",
 		} satisfies Record<QuoteCategory, string>,
 	},
+	week: {
+		subtitle: "The last 7 days, today on the right",
+		calories: "Calories",
+		protein: "Protein",
+		exercise: "Exercise",
+		water: "Water",
+		sleep: "Sleep",
+		steps: "Steps",
+		average: (average: string, target: string, unit: string) =>
+			`avg ${average} of ${target}${unit ? ` ${unit}` : ""}`,
+		streak: (days: number) => `Streak: ${days} ${days === 1 ? "day" : "days"}`,
+		trend: (from: string, to: string) => `Weight trend: ${from} → ${to} kg`,
+		habits: (list: string) => `Habits: ${list}`,
+		correlation: (
+			difference: string,
+			factor: string,
+			withDays: number,
+			withoutDays: number,
+		) =>
+			`Mood ${difference} on days with ${factor} (${withDays} vs ${withoutDays} days)`,
+		lift: (exercise: string, best: string, change: string) =>
+			`${exercise}: best ${best} kg${change ? ` (${change})` : ""}`,
+	},
 	events: {
 		appOpened: () => "Opened Terminal Sigma",
 		timerStarted: (minutes: string) => `Started a ${minutes}-minute focus`,
@@ -402,6 +425,7 @@ const en = {
 		cannotEditLine:
 			"This entry can't be written as 1 line; delete it and log it again.",
 		all: "All",
+		week: "Week",
 		kinds: {
 			focus: "Focus",
 			meal: "Diet",
@@ -740,6 +764,24 @@ const traditionalChinese: Messages = {
 			writing: "寫作",
 		},
 	},
+	week: {
+		subtitle: "最近 7 天，最右邊是今天",
+		calories: "熱量",
+		protein: "蛋白質",
+		exercise: "運動",
+		water: "喝水",
+		sleep: "睡眠",
+		steps: "步數",
+		average: (average, target, unit) =>
+			`平均 ${average} / ${target}${unit ? ` ${unit}` : ""}`,
+		streak: (days) => `連續記錄：${days} 天`,
+		trend: (from, to) => `體重趨勢：${from} → ${to} 公斤`,
+		habits: (list) => `習慣：${list}`,
+		correlation: (difference, factor, withDays, withoutDays) =>
+			`有「${factor}」的日子，心情 ${difference}（${withDays} 天對 ${withoutDays} 天）`,
+		lift: (exercise, best, change) =>
+			`${exercise}：最佳 ${best} 公斤${change ? `（${change}）` : ""}`,
+	},
 	events: {
 		appOpened: () => "開啟 Terminal Sigma",
 		timerStarted: (minutes) => `開始 ${minutes} 分鐘專注`,
@@ -825,6 +867,7 @@ const traditionalChinese: Messages = {
 		cannotEdit: "專注與操作紀錄不能更改。",
 		cannotEditLine: "這筆紀錄無法寫成一行；請刪除後重新記錄。",
 		all: "全部",
+		week: "本週",
 		kinds: {
 			focus: "專注",
 			meal: "飲食",
@@ -1160,6 +1203,24 @@ const korean: Messages = {
 			writing: "글쓰기",
 		},
 	},
+	week: {
+		subtitle: "최근 7일, 오른쪽 끝이 오늘",
+		calories: "칼로리",
+		protein: "단백질",
+		exercise: "운동",
+		water: "물",
+		sleep: "수면",
+		steps: "걸음",
+		average: (average, target, unit) =>
+			`평균 ${average} / ${target}${unit ? ` ${unit}` : ""}`,
+		streak: (days) => `연속 기록: ${days}일`,
+		trend: (from, to) => `체중 추세: ${from} → ${to}kg`,
+		habits: (list) => `습관: ${list}`,
+		correlation: (difference, factor, withDays, withoutDays) =>
+			`${factor} 한 날의 기분 ${difference} (${withDays}일 대 ${withoutDays}일)`,
+		lift: (exercise, best, change) =>
+			`${exercise}: 최고 ${best}kg${change ? ` (${change})` : ""}`,
+	},
 	events: {
 		appOpened: () => "Terminal Sigma 열기",
 		timerStarted: (minutes) => `${minutes}분 집중 시작`,
@@ -1246,6 +1307,7 @@ const korean: Messages = {
 		cannotEditLine:
 			"이 기록은 한 줄로 쓸 수 없습니다. 삭제하고 다시 기록하세요.",
 		all: "전체",
+		week: "이번 주",
 		kinds: {
 			focus: "집중",
 			meal: "식단",

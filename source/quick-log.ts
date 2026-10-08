@@ -498,7 +498,7 @@ const mood: Parser = (text, at) => {
 	});
 };
 
-const keyOf = (name: string) => name.normalize("NFKC").toLowerCase();
+export const keyOf = (name: string) => name.normalize("NFKC").toLowerCase();
 
 // "h read", "h read 30" for an amount, and "h read s" to skip it today.
 const habit: Parser = (text, at, { progress }) => {

@@ -1116,6 +1116,8 @@ export default function App({
 				language={language}
 				logs={logs}
 				messages={messages}
+				now={now}
+				progress={progress}
 				onDelete={deleteLog}
 				onEdit={startEdit}
 				onRepeat={repeatLog}
