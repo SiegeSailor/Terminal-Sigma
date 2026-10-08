@@ -74,7 +74,8 @@ function amountOf(text: string): number | undefined {
 	const fraction = /^(?<top>\d+)[\/⁄](?<bottom>\d+)$/v.exec(text);
 
 	if (fraction?.groups) {
-		return Number(fraction.groups.top) / Number(fraction.groups.bottom);
+		const value = Number(fraction.groups.top) / Number(fraction.groups.bottom);
+		return Number.isFinite(value) ? value : undefined;
 	}
 
 	return /^\d+(?:\.\d+)?$/v.test(text) ? Number(text) : undefined;
@@ -224,12 +225,7 @@ function mealOf(
 	const servings = amountOf(amount ?? times ?? "1");
 	const hasTyped = Object.keys(typed).length > 0;
 
-	if (
-		servings === undefined ||
-		!Number.isFinite(servings) ||
-		servings <= 0 ||
-		(!food && !hasTyped)
-	) {
+	if (servings === undefined || servings <= 0 || (!food && !hasTyped)) {
 		return undefined;
 	}
 
@@ -416,7 +412,10 @@ const sleep: Parser = (text, at, { now }) => {
 		(token) => /^q(?<score>[1-5])$/iv.exec(token)?.groups?.score,
 	);
 	const { minutes, wakeAt } = spanOf(span, at, now) ?? {
-		minutes: minutesOf(span),
+		// A bare number up to 24 is hours, and a larger one is minutes.
+		minutes: /^\d+(?:\.\d+)?$/v.test(span)
+			? Number(span) * (Number(span) <= 24 ? 60 : 1)
+			: minutesOf(span),
 		wakeAt: at,
 	};
 
@@ -470,6 +469,8 @@ const mood: Parser = (text, at) => {
 	});
 };
 
+const keyOf = (name: string) => name.normalize("NFKC").toLowerCase();
+
 // "h read", "h read 30" for an amount, and "h read s" to skip it today.
 const habit: Parser = (text, at, { progress }) => {
 	const words = text.split(" ").filter(Boolean);
@@ -479,7 +480,12 @@ const habit: Parser = (text, at, { progress }) => {
 		words.pop();
 	}
 
-	const amount = words.length > 1 ? amountOf(words.at(-1) ?? "") : undefined;
+	const last = words.length > 1 ? (words.at(-1) ?? "") : "";
+	const amount = amountOf(last);
+
+	if (amount === undefined && /^[\d.\/⁄]+$/v.test(last)) {
+		return failed("badNumber");
+	}
 
 	if (amount !== undefined) {
 		words.pop();
@@ -497,9 +503,8 @@ const habit: Parser = (text, at, { progress }) => {
 
 	// The spelling logged before, so "Read" and "read" stay 1 habit.
 	const name =
-		progress.habits.findLast(
-			(logged) => logged.name.toLowerCase() === typed.toLowerCase(),
-		)?.name ?? typed;
+		progress.habits.findLast((logged) => keyOf(logged.name) === keyOf(typed))
+			?.name ?? typed;
 
 	return parsed({
 		kind: "habit",

@@ -248,6 +248,7 @@ test("puts a time typed after midnight on yesterday", (t) => {
 		meal({ at: local(23, 0, 3), food: "Quick add", calories: 450 }),
 	]);
 });
+
 test("parses water, body, sleep, mood, habits, steps, notes, and goals", (t) => {
 	const at = local(12);
 
@@ -274,6 +275,10 @@ test("parses water, body, sleep, mood, habits, steps, notes, and goals", (t) => 
 		["sl 7.5h q3", [{ kind: "sleep", at, minutes: 450, quality: 3 }]],
 		["sl 7h30m", [{ kind: "sleep", at, minutes: 450 }]],
 		["sl 7시간", [{ kind: "sleep", at, minutes: 420 }]],
+		["sl 8", [{ kind: "sleep", at, minutes: 480 }]],
+		["sl 450", [{ kind: "sleep", at, minutes: 450 }]],
+		["h read 1/0", "badNumber"],
+		["h read 0/0", "badNumber"],
 		["sl 7.5h q9", "badSleep"],
 		["sl 25:00-7:00", "badSleep"],
 		["sl", "badSleep"],
@@ -330,6 +335,16 @@ test("reuses the spelling of a habit logged before", (t) => {
 	});
 
 	t.deepEqual(parse("h read", { progress }), [
+		{ kind: "habit", at: local(12), name: "Read" },
+	]);
+});
+
+test("matches a habit spelled in full width", (t) => {
+	const progress = progressSchema.parse({
+		habits: [{ at: local(8, 0, 2), name: "Read" }],
+	});
+
+	t.deepEqual(parse("h ｒｅａｄ", { progress }), [
 		{ kind: "habit", at: local(12), name: "Read" },
 	]);
 });
