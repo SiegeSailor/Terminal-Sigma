@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "ava";
@@ -7,7 +7,7 @@ import {
 	estimateSchema,
 	instructionsOf,
 	loadCoach,
-	planSchema,
+	planReplySchema,
 	promptOf,
 	recentTurnsOf,
 	saveCoach,
@@ -71,7 +71,7 @@ test("asks for the answer in the user's language, without medical claims", (t) =
 
 test("accepts only plans and estimates that make sense", (t) => {
 	t.true(
-		planSchema.safeParse({
+		planReplySchema.safeParse({
 			title: "Base building",
 			days: [
 				{ weekday: 1, activity: "running", minutes: 30, intensity: "light" },
@@ -79,7 +79,7 @@ test("accepts only plans and estimates that make sense", (t) => {
 		}).success,
 	);
 	t.false(
-		planSchema.safeParse({
+		planReplySchema.safeParse({
 			title: "Too much",
 			days: [
 				{ weekday: 9, activity: "running", minutes: 30, intensity: "light" },
@@ -113,4 +113,97 @@ test("keeps the conversation in coach.json and sends only the last 20 turns", (t
 
 	writeFileSync(file, "{ nope");
 	t.throws(() => loadCoach(file), { message: /unreadable/v });
+});
+
+const day = {
+	weekday: 1,
+	activity: "running",
+	minutes: 30,
+	intensity: "light",
+};
+
+test("caps a plan at 7 days, 1 per weekday", (t) => {
+	const days = (weekdays: number[]) =>
+		weekdays.map((weekday) => ({ ...day, weekday }));
+
+	t.true(
+		planReplySchema.safeParse({
+			title: "Week",
+			days: days([0, 1, 2, 3, 4, 5, 6]),
+		}).success,
+	);
+	t.false(
+		planReplySchema.safeParse({
+			title: "Month",
+			days: days([0, 1, 2, 3, 4, 5, 6, 0]),
+		}).success,
+	);
+	t.false(
+		planReplySchema.safeParse({ title: "Twice", days: days([1, 1]) }).success,
+	);
+});
+
+test("bounds long names and long meal lists, and leaves out the profile name", (t) => {
+	const big = progressSchema.parse({
+		...progress,
+		meals: [
+			{ at: ago(5), food: "x".repeat(200) },
+			...Array.from({ length: 30 }, (_, index) => ({
+				at: ago(4),
+				food: `meal ${index}`,
+			})),
+		],
+		sleep: [{ at: ago(1), minutes: 420, quality: 3 }],
+		moods: [{ at: ago(1), score: 4 }],
+	});
+	const context = contextOf(big, now);
+
+	t.false(context.includes("x".repeat(61)));
+	t.true(context.includes(`${"x".repeat(59)}…`));
+	t.true(context.includes("+11 more"));
+	t.false(context.includes("meal 29"));
+	t.false(context.includes("Ken"));
+	t.regex(context, /Today so far:.*7 h sleep.*mood 4\/5/v);
+});
+
+test("rejects estimates above their maxima", (t) => {
+	const ok = { calories: 500, protein: 10, carbs: 50, fat: 10 };
+
+	t.true(estimateSchema.safeParse(ok).success);
+	for (const bad of [
+		{ calories: 5001 },
+		{ protein: 501 },
+		{ carbs: 1001 },
+		{ fat: 501 },
+	]) {
+		t.false(estimateSchema.safeParse({ ...ok, ...bad }).success);
+	}
+});
+
+test("words the prompts in the user's language", (t) => {
+	t.true(promptOf("today", messagesOf("zh-TW")).includes("今天"));
+	t.true(
+		promptOf("estimate", messagesOf("ko"), "김치찌개").includes("김치찌개"),
+	);
+});
+
+test("writes coach.json for its owner only and keeps newer fields", (t) => {
+	const file = path.join(
+		mkdtempSync(path.join(tmpdir(), "terminal-sigma-")),
+		"coach.json",
+	);
+	const coach = {
+		sessions: [
+			{
+				id: "s1",
+				startedAt: ago(2),
+				future: 1,
+				turns: [{ role: "user" as const, content: "hi", at: ago(1), extra: 2 }],
+			},
+		],
+	};
+
+	saveCoach(file, coach);
+	t.is(statSync(file).mode.toString(8).slice(-3), "600");
+	t.deepEqual(loadCoach(file), coach);
 });

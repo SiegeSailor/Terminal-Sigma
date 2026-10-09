@@ -14,8 +14,10 @@ import { type Language, type Messages, messagesOf } from "./i18n.js";
 import { streakOf } from "./insights.js";
 import {
 	planSchema as savedPlanSchema,
+	byTime,
 	profileNow,
 	type Progress,
+	timestamp,
 	todayOf,
 } from "./progress.js";
 
@@ -27,6 +29,10 @@ export const coachKinds = [
 	"estimate",
 ] as const;
 export type CoachKind = (typeof coachKinds)[number];
+
+// Free text goes to a provider, so cap each piece.
+const shorten = (text: string, length = 60) =>
+	text.length > length ? `${text.slice(0, length - 1)}…` : text;
 
 const dateOf = (time: number) => {
 	const date = new Date(time);
@@ -57,7 +63,7 @@ export function contextOf(progress: Progress, now: number): string {
 		const totals = todayOf(progress, then);
 		const workouts = progress.workouts
 			.filter((workout) => dateOf(Date.parse(workout.at)) === dateOf(then))
-			.map((workout) => `${workout.activity} ${workout.minutes} min`)
+			.map((workout) => `${shorten(workout.activity)} ${workout.minutes} min`)
 			.join(", ");
 		lines.push(
 			`- ${dateOf(then)}: ${totals.calories} kcal, ${totals.protein} g protein, ${totals.workoutMinutes} min exercise${workouts ? ` (${workouts})` : ""}, ${totals.water} ml water, ${Math.round(totals.sleepMinutes / 6) / 10} h sleep, ${totals.steps} steps${totals.mood === undefined ? "" : `, mood ${totals.mood}/5`}.`,
@@ -66,15 +72,19 @@ export function contextOf(progress: Progress, now: number): string {
 
 	const today = todayOf(progress, now);
 	const isToday = (at: string) => dateOf(Date.parse(at)) === dateOf(now);
-	const meals = progress.meals
+	const eaten = progress.meals
 		.filter((meal) => isToday(meal.at))
+		.toSorted(byTime)
 		.map(
 			(meal) =>
-				`${meal.food}${meal.calories === undefined ? "" : ` ${meal.calories} kcal`}`,
-		)
-		.join(", ");
+				`${shorten(meal.food)}${meal.calories === undefined ? "" : ` ${meal.calories} kcal`}`,
+		);
+	const meals = [
+		...eaten.slice(0, 20),
+		...(eaten.length > 20 ? [`+${eaten.length - 20} more`] : []),
+	].join(", ");
 	lines.push(
-		`Today so far: ${today.calories} kcal, ${today.protein} g protein, ${today.workoutMinutes} min exercise, ${today.water} ml water, ${today.steps} steps. Meals: ${meals || "none yet"}.`,
+		`Today so far: ${today.calories} kcal, ${today.protein} g protein, ${today.workoutMinutes} min exercise, ${today.water} ml water, ${Math.round(today.sleepMinutes / 6) / 10} h sleep, ${today.steps} steps${today.mood === undefined ? "" : `, mood ${today.mood}/5`}. Meals: ${meals || "none yet"}.`,
 	);
 
 	return lines.join("\n");
@@ -108,8 +118,8 @@ export const promptOf = (
 		: messages.coach.prompts[kind];
 
 // What the model replies with; saving it adds the time.
-export const planSchema = savedPlanSchema.omit({ at: true });
-export type Plan = zod.infer<typeof planSchema>;
+export const planReplySchema = savedPlanSchema.omit({ at: true });
+export type PlanReply = zod.infer<typeof planReplySchema>;
 
 export const estimateSchema = zod.object({
 	calories: zod.number().int().min(0).max(5000),
@@ -120,16 +130,14 @@ export const estimateSchema = zod.object({
 });
 export type Estimate = zod.infer<typeof estimateSchema>;
 
-const timestamp = zod.iso.datetime({ offset: true });
-
 export const coachSchema = zod.object({
 	sessions: zod
 		.array(
-			zod.object({
+			zod.looseObject({
 				id: zod.string().min(1),
 				startedAt: timestamp,
 				turns: zod.array(
-					zod.object({
+					zod.looseObject({
 						role: zod.enum(["user", "assistant"]),
 						content: zod.string(),
 						at: timestamp,

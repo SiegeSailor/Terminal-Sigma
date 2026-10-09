@@ -30,7 +30,7 @@ import {
 } from "./quotes.js";
 import { themeNames } from "./theme.js";
 
-const timestamp = zod.iso.datetime({ offset: true });
+export const timestamp = zod.iso.datetime({ offset: true });
 const rating = zod.number().int().min(1).max(5);
 
 // Fields added after 1.0.0 stay optional, so older files keep loading.
@@ -185,15 +185,21 @@ const strictProfileSchema = zod.object(profileShape);
 export const planSchema = zod.object({
 	at: timestamp,
 	title: zod.string().min(1).max(60),
-	days: zod.array(
-		zod.object({
-			weekday: zod.number().int().min(0).max(6),
-			activity: zod.enum(workoutActivities),
-			minutes: zod.number().int().min(5).max(240),
-			intensity: zod.enum(intensities),
-			note: zod.string().max(80).optional(),
-		}),
-	),
+	days: zod
+		.array(
+			zod.object({
+				weekday: zod.number().int().min(0).max(6),
+				activity: zod.enum(workoutActivities),
+				minutes: zod.number().int().min(5).max(240),
+				intensity: zod.enum(intensities),
+				note: zod.string().max(80).optional(),
+			}),
+		)
+		.max(7)
+		.refine(
+			(days) => new Set(days.map((day) => day.weekday)).size === days.length,
+			"1 entry per weekday",
+		),
 });
 export type Plan = zod.infer<typeof planSchema>;
 
