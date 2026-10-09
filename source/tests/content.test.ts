@@ -1,4 +1,5 @@
 import test from "ava";
+import { windowOf } from "../components/choice.js";
 import { layoutOf } from "../content.js";
 
 test("keeps the menu and adds panels as the terminal grows", (t) => {
@@ -37,4 +38,12 @@ test("keeps the menu and adds panels as the terminal grows", (t) => {
 		showCharacter: true,
 		showToday: true,
 	});
+});
+
+test("shows a window of a long list around the cursor", (t) => {
+	t.deepEqual(windowOf(0, 20), { start: 0, end: 20 });
+	t.deepEqual(windowOf(0, 20, 5), { start: 0, end: 5 });
+	t.deepEqual(windowOf(10, 20, 5), { start: 8, end: 13 });
+	t.deepEqual(windowOf(19, 20, 5), { start: 15, end: 20 });
+	t.deepEqual(windowOf(2, 3, 5), { start: 0, end: 3 });
 });

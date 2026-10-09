@@ -12,8 +12,35 @@ import process from "node:process";
 import zod from "zod";
 import { parseWholeNumber } from "./progress.js";
 
-export const variableGroups = ["data", "timer", "display", "quotes"] as const;
+export const variableGroups = [
+	"data",
+	"timer",
+	"display",
+	"quotes",
+	"ai",
+	"tracing",
+] as const;
 export type VariableGroup = (typeof variableGroups)[number];
+
+export const providers = [
+	"openai",
+	"anthropic",
+	"google",
+	"xai",
+	"compatible",
+] as const;
+export type Provider = (typeof providers)[number];
+
+// 1 API key for 1 provider, tried in the order the user set.
+export const accountSchema = zod.object({
+	id: zod.string().min(1),
+	provider: zod.enum(providers),
+	label: zod.string().min(1),
+	apiKey: zod.string().min(1).optional(),
+	model: zod.string().min(1),
+	baseUrl: zod.url().optional(),
+});
+export type Account = zod.infer<typeof accountSchema>;
 
 export type Variable = Readonly<{
 	name: string;
@@ -37,6 +64,18 @@ const minutesFrom = (text: string) => {
 const folderFrom = (text: string) => {
 	const folder = text.trim().replace(/^~(?=$|\/|\\)/v, homedir());
 	return folder && path.isAbsolute(folder) ? folder : undefined;
+};
+
+const urlFrom = (text: string) => {
+	try {
+		const url = new URL(text.trim());
+
+		return url.protocol === "http:" || url.protocol === "https:"
+			? url.toString().replace(/\/$/v, "")
+			: undefined;
+	} catch {
+		return undefined;
+	}
 };
 
 export const variables = [
@@ -76,6 +115,55 @@ export const variables = [
 		needsRestart: false,
 		parse: textFrom,
 	},
+	{
+		name: "OPENAI_API_KEY",
+		group: "ai",
+		isSecret: true,
+		needsRestart: false,
+		parse: textFrom,
+	},
+	{
+		name: "ANTHROPIC_API_KEY",
+		group: "ai",
+		isSecret: true,
+		needsRestart: false,
+		parse: textFrom,
+	},
+	{
+		name: "GOOGLE_GENERATIVE_AI_API_KEY",
+		group: "ai",
+		isSecret: true,
+		needsRestart: false,
+		parse: textFrom,
+	},
+	{
+		name: "XAI_API_KEY",
+		group: "ai",
+		isSecret: true,
+		needsRestart: false,
+		parse: textFrom,
+	},
+	{
+		name: "LANGFUSE_PUBLIC_KEY",
+		group: "tracing",
+		isSecret: true,
+		needsRestart: true,
+		parse: textFrom,
+	},
+	{
+		name: "LANGFUSE_SECRET_KEY",
+		group: "tracing",
+		isSecret: true,
+		needsRestart: true,
+		parse: textFrom,
+	},
+	{
+		name: "LANGFUSE_BASE_URL",
+		group: "tracing",
+		isSecret: false,
+		needsRestart: true,
+		parse: urlFrom,
+	},
 ] as const satisfies readonly Variable[];
 
 export type VariableName = (typeof variables)[number]["name"];
@@ -85,6 +173,7 @@ export const variableOf = (name: string) =>
 
 export const configSchema = zod.looseObject({
 	env: zod.record(zod.string(), zod.string()).default({}),
+	accounts: zod.array(accountSchema).default([]),
 });
 
 export type Config = zod.infer<typeof configSchema>;

@@ -202,13 +202,20 @@ When a focus or break ends, the terminal rings its bell.
 
 Every variable is optional, and **Environment** in the menu shows and edits each one. A value saved there goes to `config.json` in `~/.terminal-sigma`, readable only by you; a variable your shell sets always wins over a saved one:
 
-| Variable                | Effect                                                                                                                                    |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `API_NINJAS_KEY`        | Fetch quotes from [API Ninjas](https://api-ninjas.com/api/quotes) instead of the bundled list, in English only, falling back on any error |
-| `TERMINAL_SIGMA_BREAK`  | Minutes of each Tomato Timer break, from `1` to `180`; `--break` wins                                                                     |
-| `TERMINAL_SIGMA_FOCUS`  | Minutes of each Tomato Timer focus, from `1` to `180`; `--focus` wins                                                                     |
-| `TERMINAL_SIGMA_HOME`   | The folder that holds `progress.json`, instead of `~/.terminal-sigma`, e.g. a synced folder                                               |
-| `TERMINAL_SIGMA_MOTION` | `full`, or `reduced` to show every change at once, without text effects                                                                   |
+| Variable                       | Effect                                                                                                                                    |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`            | Let the Coach use Claude; it joins your accounts after the ones you added                                                                 |
+| `API_NINJAS_KEY`               | Fetch quotes from [API Ninjas](https://api-ninjas.com/api/quotes) instead of the bundled list, in English only, falling back on any error |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Let the Coach use Gemini; it joins your accounts after the ones you added                                                                 |
+| `LANGFUSE_BASE_URL`            | Your Langfuse server, e.g. `http://localhost:3000`, instead of Langfuse Cloud; applies after a restart                                    |
+| `LANGFUSE_PUBLIC_KEY`          | With `LANGFUSE_SECRET_KEY`, trace every Coach request to Langfuse, including the logs it sends; applies after a restart                   |
+| `LANGFUSE_SECRET_KEY`          | With `LANGFUSE_PUBLIC_KEY`, trace every Coach request to Langfuse; applies after a restart                                                |
+| `OPENAI_API_KEY`               | Let the Coach use OpenAI; it joins your accounts after the ones you added                                                                 |
+| `TERMINAL_SIGMA_BREAK`         | Minutes of each Tomato Timer break, from `1` to `180`; `--break` wins                                                                     |
+| `TERMINAL_SIGMA_FOCUS`         | Minutes of each Tomato Timer focus, from `1` to `180`; `--focus` wins                                                                     |
+| `TERMINAL_SIGMA_HOME`          | The folder that holds `progress.json`, instead of `~/.terminal-sigma`, e.g. a synced folder                                               |
+| `TERMINAL_SIGMA_MOTION`        | `full`, or `reduced` to show every change at once, without text effects                                                                   |
+| `XAI_API_KEY`                  | Let the Coach use Grok; it joins your accounts after the ones you added                                                                   |
 
 `config.json` always lives in `~/.terminal-sigma`, whatever `TERMINAL_SIGMA_HOME` says; `TERMINAL_SIGMA_HOME` moves only `progress.json`, so your keys never travel with a synced folder.
 

@@ -10,6 +10,19 @@ export type Option = Readonly<{
 	group?: string;
 }>;
 
+// The slice of a long list to show, keeping the cursor in the middle when it can.
+export function windowOf(index: number, count: number, limit?: number) {
+	if (limit === undefined || count <= limit) {
+		return { start: 0, end: count };
+	}
+
+	const start = Math.min(
+		Math.max(index - Math.floor(limit / 2), 0),
+		count - limit,
+	);
+	return { start, end: start + limit };
+}
+
 type ChoiceProps = Readonly<{
 	options: readonly Option[];
 	onSelect: (value: string) => void;
@@ -17,6 +30,8 @@ type ChoiceProps = Readonly<{
 	initialValue?: string;
 	isActive?: boolean;
 	isNumbered?: boolean;
+	// Show only this many options, in a window that follows the cursor.
+	limit?: number;
 }>;
 
 // A vertical list in Claude Code's style. Unlike @inkjs/ui's Select, Enter on
@@ -28,6 +43,7 @@ export default function Choice({
 	initialValue,
 	isActive = true,
 	isNumbered = false,
+	limit,
 }: ChoiceProps) {
 	const palette = usePalette();
 	const [index, setIndex] = React.useState(() =>
@@ -69,12 +85,16 @@ export default function Choice({
 		{ isActive },
 	);
 
+	const { start, end } = windowOf(index, options.length, limit);
+
 	return (
 		<Box flexDirection="column">
-			{options.map((option, optionIndex) => {
+			{options.slice(start, end).map((option, position) => {
+				const optionIndex = start + position;
 				const isFocused = optionIndex === index;
 				const heading =
-					option.group && option.group !== options[optionIndex - 1]?.group
+					option.group &&
+					(position === 0 || option.group !== options[optionIndex - 1]?.group)
 						? option.group
 						: undefined;
 
@@ -86,15 +106,17 @@ export default function Choice({
 							</Text>
 						) : null}
 						<Box gap={1}>
-							<Text color={palette.accent}>{isFocused ? "❯" : " "}</Text>
-							<Text
-								bold={isFocused}
-								color={isFocused ? palette.accent : undefined}
-							>
-								{isNumbered
-									? `${(optionIndex + 1) % 10}. ${option.label}`
-									: option.label}
-							</Text>
+							<Box flexShrink={0} gap={1}>
+								<Text color={palette.accent}>{isFocused ? "❯" : " "}</Text>
+								<Text
+									bold={isFocused}
+									color={isFocused ? palette.accent : undefined}
+								>
+									{isNumbered
+										? `${(optionIndex + 1) % 10}. ${option.label}`
+										: option.label}
+								</Text>
+							</Box>
 							{option.hint}
 						</Box>
 					</Box>

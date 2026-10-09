@@ -8,6 +8,7 @@ import {
 	type Source,
 	sourceOf,
 	type VariableName,
+	variableGroups,
 	variableOf,
 	variables,
 } from "../config.js";
@@ -22,6 +23,8 @@ type EnvironmentViewProps = Readonly<{
 	editing?: VariableName;
 	// The row the cursor starts on: the variable edited last.
 	initialValue?: VariableName;
+	// The rows the view may use, so a long list scrolls instead of overflowing.
+	height: number;
 	onEdit: (name: VariableName) => void;
 	onChange: (name: VariableName, value: string | undefined) => void;
 }>;
@@ -34,6 +37,7 @@ export default function EnvironmentView({
 	messages,
 	editing,
 	initialValue,
+	height,
 	onEdit,
 	onChange,
 }: EnvironmentViewProps) {
@@ -101,6 +105,7 @@ export default function EnvironmentView({
 			</Text>
 			<Choice
 				initialValue={initialValue}
+				limit={Math.max(height - 1 - variableGroups.length, 3)}
 				options={variables.map(({ name, group }) => {
 					const source = sourceOf(name, config, env);
 

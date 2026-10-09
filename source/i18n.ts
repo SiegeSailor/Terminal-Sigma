@@ -552,6 +552,8 @@ const en = {
 			timer: "Tomato Timer",
 			display: "Display",
 			quotes: "Everyday Quotes",
+			ai: "AI Coach",
+			tracing: "Tracing",
 		} satisfies Record<VariableGroup, string>,
 		names: {
 			TERMINAL_SIGMA_HOME: "Data folder",
@@ -559,6 +561,13 @@ const en = {
 			TERMINAL_SIGMA_BREAK: "Break minutes",
 			TERMINAL_SIGMA_MOTION: "Motion",
 			API_NINJAS_KEY: "API Ninjas key",
+			OPENAI_API_KEY: "OpenAI key",
+			ANTHROPIC_API_KEY: "Anthropic key",
+			GOOGLE_GENERATIVE_AI_API_KEY: "Google Gemini key",
+			XAI_API_KEY: "xAI Grok key",
+			LANGFUSE_PUBLIC_KEY: "Langfuse public key",
+			LANGFUSE_SECRET_KEY: "Langfuse secret key",
+			LANGFUSE_BASE_URL: "Langfuse URL",
 		} satisfies Record<VariableName, string>,
 		describe: {
 			TERMINAL_SIGMA_HOME:
@@ -571,6 +580,20 @@ const en = {
 				"full, or reduced to show every change at once, without text effects.",
 			API_NINJAS_KEY:
 				"Your API Ninjas key, to fetch English quotes instead of the bundled ones.",
+			OPENAI_API_KEY:
+				"Lets the Coach use OpenAI. It joins your accounts after the ones you added.",
+			ANTHROPIC_API_KEY:
+				"Lets the Coach use Claude. It joins your accounts after the ones you added.",
+			GOOGLE_GENERATIVE_AI_API_KEY:
+				"Lets the Coach use Gemini. It joins your accounts after the ones you added.",
+			XAI_API_KEY:
+				"Lets the Coach use Grok. It joins your accounts after the ones you added.",
+			LANGFUSE_PUBLIC_KEY:
+				"With the secret key, traces every Coach request to Langfuse, including your logs it sends. Applies after a restart.",
+			LANGFUSE_SECRET_KEY:
+				"With the public key, traces every Coach request to Langfuse. Applies after a restart.",
+			LANGFUSE_BASE_URL:
+				"Your Langfuse server, such as http://localhost:3000 when you run it yourself. Default: Langfuse Cloud. Applies after a restart.",
 		} satisfies Record<VariableName, string>,
 		sources: {
 			shell: "shell",
@@ -1036,6 +1059,8 @@ const traditionalChinese: Messages = {
 			timer: "番茄鐘",
 			display: "顯示",
 			quotes: "每日語錄",
+			ai: "AI 教練",
+			tracing: "追蹤",
 		},
 		names: {
 			TERMINAL_SIGMA_HOME: "資料夾",
@@ -1043,6 +1068,13 @@ const traditionalChinese: Messages = {
 			TERMINAL_SIGMA_BREAK: "休息分鐘數",
 			TERMINAL_SIGMA_MOTION: "動態效果",
 			API_NINJAS_KEY: "API Ninjas 金鑰",
+			OPENAI_API_KEY: "OpenAI 金鑰",
+			ANTHROPIC_API_KEY: "Anthropic 金鑰",
+			GOOGLE_GENERATIVE_AI_API_KEY: "Google Gemini 金鑰",
+			XAI_API_KEY: "xAI Grok 金鑰",
+			LANGFUSE_PUBLIC_KEY: "Langfuse 公開金鑰",
+			LANGFUSE_SECRET_KEY: "Langfuse 私密金鑰",
+			LANGFUSE_BASE_URL: "Langfuse 網址",
 		},
 		describe: {
 			TERMINAL_SIGMA_HOME:
@@ -1054,6 +1086,16 @@ const traditionalChinese: Messages = {
 			TERMINAL_SIGMA_MOTION:
 				"full，或 reduced 以立即顯示所有變化，不播放文字特效。",
 			API_NINJAS_KEY: "你的 API Ninjas 金鑰，用來改抓英文語錄，而非內建語錄。",
+			OPENAI_API_KEY: "讓教練使用 OpenAI，排在你新增的帳號之後。",
+			ANTHROPIC_API_KEY: "讓教練使用 Claude，排在你新增的帳號之後。",
+			GOOGLE_GENERATIVE_AI_API_KEY: "讓教練使用 Gemini，排在你新增的帳號之後。",
+			XAI_API_KEY: "讓教練使用 Grok，排在你新增的帳號之後。",
+			LANGFUSE_PUBLIC_KEY:
+				"與私密金鑰一起，把每次教練請求（包含送出的紀錄）追蹤到 Langfuse。重新啟動後生效。",
+			LANGFUSE_SECRET_KEY:
+				"與公開金鑰一起，把每次教練請求追蹤到 Langfuse。重新啟動後生效。",
+			LANGFUSE_BASE_URL:
+				"你的 Langfuse 伺服器，例如自架時的 http://localhost:3000。預設為 Langfuse Cloud。重新啟動後生效。",
 		},
 		sources: { shell: "終端機", saved: "已儲存", default: "預設" },
 		unset: "–",
@@ -1520,6 +1562,8 @@ const korean: Messages = {
 			timer: "토마토 타이머",
 			display: "화면",
 			quotes: "오늘의 명언",
+			ai: "AI 코치",
+			tracing: "추적",
 		},
 		names: {
 			TERMINAL_SIGMA_HOME: "데이터 폴더",
@@ -1527,6 +1571,13 @@ const korean: Messages = {
 			TERMINAL_SIGMA_BREAK: "휴식 시간(분)",
 			TERMINAL_SIGMA_MOTION: "움직임",
 			API_NINJAS_KEY: "API Ninjas 키",
+			OPENAI_API_KEY: "OpenAI 키",
+			ANTHROPIC_API_KEY: "Anthropic 키",
+			GOOGLE_GENERATIVE_AI_API_KEY: "Google Gemini 키",
+			XAI_API_KEY: "xAI Grok 키",
+			LANGFUSE_PUBLIC_KEY: "Langfuse 공개 키",
+			LANGFUSE_SECRET_KEY: "Langfuse 비밀 키",
+			LANGFUSE_BASE_URL: "Langfuse 주소",
 		},
 		describe: {
 			TERMINAL_SIGMA_HOME:
@@ -1538,6 +1589,20 @@ const korean: Messages = {
 			TERMINAL_SIGMA_MOTION:
 				"full, 또는 글자 효과 없이 모든 변화를 바로 보여 주는 reduced.",
 			API_NINJAS_KEY: "번들 명언 대신 영어 명언을 가져올 API Ninjas 키입니다.",
+			OPENAI_API_KEY:
+				"코치가 OpenAI를 쓰게 합니다. 직접 추가한 계정 다음 순서로 들어갑니다.",
+			ANTHROPIC_API_KEY:
+				"코치가 Claude를 쓰게 합니다. 직접 추가한 계정 다음 순서로 들어갑니다.",
+			GOOGLE_GENERATIVE_AI_API_KEY:
+				"코치가 Gemini를 쓰게 합니다. 직접 추가한 계정 다음 순서로 들어갑니다.",
+			XAI_API_KEY:
+				"코치가 Grok을 쓰게 합니다. 직접 추가한 계정 다음 순서로 들어갑니다.",
+			LANGFUSE_PUBLIC_KEY:
+				"비밀 키와 함께, 보내는 기록을 포함한 모든 코치 요청을 Langfuse에 추적합니다. 다시 시작하면 적용됩니다.",
+			LANGFUSE_SECRET_KEY:
+				"공개 키와 함께, 모든 코치 요청을 Langfuse에 추적합니다. 다시 시작하면 적용됩니다.",
+			LANGFUSE_BASE_URL:
+				"직접 운영할 때의 http://localhost:3000 같은 Langfuse 서버입니다. 기본값은 Langfuse Cloud이며, 다시 시작하면 적용됩니다.",
 		},
 		sources: { shell: "셸", saved: "저장됨", default: "기본값" },
 		unset: "–",

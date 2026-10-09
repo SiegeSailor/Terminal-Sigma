@@ -1294,6 +1294,7 @@ export default function App({
 				config={config}
 				editing={variableEditor}
 				env={env}
+				height={Math.max(rows - 9, 6)}
 				initialValue={lastVariable}
 				messages={messages}
 				onChange={changeVariable}
@@ -1414,8 +1415,12 @@ export default function App({
 						<Box
 							borderColor={view === "menu" ? palette.accent : palette.border}
 							borderStyle="round"
-							// The Log and History views need the width more than the menu.
-							display={view === "log" || view === "logs" ? "none" : "flex"}
+							// The Log, History, and Environment views need the width more than the menu.
+							display={
+								view === "log" || view === "logs" || view === "environment"
+									? "none"
+									: "flex"
+							}
 							flexShrink={0}
 							paddingX={1}
 							width={layout.isMenuSplit ? menuListWidth : undefined}
@@ -1446,7 +1451,9 @@ export default function App({
 							{view === "menu" ? preview : panels[view]}
 						</Box>
 					</Box>
-					{layout.showRecent && view !== "logs" ? recentBlock : null}
+					{layout.showRecent && view !== "logs" && view !== "environment"
+						? recentBlock
+						: null}
 				</Box>
 			</Box>
 			{layout.showToday && !layout.todayBeside ? todayPanel : null}

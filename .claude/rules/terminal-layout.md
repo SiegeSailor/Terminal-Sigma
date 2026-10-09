@@ -58,7 +58,7 @@ The regions of the dashboard:
 | Recent      | Its own block under the menu: the 4 latest logs                                                                                                              |
 | Today       | Character and Focus bars, then protein, calories, workout, water, and last night's sleep, with the most urgent advice                                        |
 
-History takes the place of the Menu, the Description, and Recent while it is open, and the Log view the place of the Menu and the Description, with Recent under it. Today draws each bar with `▀`, half a row tall, right under its label, which carries the percentage because text centers in its row; there is no blank row between items, only a group gets a blank row above it, and the border padding goes when `layoutOf` marks it compact.
+History and Environment take the place of the Menu, the Description, and Recent while they are open, and the Log view the place of the Menu and the Description, with Recent under it. Today draws each bar with `▀`, half a row tall, right under its label, which carries the percentage because text centers in its row; there is no blank row between items, only a group gets a blank row above it, and the border padding goes when `layoutOf` marks it compact.
 
 ## Responsive Rules
 
