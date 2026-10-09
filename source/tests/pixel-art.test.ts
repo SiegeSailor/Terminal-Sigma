@@ -66,6 +66,7 @@ const looks: Look[] = [
 type Scene = Partial<{
 	activity: Activity;
 	anchor: number;
+	reach: number;
 	width: number;
 	counter: number;
 	level: number;
@@ -235,6 +236,9 @@ test("tells muscle from fat at the same weight by body fat", (t) => {
 test("draws a different body for every 2 points of body fat", (t) => {
 	t.is(fatStep, 2);
 
+	// Any walk margin will do, and skips measuring every look.
+	const reach = 9;
+
 	for (const gender of ["female", "male", "other"] as const) {
 		for (const [height, style] of [
 			[22, "athlete"],
@@ -245,7 +249,10 @@ test("draws a different body for every 2 points of body fat", (t) => {
 			const frames = Array.from({ length: fatStages + 1 }, (_, fat) => {
 				const look = { ...defaultLook, gender, height, style, fat };
 				// The front at rest and the side mid-stride, since a belly shows in profile.
-				return [...scene({ look }), ...scene({ look, counter: 24 })].join("\n");
+				return [
+					...scene({ look, reach }),
+					...scene({ look, reach, counter: 24 }),
+				].join("\n");
 			});
 
 			for (const [fat, frame] of frames.entries()) {
@@ -314,7 +321,7 @@ test("draws both arms and both sides of the body alike", (t) => {
 		for (let fat = 0; fat <= fatStages; fat++) {
 			for (let muscle = 0; muscle <= muscleStages; muscle++) {
 				const look = { ...defaultLook, gender, fat, muscle };
-				const frame = scene({ look });
+				const frame = scene({ look, reach: 9 });
 
 				// Below the shoulders, where the hair and the ears are not.
 				for (let y = 2; y < look.height - 7; y++) {
@@ -505,6 +512,64 @@ test("never jumps between animations, and comes home after a run", (t) => {
 
 	// The idle after the run starts where the run began.
 	t.is(anchors[4], runHome);
+});
+
+test("keeps the walk steady when the look changes", (t) => {
+	const slim = { ...defaultLook, gender: "female" as const, fat: 0, muscle: 0 };
+	const widest = {
+		...defaultLook,
+		gender: "male" as const,
+		height: 35,
+		fat: fatStages,
+		muscle: muscleStages,
+	};
+	// The shadow's middle column is where the character stands.
+	const standing = (motion: Motion, look: Look) => {
+		const columns = scene({
+			activity: motion.activity,
+			counter: motion.tick,
+			anchor: motion.anchor,
+			reach: motion.reach,
+			look,
+			mood: motion.mood,
+		}).flatMap((row) => [...row].flatMap((key, x) => (key === "A" ? [x] : [])));
+
+		return (Math.min(...columns) + Math.max(...columns)) / 2;
+	};
+
+	const wanted = { activity: "idle", mood: "content" } as const;
+	let motion = startMotion("idle", "content", width, slim);
+	let look: Look = slim;
+	let previous = standing(motion, look);
+
+	// Walk for 100 ticks, with the look turning wider in the middle of it.
+	for (let tick = 0; tick < 100; tick++) {
+		if (tick === 40) {
+			look = widest;
+		}
+
+		motion = advance(motion, wanted, width, look);
+		const place = standing(motion, look);
+		t.true(Math.abs(place - previous) <= 2, `jumped at tick ${tick}`);
+		previous = place;
+	}
+
+	// The next activity starts with the wider margin, fitted on the stage.
+	const xs = Array.from(
+		{ length: cycleOf("idle", width, undefined, "content", widest) },
+		(_, counter) => placeOf("idle", counter, width, "content", 16, widest).x,
+	);
+	const reach = width - 1 - Math.max(...xs);
+
+	for (const anchor of [9, 20, 25]) {
+		const started = advance(
+			{ ...startMotion("idle", "content", width, slim), anchor, tick: 5 },
+			{ activity: "break", mood: "content" },
+			width,
+			widest,
+		);
+		t.true(started.anchor >= reach && started.anchor <= width - 1 - reach);
+	}
 });
 
 test("renders 2 pixel rows per terminal row at full width", (t) => {

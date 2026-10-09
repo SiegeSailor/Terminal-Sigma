@@ -43,7 +43,7 @@ export default function Character({
 		(state: ReturnType<typeof startMotion>, wanted: Wanted) =>
 			advance(state, wanted, stage, look),
 		undefined,
-		() => startMotion(activity, mood, stage),
+		() => startMotion(activity, mood, stage, look),
 	);
 	// The timer reads what is wanted now, and the motion decides when to
 	// switch, so an animation finishes where it began before the next starts.
@@ -68,6 +68,7 @@ export default function Character({
 			activity: motion.activity,
 			counter: motion.tick,
 			anchor: motion.anchor,
+			reach: motion.reach,
 			level: levelNumber,
 			look,
 			mood: motion.mood,

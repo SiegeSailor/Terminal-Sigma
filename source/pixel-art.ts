@@ -836,7 +836,18 @@ export function placeOf(
 	anchor: number,
 	look: Look = defaultLook,
 ): Readonly<{ x: number; lift: number }> {
-	const scene = sceneOf(activity, t, width, mood, anchor, reachOf(look));
+	return placeWith(activity, t, width, mood, anchor, reachOf(look));
+}
+
+function placeWith(
+	activity: Activity,
+	t: number,
+	width: number,
+	mood: Mood,
+	anchor: number,
+	reach: number,
+) {
+	const scene = sceneOf(activity, t, width, mood, anchor, reach);
 	return { x: scene.x, lift: scene.lift };
 }
 
@@ -845,6 +856,9 @@ export type Motion = Readonly<{
 	activity: Activity;
 	mood: Mood;
 	anchor: number;
+	// The walk margin for the look the activity began with, so a new look
+	// never moves the character mid-activity; it applies at the next one.
+	reach: number;
 	tick: number;
 }>;
 
@@ -852,7 +866,14 @@ export const startMotion = (
 	activity: Activity,
 	mood: Mood,
 	width: number,
-): Motion => ({ activity, mood, anchor: homeOf(width), tick: 0 });
+	look: Look = defaultLook,
+): Motion => ({
+	activity,
+	mood,
+	anchor: homeOf(width),
+	reach: reachOf(look),
+	tick: 0,
+});
 
 // 1 frame later. A new activity starts where the character stands: idling
 // gives way at once, and anything else first finishes its loop back home, so
@@ -867,17 +888,25 @@ export function advance(
 		wanted.activity === motion.activity && wanted.mood === motion.mood;
 
 	if (!isSame) {
-		const { x, lift } = placeOf(
+		const { x, lift } = placeWith(
 			motion.activity,
 			motion.tick,
 			width,
 			motion.mood,
 			motion.anchor,
-			look,
+			motion.reach,
 		);
 
 		if (motion.activity === "idle" || (x === motion.anchor && lift === 0)) {
-			return { ...wanted, anchor: x, tick: 0 };
+			// A wider look starts from the nearest spot where it fits.
+			const reach = reachOf(look);
+			const { minimum, maximum } = marginOf(width, reach);
+			return {
+				...wanted,
+				anchor: Math.min(Math.max(x, minimum), maximum),
+				reach,
+				tick: 0,
+			};
 		}
 	}
 
@@ -1194,8 +1223,10 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 		// An open jacket over whatever is underneath.
 		for (let y = b.hip; y <= b.shoulder; y++) {
 			const half = y === b.shoulder ? b.chest + 1 + b.shoulderCap : halfAt(y);
-			span(upper, -half, -half + 1, y, "M");
-			span(upper, half - 1, half, y, "X");
+			// The shoulder row's lapel reaches in over the shoulder caps.
+			const lapel = y === b.shoulder ? 1 + b.shoulderCap : 1;
+			span(upper, -half, -half + lapel, y, "M");
+			span(upper, half - lapel, half, y, "X");
 		}
 
 		upper(-2, b.shoulder, "M");
@@ -1703,11 +1734,13 @@ export type SceneInput = Readonly<{
 	mood: Mood;
 	width: number;
 	anchor?: number;
+	// The walk margin the motion began with; the look's own by default.
+	reach?: number;
 }>;
 
 // The pixel keys of 1 frame, row by row, "." where nothing is drawn.
 export const composeScene = (input: SceneInput): string[] =>
-	drawScene(input, reachOf(input.look), true).rows;
+	drawScene(input, input.reach ?? reachOf(input.look), true).rows;
 
 // The columns a body covers on either side of its center, in any pose, with
 // the props left out. Measured once per look on a stage wide enough that
@@ -1715,34 +1748,30 @@ export const composeScene = (input: SceneInput): string[] =>
 const reaches = new Map<string, number>();
 
 function reachOf(look: Look): number {
-	const key = [
-		look.gender,
-		look.height,
-		look.fat,
-		look.muscle,
-		look.style,
-		look.hair,
-	].join(",");
+	const key = JSON.stringify(look);
 	let reach = reaches.get(key);
 
 	if (reach === undefined) {
-		const width = 64;
+		const width = 48;
 		const anchor = homeOf(width);
 		reach = 9;
 
 		const measure = (activity: Activity, mood: Mood, counters: number) => {
-			for (let counter = 0; counter < counters; counter += 2) {
+			for (let counter = 0; counter < counters; counter++) {
 				const { rows, x } = drawScene(
 					{ activity, counter, level: 10, look, mood, width, anchor },
 					11,
 					false,
+					true,
 				);
 
 				for (const row of rows) {
-					for (const [column, pixel] of [...row].entries()) {
-						if (pixel !== "." && pixel !== "A") {
-							reach = Math.max(reach ?? 9, Math.abs(column - x));
-						}
+					const body = row.replaceAll("A", ".");
+					const first = body.search(/[^.]/v);
+
+					if (first !== -1) {
+						const last = body.replace(/\.+$/v, "").length - 1;
+						reach = Math.max(reach ?? 9, x - first, last - x);
 					}
 				}
 			}
@@ -1784,12 +1813,13 @@ function drawScene(
 	}: SceneInput,
 	reach: number,
 	withProps: boolean,
+	isFull = false,
 ) {
 	const canvas = Array.from({ length: stageHeight }, () =>
 		Array.from({ length: width }, () => "."),
 	);
 	const scene = sceneOf(activity, counter, width, mood, anchor, reach);
-	const b = bodyOf(look);
+	const b = bodyOf(look, isFull);
 	const pose = scene.pose(b);
 	// The character's x = 0 is its center column, mirrored when facing left.
 	const plant =
