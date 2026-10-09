@@ -323,6 +323,7 @@ test("saves a profile and turns it into targets", async (t) => {
 		"5",
 		"\r",
 		"\r",
+		"\r",
 		"30",
 		"\r",
 		"175",
@@ -372,7 +373,12 @@ test("keeps unknown profile fields when saving the profile", async (t) => {
 		}),
 	);
 
-	await type(stdin, ["5", "\r", ...Array.from({ length: 8 }, () => "\r")]);
+	await type(stdin, [
+		"5",
+		"\r",
+		"\r",
+		...Array.from({ length: 8 }, () => "\r"),
+	]);
 	t.true(actionsIn(file).includes("profileSaved"));
 	t.like(loadProgress(file).profile, { name: "Ken", newerField: "kept" });
 
@@ -736,6 +742,44 @@ test("shows the week's trends, streak, and habits", async (t) => {
 	t.true(frame.includes("avg 857 of 2,600 ml"));
 	t.true(frame.includes("Streak: 3 days"));
 	t.true(frame.includes("read 15%"));
+
+	unmount();
+});
+
+test("chooses an appearance, previewing it before saving", async (t) => {
+	const profile = {
+		name: "Nova",
+		age: 30,
+		height: 170,
+		weight: 65,
+		gender: "other",
+		workStyle: "desk",
+		goal: "maintain",
+	} as const;
+	const { file, stdin, lastFrame, unmount } = start({ ...empty, profile });
+
+	// Profile, then Appearance.
+	await type(stdin, ["5", "\r", down, "\r"]);
+	t.true((lastFrame() ?? "").includes("Skin tone"));
+
+	// Tan, then the defaults for style, color, and facial hair, then glasses.
+	await type(stdin, [down, "\r", "\r", "\r", "\r", up, "\r"]);
+	t.like(loadProgress(file).profile, {
+		skinTone: 4,
+		hairStyle: "bob",
+		glasses: true,
+	});
+	t.true(actionsIn(file).includes("appearanceSaved"));
+	t.true((lastFrame() ?? "").includes("Appearance saved"));
+
+	unmount();
+});
+
+test("asks for the body first when there is no profile", async (t) => {
+	const { stdin, lastFrame, unmount } = start();
+
+	await type(stdin, ["5", "\r", down, "\r", "\r", "\r", "\r", "\r", "\r"]);
+	t.true((lastFrame() ?? "").includes("body and goal first"));
 
 	unmount();
 });

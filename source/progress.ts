@@ -134,6 +134,7 @@ export const eventActions = [
 	"goalChanged",
 	"logDeleted",
 	"logEdited",
+	"appearanceSaved",
 ] as const;
 export type EventAction = (typeof eventActions)[number];
 

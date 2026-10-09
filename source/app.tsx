@@ -38,6 +38,8 @@ import {
 	menuListWidth,
 	menuOrder,
 	moodOf,
+	appearanceFieldsOf,
+	appearanceOf,
 	profileFieldsOf,
 	quoteOptionsOf,
 	type Release,
@@ -270,6 +272,13 @@ export default function App({
 	const themeName = progress.theme ?? "ember";
 	// While the theme picker is open, the focused theme previews live.
 	const [previewTheme, setPreviewTheme] = React.useState<ThemeName>();
+	const [profileSection, setProfileSection] = React.useState<
+		"body" | "appearance"
+	>();
+	// The appearance options focused so far, previewed on the character.
+	const [draftAppearance, setDraftAppearance] = React.useState<
+		Record<string, string>
+	>({});
 	const palette = themes[previewTheme ?? themeName];
 	const uiTheme = React.useMemo(() => uiThemeOf(palette), [palette]);
 	const name = options.name ?? progress.profile?.name ?? "Rook Sigma";
@@ -469,6 +478,8 @@ export default function App({
 		setEditing(undefined);
 		setDeleted([]);
 		setPreviewTheme(undefined);
+		setProfileSection(undefined);
+		setDraftAppearance({});
 
 		if (text) {
 			say(text);
@@ -747,6 +758,27 @@ export default function App({
 		}
 	};
 
+	const submitAppearance = (values: Record<string, string>) => {
+		if (!progress.profile) {
+			setDraftAppearance({});
+			setProfileSection("body");
+			say(messages.appearance.needsProfile, "error");
+			return;
+		}
+
+		const next = withEvent(
+			{
+				...progress,
+				profile: { ...progress.profile, ...appearanceOf(values) },
+			},
+			"appearanceSaved",
+		);
+
+		if (commit(next)) {
+			backToMenu(messages.appearance.saved);
+		}
+	};
+
 	const chooseTheme = (value: string) => {
 		const next: ThemeName = pick(themeNames, value, "ember");
 
@@ -922,6 +954,10 @@ export default function App({
 	const rows = size.rows || 40;
 	const layout = layoutOf(columns, rows);
 	const mood = moodOf(progress, now);
+	const savedProfile = profileNow(progress);
+	const shownProfile = savedProfile
+		? { ...savedProfile, ...appearanceOf(draftAppearance) }
+		: undefined;
 
 	const activity: Activity =
 		flash && flash.until > now
@@ -959,6 +995,55 @@ export default function App({
 			({ name }) => config.env[name] !== undefined,
 		).length,
 	});
+	const profilePanel = () => {
+		if (profileSection === "body") {
+			return (
+				<EntryForm
+					key="body"
+					fields={profileFieldsOf(messages, profileNow(progress), name)}
+					messages={messages}
+					title={messages.form.profileTitle}
+					onSubmit={submitProfile}
+				/>
+			);
+		}
+
+		if (profileSection === "appearance") {
+			return (
+				<EntryForm
+					key="appearance"
+					fields={appearanceFieldsOf(messages, progress.profile)}
+					messages={messages}
+					title={messages.appearance.title}
+					onFocus={(key, value) => {
+						setDraftAppearance((current) => ({ ...current, [key]: value }));
+					}}
+					onSubmit={submitAppearance}
+				/>
+			);
+		}
+
+		return (
+			<Titled title={messages.menu.profile}>
+				<Choice
+					key="sections"
+					options={[
+						{ label: messages.profileSections.body, value: "body" },
+						{ label: messages.profileSections.appearance, value: "appearance" },
+						{ label: messages.profileSections.back, value: "back" },
+					]}
+					onSelect={(value) => {
+						if (value === "back") {
+							backToMenu();
+						} else {
+							setProfileSection(value === "appearance" ? "appearance" : "body");
+						}
+					}}
+				/>
+			</Titled>
+		);
+	};
+
 	const focusedEntry =
 		entries.find((entry) => entry.key === focusedMenu) ?? entries[0];
 
@@ -967,7 +1052,7 @@ export default function App({
 		menu: messages.hints.menu,
 		log: messages.hints.log,
 		logs: messages.hints.logs,
-		profile: messages.hints.form,
+		profile: profileSection ? messages.hints.form : messages.hints.select,
 		environment: variableEditor
 			? messages.hints.edit
 			: messages.hints.environment,
@@ -1149,14 +1234,7 @@ export default function App({
 				onUndo={undoLine}
 			/>
 		),
-		profile: (
-			<EntryForm
-				fields={profileFieldsOf(messages, profileNow(progress), name)}
-				messages={messages}
-				title={messages.form.profileTitle}
-				onSubmit={submitProfile}
-			/>
-		),
+		profile: profilePanel(),
 		theme: (
 			<Titled title={messages.menu.theme}>
 				<Choice
@@ -1281,7 +1359,7 @@ export default function App({
 						label={activityLabel}
 						level={messages.level(level)}
 						levelNumber={level}
-						look={lookOf(profileNow(progress))}
+						look={lookOf(shownProfile)}
 						mood={mood}
 						name={name}
 						width={characterWidth}

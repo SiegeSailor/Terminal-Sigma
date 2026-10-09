@@ -25,6 +25,7 @@ type EntryFormProps = Readonly<{
 	messages: Messages;
 	onSubmit: (values: Record<string, string>) => void;
 	onValues?: (values: Record<string, string>) => void;
+	onFocus?: (key: string, value: string) => void;
 }>;
 
 export default function EntryForm({
@@ -33,6 +34,7 @@ export default function EntryForm({
 	messages,
 	onSubmit,
 	onValues,
+	onFocus,
 }: EntryFormProps) {
 	const palette = usePalette();
 	const [values, setValues] = React.useState<Record<string, string>>({});
@@ -98,6 +100,9 @@ export default function EntryForm({
 					key={current.key}
 					initialValue={defaultOf(current)}
 					options={current.options}
+					onFocus={(value) => {
+						onFocus?.(current.key, value);
+					}}
 					onSelect={accept}
 				/>
 			);

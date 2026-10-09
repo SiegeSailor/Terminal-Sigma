@@ -1,5 +1,6 @@
 import test from "ava";
 import {
+	appearanceOf,
 	describeEvent,
 	describeLog,
 	describeQuoteChange,
@@ -297,4 +298,13 @@ test("shows water and last night's sleep against their targets in Today", (t) =>
 			detail: "6h 40m of 7h",
 		},
 	);
+});
+
+test("reads an appearance from the form's values, ignoring what is missing", (t) => {
+	t.deepEqual(appearanceOf({ skinTone: "4", glasses: "yes" }), {
+		skinTone: 4,
+		glasses: true,
+	});
+	t.deepEqual(appearanceOf({ hairStyle: "mohawk", skinTone: "9" }), {});
+	t.deepEqual(appearanceOf({}), {});
 });

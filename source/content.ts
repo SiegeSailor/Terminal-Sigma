@@ -5,14 +5,18 @@ import { exerciseName, setGroupsOf } from "./exercises.js";
 import { adviceOf, targetsOf } from "./health.js";
 import {
 	durationOf,
+	facialHairs,
 	formatNumber,
 	genders,
 	healthGoals,
+	hairColors,
+	hairStyles,
 	type Language,
 	languages,
 	type Messages,
 	messagesOf,
 	type Mood,
+	skinTones,
 	type WorkoutActivity,
 	workoutActivities,
 	workStyles,
@@ -39,7 +43,7 @@ import {
 	quoteModes,
 	type QuoteSettings,
 } from "./quotes.js";
-import type { Activity } from "./pixel-art.js";
+import { type Activity, lookOf } from "./pixel-art.js";
 import { type Palette, type ThemeName, themeNames } from "./theme.js";
 import { isNewer, type Updater } from "./update.js";
 
@@ -783,3 +787,84 @@ export const profileFieldsOf = (
 		defaultValue: profile?.goal,
 	},
 ];
+
+// The appearance as select fields, each starting on what the character wears now.
+export function appearanceFieldsOf(
+	messages: Messages,
+	profile: Profile | undefined,
+): Field[] {
+	const look = lookOf(profile);
+	const { appearance } = messages;
+	const select = <Value extends string | number>(
+		key: string,
+		label: string,
+		values: readonly Value[],
+		names: Record<Value, string>,
+		current: Value,
+	): Field => ({
+		key,
+		label,
+		kind: "select",
+		options: values.map((value) => ({
+			label: names[value],
+			value: String(value),
+		})),
+		defaultValue: String(current),
+	});
+
+	return [
+		select(
+			"skinTone",
+			appearance.skinTone,
+			skinTones,
+			appearance.skinTones,
+			look.skinTone,
+		),
+		select(
+			"hairStyle",
+			appearance.hairStyle,
+			hairStyles,
+			appearance.hairStyles,
+			look.hairStyle,
+		),
+		select(
+			"hairColor",
+			appearance.hairColor,
+			hairColors,
+			appearance.hairColors,
+			look.hairColor,
+		),
+		select(
+			"facialHair",
+			appearance.facialHair,
+			facialHairs,
+			appearance.facialHairs,
+			look.facialHair,
+		),
+		select(
+			"glasses",
+			appearance.glasses,
+			["yes", "no"] as const,
+			{ yes: appearance.yes, no: appearance.no },
+			look.glasses ? "yes" : "no",
+		),
+	];
+}
+
+// What the form's values say about the appearance; unknown values drop out.
+export function appearanceOf(values: Readonly<Record<string, string>>) {
+	const skinTone = skinTones.find((tone) => String(tone) === values.skinTone);
+	const hairStyle = hairStyles.find((style) => style === values.hairStyle);
+	const hairColor = hairColors.find((color) => color === values.hairColor);
+	const facialHair = facialHairs.find((hair) => hair === values.facialHair);
+
+	return {
+		...(skinTone === undefined ? {} : { skinTone }),
+		...(hairStyle === undefined ? {} : { hairStyle }),
+		...(hairColor === undefined ? {} : { hairColor }),
+		...(facialHair === undefined ? {} : { facialHair }),
+		...(values.glasses === undefined
+			? {}
+			: { glasses: values.glasses === "yes" }),
+	};
+}
