@@ -841,30 +841,94 @@ test("shows how the day is going", (t) => {
 	);
 });
 
-test("keeps a wish bubble on the stage at both walk edges", (t) => {
-	const bubble = (look: Look, anchor: number, counter: number) => {
-		const draw = (signals: Signals) =>
-			scene({ look, anchor, counter, signals });
-		const [wished, quiet] = [
-			draw({ ...quietSignals, isThirsty: true, isHungry: true }),
-			draw(quietSignals),
-		];
+// The pixels a signal adds to a frame, and where they sit across.
+const addedBy = (input: Scene, signals: Partial<Signals>, keys: RegExp) => {
+	const wished = scene({ ...input, signals: { ...quietSignals, ...signals } });
+	const quiet = scene(input);
+	const columns: number[] = [];
 
-		return wished.reduce(
-			(sum, row, y) =>
-				sum +
-				[...row].filter((key, x) => key !== quiet[y]?.[x] && key !== ".")
-					.length,
-			0,
-		);
-	};
+	for (const [y, row] of wished.entries()) {
+		for (const [x, key] of [...row].entries()) {
+			if (key !== quiet[y]?.[x] && keys.test(key)) {
+				columns.push(x);
+			}
+		}
+	}
+
+	return columns;
+};
+
+test("keeps a wish bubble whole and still while it shows", (t) => {
+	let leftFood = false;
 
 	for (const look of looks) {
-		for (const counter of [0, 40]) {
-			const middle = bubble(look, homeOf(width), counter);
-			t.true(middle >= 8, "a bubble is drawn");
-			t.is(bubble(look, 8, counter), middle, "whole at the left edge");
-			t.is(bubble(look, width - 9, counter), middle, "whole at the right edge");
+		for (const [signals, keys] of [
+			[{ isThirsty: true }, /[vW]/v],
+			[{ isHungry: true }, /[vFG]/v],
+		] as const) {
+			for (let stage = 28; stage <= 56; stage += 4) {
+				const home = homeOf(stage);
+				const whole = addedBy(
+					{ look, width: stage, counter: 0 },
+					signals,
+					keys,
+				).length;
+				t.true(whole >= 8, "a bubble is drawn at home");
+				let previous: number | undefined;
+
+				for (
+					let counter = 0;
+					counter < cycleOf("idle", stage, home, "content", look);
+					counter++
+				) {
+					const columns = addedBy(
+						{ look, width: stage, counter },
+						signals,
+						keys,
+					);
+
+					if (columns.length === 0) {
+						previous = undefined;
+						continue;
+					}
+
+					const middle = (Math.min(...columns) + Math.max(...columns)) / 2;
+					t.is(columns.length, whole, "whole at every rest");
+					t.true(Math.min(...columns) >= 0 && Math.max(...columns) < stage);
+					t.true(previous === undefined || Math.abs(middle - previous) <= 2);
+					previous = middle;
+					leftFood ||= "isHungry" in signals && middle < stage / 2 - 4;
+				}
+			}
+		}
+	}
+
+	t.true(leftFood, "the food bubble rests on the left side too");
+});
+
+test("shows sweat and bed head in profile, and keeps sweat off the headphones", (t) => {
+	for (const level of [1, 2]) {
+		const walk = { activity: "run", counter: 2, level } as const;
+		t.true(addedBy(walk, { exertion: "sweaty" }, /W/v).length >= 4);
+		t.true(addedBy(walk, { isBedHead: true }, /[iJK]/v).length >= 3);
+	}
+
+	// The cups stay dark: nothing wet lands on one.
+	const cups = scene({
+		level: 2,
+		signals: { ...quietSignals, exertion: "sweaty" },
+	});
+	t.is(cups.join("").split("W").length - 1, 4, "2 drops of 2 pixels");
+});
+
+test("shows bed head in more than 3 pixels, for any hair", (t) => {
+	for (const hairStyle of hairStyles) {
+		for (const level of [1, 2]) {
+			const look = { ...defaultLook, hairStyle };
+			t.true(
+				addedBy({ look, level }, { isBedHead: true }, /./v).length >= 4,
+				`${hairStyle} at level ${level}`,
+			);
 		}
 	}
 });

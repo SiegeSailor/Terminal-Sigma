@@ -1501,6 +1501,14 @@ function paintHeadFront({ upper, b, look, gear, signals }: Paint, pose: Front) {
 		head(turn + 3, chin + 3, "q");
 	}
 
+	// Red cheeks after a hard workout; a beard grows over them.
+	if (signals.exertion === "flushed") {
+		for (const x of [-3, -2, 2, 3]) {
+			head(x, chin + 2, "r");
+			head(x, chin + 1, "r");
+		}
+	}
+
 	paintFacialHair(head, look, b);
 
 	// The crown, with a lighter streak unless it is cropped close.
@@ -1525,17 +1533,10 @@ function paintHeadFront({ upper, b, look, gear, signals }: Paint, pose: Front) {
 	head(turn + brow, chin + 4, "h", 2);
 	head(turn, chin + 2, "q");
 
-	// Shadows under the eyes after a short night, red cheeks after a hard workout.
+	// Shadows under the eyes after a short night, following the glance.
 	if (signals.rest === "tired") {
-		for (const x of [-3, -2, 2, 3]) {
-			head(x, chin + 2, "L");
-		}
-	}
-
-	if (signals.exertion === "flushed") {
-		for (const x of [-3, -2, 2, 3]) {
-			head(x, chin + 2, "r");
-			head(x, chin + 1, "r");
+		for (const x of [-2, -1, 1, 2]) {
+			head(turn + x, chin + 2, "L");
 		}
 	}
 
@@ -1545,10 +1546,10 @@ function paintHeadFront({ upper, b, look, gear, signals }: Paint, pose: Front) {
 		head(turn + 2, chin + 2, "r");
 	} else if (mouth === "open") {
 		span(head, turn - 1, turn, chin + 1, "e");
-	} else if (signals.face === "sad") {
+	} else if (signals.face === "sad" && look.facialHair === "none") {
 		// The corners turn down.
 		head(turn - 1, chin, "m");
-		span(head, turn, turn, chin + 1, "m");
+		head(turn, chin + 1, "m");
 		head(turn + 1, chin, "m");
 	} else {
 		span(head, turn - 1, turn, chin + 1, "q");
@@ -1605,11 +1606,22 @@ function paintHeadFront({ upper, b, look, gear, signals }: Paint, pose: Front) {
 		// Strands stand up from the crown, above the band when there is one;
 		// a cap covers them.
 		if (signals.isBedHead) {
-			const top = chin + (gear.gadget >= 1 ? 8 : 7);
-			head(-2, top, "h");
-			head(0, top, "h");
-			head(0, top + 1, "i");
-			head(2, top, "h");
+			if (gear.gadget >= 1) {
+				// Above the band, and poking out beside it.
+				for (const x of [-2, 0, 2]) {
+					head(x, chin + 8, "i");
+				}
+
+				head(-3, chin + 7, "i");
+				head(3, chin + 7, "i");
+			} else {
+				for (const x of [-2, 0, 2]) {
+					head(x, chin + 7, "i");
+				}
+
+				head(-2, chin + 8, "i");
+				head(0, chin + 8, "i");
+			}
 		}
 	}
 }
@@ -1788,10 +1800,13 @@ function paintSideHead(
 
 		// Strands stand up from the crown, above the band when there is one.
 		if (signals.isBedHead) {
-			const top = chin + (gear.gadget >= 1 ? 8 : 7);
-			upper(-2, top, "h");
-			upper(0, top, "h");
-			upper(0, top + 1, "i");
+			upper(-2, chin + 7, "i");
+			upper(2, chin + 7, "i");
+			upper(0, chin + 8, "i");
+
+			if (gear.gadget === 0) {
+				upper(0, chin + 7, "i");
+			}
 		}
 	}
 }
@@ -1901,17 +1916,17 @@ function paintSide(paint: Paint, pose: Side) {
 }
 
 // Drops running down the temples after a workout.
-function paintSweat({ upper, b, counter, signals }: Paint) {
+function paintSweat({ upper, b, counter, signals }: Paint, view: Pose["view"]) {
 	if (signals.exertion === "none") {
 		return;
 	}
 
-	// Each drop is 2 pixels tall and falls 1 row every 2 ticks.
-	for (const [x, offset] of [
-		[-4, 0],
-		[4, 2],
-	] as const) {
-		const y = b.chin + 5 - ((Math.floor(counter / 2) + offset) % 4);
+	// Each drop is 2 pixels tall and falls 1 row every 2 ticks, on the skin
+	// inside the headphone cups; in profile they run beside the eye.
+	const columns = view === "front" ? ([-3, 3] as const) : ([-1, 1] as const);
+
+	for (const [index, x] of columns.entries()) {
+		const y = b.chin + 4 - ((Math.floor(counter / 2) + index * 2) % 3);
 		upper(x, y, "W");
 		upper(x, y - 1, "W");
 	}
@@ -2257,9 +2272,9 @@ function drawScene(
 		paintFront(paint, pose);
 	}
 
-	paintSweat(paint);
+	paintSweat(paint, pose.view);
 
-	if (activity === "idle" && mood !== "sleepy") {
+	if (activity === "idle" && mood !== "sleepy" && pose.view === "front") {
 		// Toward the middle of the stage, whichever way the body faces.
 		paintWish(paint, scene.x < width / 2 ? scene.facing : -scene.facing);
 	}

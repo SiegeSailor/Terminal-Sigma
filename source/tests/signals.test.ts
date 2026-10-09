@@ -3,6 +3,7 @@ import { progressSchema } from "../progress.js";
 import {
 	daylightOf,
 	quietSignals,
+	signalClockOf,
 	seasonOf,
 	signalsOf,
 	stageSignalsOf,
@@ -193,4 +194,23 @@ test("drops falling particles under reduced motion", (t) => {
 	t.is(stageSignalsOf(signals, true).season, undefined);
 	t.is(stageSignalsOf(signals, true).daylight, "day");
 	t.is(stageSignalsOf(signals, false), signals);
+});
+
+test("clears hunger at once when a meal is logged mid-minute", (t) => {
+	const saved = new Date(2026, 9, 7, 15, 0, 30).getTime();
+	const meals = [
+		{
+			at: new Date(saved - 6 * hours * 60_000).toISOString(),
+			calories: 500,
+			food: "lunch",
+		},
+		{ at: new Date(saved).toISOString(), calories: 300, food: "snack" },
+	];
+	const minuteStart = new Date(2026, 9, 7, 15, 0).getTime();
+
+	t.true(signalsOf({ ...empty, meals }, minuteStart).isHungry, "floored");
+	t.false(
+		signalsOf({ ...empty, meals }, signalClockOf(saved + 1000)).isHungry,
+		"clocked at the minute's end",
+	);
 });

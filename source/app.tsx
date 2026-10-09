@@ -58,7 +58,12 @@ import {
 	workStyles,
 } from "./i18n.js";
 import { type Activity, lookOf } from "./pixel-art.js";
-import { signalsOf, stageSignalsOf, strengthLoadOf } from "./signals.js";
+import {
+	signalClockOf,
+	signalsOf,
+	stageSignalsOf,
+	strengthLoadOf,
+} from "./signals.js";
 import {
 	type EventAction,
 	experienceOf,
@@ -525,15 +530,14 @@ export default function App({
 
 	const experience = React.useMemo(() => experienceOf(progress), [progress]);
 	const logs = React.useMemo(() => logsOf(progress), [progress]);
-	// The signals read minutes and hours, so once a minute is fresh enough.
-	const minute = Math.floor(now / 60_000);
+	const signalClock = signalClockOf(now);
 	const signals = React.useMemo(
-		() => signalsOf(progress, minute * 60_000, logs),
-		[progress, minute, logs],
+		() => signalsOf(progress, signalClock, logs),
+		[progress, signalClock, logs],
 	);
 	const strengthLoad = React.useMemo(
-		() => strengthLoadOf(progress, minute * 60_000),
-		[progress, minute],
+		() => strengthLoadOf(progress, signalClock),
+		[progress, signalClock],
 	);
 
 	if (progress.language === undefined) {

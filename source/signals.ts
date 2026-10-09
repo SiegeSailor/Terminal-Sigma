@@ -44,6 +44,12 @@ export const quietSignals: Signals = {
 };
 
 const minute = 60_000;
+
+// The signals read minutes and hours, so the app asks once a minute; asking at
+// the minute's end, never its start, keeps an entry saved a moment ago from
+// lying in the future and going unseen.
+export const signalClockOf = (now: number) =>
+	(Math.floor(now / minute) + 1) * minute;
 const hour = 60 * minute;
 const day = 24 * hour;
 
