@@ -951,3 +951,56 @@ test("shows a scale beside the feet while weighing in", (t) => {
 
 	t.true(different >= 12);
 });
+
+test("paints the sky, the season, and the room behind the character", (t) => {
+	const plain = scene();
+	const count = (frame: string[], key: string) =>
+		[...frame.join("")].filter((pixel) => pixel === key).length;
+	const night = scene({
+		signals: { ...quietSignals, daylight: "night", season: "winter" },
+	});
+
+	t.true(count(night, "Q") > 0, "a moon");
+	t.true(count(night, "w") > count(plain, "w"), "snow");
+
+	const covered = plain.flatMap((row, y) =>
+		[...row].flatMap((key, x) =>
+			key !== "." && night[y]?.[x] !== key ? [[x, y]] : [],
+		),
+	);
+	t.deepEqual(covered, [], "the character stays in front");
+
+	t.is(
+		count(
+			scene({
+				signals: { ...quietSignals, daylight: "day", season: "summer" },
+			}),
+			"y",
+		),
+		0,
+		"no fireflies by day",
+	);
+
+	const room = scene({
+		signals: {
+			...quietSignals,
+			room: { plant: "growing", dumbbells: true, books: true },
+		},
+	});
+	t.true(count(room, "o") > 0, "a pot");
+	t.true(count(room, "D") > 0, "a dumbbell");
+	t.not(
+		scene({
+			signals: {
+				...quietSignals,
+				room: { ...quietSignals.room, plant: "wilting" },
+			},
+		}).join(""),
+		scene({
+			signals: {
+				...quietSignals,
+				room: { ...quietSignals.room, plant: "growing" },
+			},
+		}).join(""),
+	);
+});

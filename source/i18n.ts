@@ -78,6 +78,7 @@ const en = {
 	languageChanged: "Language set to English.",
 	chooseLanguage: "Choose your language · 選擇語言 · 언어 선택",
 	level: (level: number) => `Lv ${level}`,
+	streak: (days: number) => `${days}-day streak`,
 	savedTo: (file: string) => `Progress is saved to ${file}`,
 	notSaved: (error: string) => `Not saved: ${error}`,
 	hints: {
@@ -593,6 +594,7 @@ const traditionalChinese: Messages = {
 	languageChanged: "語言已設為繁體中文。",
 	chooseLanguage: "Choose your language · 選擇語言 · 언어 선택",
 	level: (level) => `Lv ${level}`,
+	streak: (days) => `連續 ${days} 天`,
 	savedTo: (file) => `進度儲存於 ${file}`,
 	notSaved: (error) => `未儲存：${error}`,
 	hints: {
@@ -1068,6 +1070,7 @@ const korean: Messages = {
 	languageChanged: "언어가 한국어로 설정되었습니다.",
 	chooseLanguage: "Choose your language · 選擇語言 · 언어 선택",
 	level: (level) => `Lv ${level}`,
+	streak: (days) => `${days}일 연속`,
 	savedTo: (file) => `진행 상황 저장 위치: ${file}`,
 	notSaved: (error) => `저장되지 않음: ${error}`,
 	hints: {

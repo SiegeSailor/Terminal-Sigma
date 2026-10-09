@@ -783,3 +783,18 @@ test("asks for the body first when there is no profile", async (t) => {
 
 	unmount();
 });
+
+test("shows the streak beside the character's name", async (t) => {
+	const { lastFrame, unmount } = start({
+		...empty,
+		notes: [
+			{ at: daysAgo(1), text: "yesterday" },
+			{ at: new Date().toISOString(), text: "today" },
+		],
+	});
+
+	await settle();
+	t.true((lastFrame() ?? "").includes("2-day streak"));
+
+	unmount();
+});

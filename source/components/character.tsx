@@ -19,6 +19,7 @@ type Wanted = Readonly<{ activity: Activity; mood: Mood }>;
 type CharacterProps = Readonly<{
 	name: string;
 	level: string;
+	streak?: string;
 	levelNumber: number;
 	activity: Activity;
 	look: Look;
@@ -31,6 +32,7 @@ type CharacterProps = Readonly<{
 export default function Character({
 	name,
 	level,
+	streak,
 	levelNumber,
 	activity,
 	look,
@@ -95,7 +97,14 @@ export default function Character({
 				<Text bold wrap="truncate-end">
 					{name}
 				</Text>
-				<Text color={palette.accent}>{level}</Text>
+				{streak ? (
+					<Box flexShrink={0}>
+						<Text color={palette.soft}>{streak}</Text>
+					</Box>
+				) : null}
+				<Box flexShrink={0}>
+					<Text color={palette.accent}>{level}</Text>
+				</Box>
 			</Box>
 			<Box flexDirection="column" flexGrow={1} justifyContent="flex-end">
 				{lines.map((line, row) => (

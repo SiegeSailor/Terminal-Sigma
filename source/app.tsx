@@ -47,6 +47,7 @@ import {
 	updateViewOf,
 } from "./content.js";
 import { adviceOf, targetsOf } from "./health.js";
+import { streakOf } from "./insights.js";
 import {
 	formatNumber,
 	genders,
@@ -534,6 +535,13 @@ export default function App({
 	const signals = React.useMemo(
 		() => signalsOf(progress, signalClock, logs),
 		[progress, signalClock, logs],
+	);
+	// The streak only changes with the data or the day.
+	const dayKey = new Date(now).toDateString();
+	const streak = React.useMemo(
+		() => streakOf(progress, now),
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[progress, dayKey],
 	);
 	const strengthLoad = React.useMemo(
 		() => strengthLoadOf(progress, signalClock),
@@ -1374,6 +1382,7 @@ export default function App({
 						label={activityLabel}
 						level={messages.level(level)}
 						levelNumber={level}
+						streak={streak >= 2 ? messages.streak(streak) : undefined}
 						look={lookOf(shownProfile, strengthLoad)}
 						mood={mood}
 						signals={stageSignalsOf(signals, isReducedMotion(env))}

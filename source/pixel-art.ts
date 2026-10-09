@@ -8,7 +8,7 @@ import type {
 	SkinTone,
 	WorkStyle,
 } from "./i18n.js";
-import { quietSignals, type Signals } from "./signals.js";
+import { quietSignals, type Season, type Signals } from "./signals.js";
 import type { Palette } from "./theme.js";
 
 // The character stands on a stage as wide as its panel and 40 pixels tall.
@@ -2264,6 +2264,140 @@ export type SceneInput = Readonly<{
 }>;
 
 // The pixel keys of 1 frame, row by row, "." where nothing is drawn.
+const particleKeys: Record<Season, readonly string[]> = {
+	spring: ["r"],
+	summer: ["y"],
+	autumn: ["g", "F"],
+	winter: ["w"],
+};
+
+// The sun or the moon by the clock, and the season's particles falling, all
+// behind the character.
+function paintScenery(canvas: string[][], signals: Signals, counter: number) {
+	const width = canvas[0]?.length ?? 0;
+	const dot = (x: number, y: number, key: string) => {
+		const row = canvas[stageHeight - 1 - y];
+
+		if (row && x >= 0 && x < width) {
+			row[x] = key;
+		}
+	};
+
+	switch (signals.daylight) {
+		case "night": {
+			for (const [x, y] of [
+				[width - 3, 38],
+				[width - 2, 38],
+				[width - 4, 37],
+				[width - 4, 36],
+				[width - 3, 35],
+				[width - 2, 35],
+			] as const) {
+				dot(x, y, "Q");
+			}
+
+			for (const [index, [x, y]] of (
+				[
+					[2, 37],
+					[8, 39],
+					[width - 10, 38],
+					[width - 16, 36],
+				] as const
+			).entries()) {
+				if ((counter + index * 5) % 20 < 14) {
+					dot(x, y, "y");
+				}
+			}
+
+			break;
+		}
+
+		case "dawn": {
+			span(dot, 0, 4, 30, "g");
+			span(dot, 1, 3, 31, "g");
+			break;
+		}
+
+		case "day": {
+			for (let y = 36; y <= 38; y++) {
+				span(dot, 1, 3, y, "g");
+			}
+
+			break;
+		}
+
+		case "dusk": {
+			span(dot, width - 5, width - 1, 30, "F");
+			span(dot, width - 4, width - 2, 31, "F");
+			break;
+		}
+
+		case undefined: {
+			break;
+		}
+	}
+
+	const isGlowing = signals.daylight === "night" || signals.daylight === "dusk";
+
+	if (signals.season && (signals.season !== "summer" || isGlowing)) {
+		const keys = particleKeys[signals.season];
+
+		for (let index = 0; index < 5; index++) {
+			const fall = (counter + index * 9) % stageHeight;
+			const drift = signals.season === "winter" ? 0 : Math.floor(fall / 4) % 2;
+			dot(
+				(index * 7 + 3 + drift) % width,
+				stageHeight - 1 - fall,
+				keys[index % keys.length] ?? "w",
+			);
+		}
+	}
+}
+
+// What the logs have earned, standing on the floor at the stage's edges.
+function paintRoom(canvas: string[][], room: Signals["room"]) {
+	const width = canvas[0]?.length ?? 0;
+	const dot = (x: number, y: number, key: string) => {
+		const row = canvas[stageHeight - 1 - y];
+
+		if (row && x >= 0 && x < width) {
+			row[x] = key;
+		}
+	};
+
+	if (room.plant !== "none") {
+		span(dot, 0, 2, ground, "o");
+		span(dot, 0, 2, ground + 1, "o");
+		dot(1, ground + 2, "G");
+		dot(1, ground + 3, "G");
+
+		if (room.plant === "growing") {
+			dot(0, ground + 4, "G");
+			dot(2, ground + 5, "G");
+			dot(1, ground + 6, "G");
+		} else {
+			dot(0, ground + 3, "n");
+			dot(2, ground + 2, "n");
+		}
+	}
+
+	if (room.dumbbells) {
+		dot(width - 5, ground, "D");
+		span(dot, width - 4, width - 2, ground, "d");
+		dot(width - 1, ground, "D");
+		dot(width - 5, ground + 1, "D");
+		dot(width - 1, ground + 1, "D");
+	}
+
+	if (room.books) {
+		dot(width - 8, ground, "F");
+		dot(width - 8, ground + 1, "P");
+		dot(width - 8, ground + 2, "g");
+		dot(width - 7, ground, "F");
+		dot(width - 7, ground + 1, "P");
+	}
+}
+
 export const composeScene = (input: SceneInput): string[] =>
 	drawScene(input, input.reach ?? reachOf(input.look), true).rows;
 
@@ -2375,6 +2509,8 @@ function drawScene(
 		signals,
 	};
 
+	paintScenery(canvas, signals, counter);
+	paintRoom(canvas, signals.room);
 	paintShadow(plant(0), b, scene.lift);
 
 	for (const draw of withProps ? (scene.ground ?? []) : []) {

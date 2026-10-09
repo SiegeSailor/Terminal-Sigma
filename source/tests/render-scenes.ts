@@ -201,6 +201,18 @@ export const sheets: Record<string, SceneInput[]> = {
 			signals: { ...quietSignals, isBedHead: true },
 		})),
 	],
+	scenery: (["dawn", "day", "dusk", "night"] as const).flatMap((daylight) =>
+		(["spring", "summer", "autumn", "winter"] as const).map((season) => ({
+			...base,
+			counter: 12,
+			signals: {
+				...quietSignals,
+				daylight,
+				season,
+				room: { plant: "growing", dumbbells: true, books: true } as const,
+			},
+		})),
+	),
 	levels: Array.from({ length: 10 }, (_, index) => ({
 		...base,
 		level: index + 1,
