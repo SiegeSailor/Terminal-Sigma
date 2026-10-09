@@ -36,7 +36,12 @@ export function accountsOf(config: Config, env: Environment): Account[] {
 			: [];
 	});
 
-	return [...config.accounts, ...fromShell];
+	// A keyless saved account would send the shell's key to its own baseUrl.
+	const saved = config.accounts.filter(
+		(account) => Boolean(account.apiKey) || account.provider === "compatible",
+	);
+
+	return [...saved, ...fromShell];
 }
 
 export type FailureKind =
@@ -70,8 +75,11 @@ const lastErrorOf = (error: unknown): unknown =>
 // Reads the provider's retry hint.
 // ponytail: reads only `retry-after` in seconds; parse the providers' own reset
 // headers if a 60-second guess proves too coarse.
-const retryAfterOf = (headers: Record<string, string> | undefined) => {
-	const seconds = Number(headers?.["retry-after"]);
+const retryAfterOf = (
+	headers: Record<string, string> | undefined,
+	hint?: string,
+) => {
+	const seconds = Number(headers?.["retry-after"] ?? hint);
 	return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : undefined;
 };
 
@@ -90,9 +98,13 @@ export function failureOf(thrown: unknown): Failure {
 	const status = error.statusCode;
 	const body = (error.responseBody ?? "").toLowerCase();
 
+	// Google's per-minute 429 also says "quota", but it clears within a minute.
+	const perMinute = body.includes("perminute");
+
 	if (
 		status === 402 ||
-		(status === 429 && /quota|credit|billing/v.test(body))
+		(status === 400 && body.includes("credit balance")) ||
+		(status === 429 && !perMinute && /quota|credit|billing/v.test(body))
 	) {
 		return { kind: "quota", message };
 	}
@@ -101,7 +113,10 @@ export function failureOf(thrown: unknown): Failure {
 		return {
 			kind: "rateLimited",
 			message,
-			retryAfter: retryAfterOf(error.responseHeaders),
+			retryAfter: retryAfterOf(
+				error.responseHeaders,
+				/"retrydelay":\s*"(\d+(?:\.\d+)?)s"/v.exec(body)?.[1],
+			),
 		};
 	}
 
@@ -159,6 +174,11 @@ export type Fallback<Result> =
 // Cooldowns last for this run only; a restart tries every account again.
 const runCooldowns = new Map<string, number>();
 
+// Lets an edited account be tried again before its cooldown ends.
+export const clearCooldown = (id: string): void => {
+	runCooldowns.delete(id);
+};
+
 // Tries each account in order with the same call until 1 answers. Accounts
 // cooling down wait their turn, unless every account is, and Esc stops it all.
 export async function withFallback<Result>(
@@ -194,6 +214,16 @@ export async function withFallback<Result>(
 		try {
 			// eslint-disable-next-line no-await-in-loop -- 1 account at a time, in order.
 			const result = await call(account);
+
+			// No late answer may reach the screen after Esc.
+			if (signal?.aborted) {
+				attempts.push({
+					account,
+					failure: { kind: "aborted", message: "Aborted" },
+				});
+				break;
+			}
+
 			cooldowns.delete(account.id);
 			return {
 				ok: true,
@@ -202,10 +232,14 @@ export async function withFallback<Result>(
 				attempts: [...attempts, { account }],
 			};
 		} catch (error) {
-			const failure = failureOf(error);
+			const thrown = failureOf(error);
+			const aborted = (signal?.aborted ?? false) || thrown.kind === "aborted";
+			const failure: Failure = aborted
+				? { kind: "aborted", message: thrown.message }
+				: thrown;
 			attempts.push({ account, failure });
 
-			if (failure.kind === "aborted") {
+			if (aborted) {
 				break;
 			}
 

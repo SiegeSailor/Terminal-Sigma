@@ -182,3 +182,113 @@ test("adds the shell's keys after the saved accounts", (t) => {
 	t.is(accounts[2]?.apiKey, "sk-ant-1");
 	t.is(accounts[2]?.model, defaultModels.anthropic);
 });
+
+test("waits out Google's per-minute limit but treats a daily one as quota", (t) => {
+	const minute = failureOf(
+		callError(
+			429,
+			'{"error":{"message":"You exceeded your current quota","details":[{"violations":[{"quotaId":"GenerateRequestsPerMinutePerProjectPerModel-FreeTier"}]},{"retryDelay":"43s"}]}}',
+		),
+	);
+	t.is(minute.kind, "rateLimited");
+	t.is(cooldownOf(minute), 43_000);
+	t.is(
+		failureOf(
+			callError(
+				429,
+				"You exceeded your current quota: GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+			),
+		).kind,
+		"quota",
+	);
+	t.is(
+		failureOf(callError(400, "Your credit balance is too low")).kind,
+		"quota",
+	);
+});
+
+test("stops on an abort with a custom reason or a late answer", async (t) => {
+	const reasoned = new AbortController();
+	const seen: string[] = [];
+	const cooldowns = new Map<string, number>();
+	const stopped = await withFallback(
+		[account("first"), account("second")],
+		async (next) => {
+			seen.push(next.id);
+			reasoned.abort(new Error("user pressed Esc"));
+			throw new Error("user pressed Esc");
+		},
+		{ cooldowns, now: () => 0, signal: reasoned.signal },
+	);
+	t.false(stopped.ok);
+	t.deepEqual(seen, ["first"]);
+	t.is(stopped.attempts[0]?.failure?.kind, "aborted");
+	t.false(cooldowns.has("first"));
+
+	const late = new AbortController();
+	const answered = await withFallback(
+		[account("first")],
+		async () => {
+			late.abort();
+			return "late";
+		},
+		{ cooldowns: new Map(), signal: late.signal },
+	);
+	t.false(answered.ok);
+	t.is(answered.attempts[0]?.failure?.kind, "aborted");
+});
+
+test("lists no keyless saved account, and clears a cooldown", async (t) => {
+	const keyless: Account = {
+		...account("keyless"),
+		apiKey: undefined,
+		baseUrl: "https://evil.example.com",
+	};
+	t.deepEqual(
+		accountsOf(
+			{ env: {}, accounts: [keyless] },
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			{ OPENAI_API_KEY: "sk-1" },
+		).map((next) => next.id),
+		["env:openai"],
+	);
+
+	const local: Account = { ...keyless, id: "local", provider: "compatible" };
+	t.is(accountsOf({ env: {}, accounts: [local] }, {}).length, 1);
+
+	const { clearCooldown } = await import("../asker.js");
+	t.notThrows(() => {
+		clearCooldown("nobody");
+	});
+});
+
+test("calls onAttempt per tried account and skips a 401'd one next time", async (t) => {
+	const cooldowns = new Map<string, number>();
+	const tried: string[] = [];
+	const seen: string[] = [];
+	const call = async (next: Account) => {
+		seen.push(next.id);
+
+		if (next.id === "revoked") {
+			throw callError(401);
+		}
+
+		return next.id;
+	};
+
+	await withFallback([account("revoked"), account("good")], call, {
+		cooldowns,
+		now: () => 0,
+		onAttempt(next) {
+			tried.push(next.id);
+		},
+	});
+	t.deepEqual(tried, ["revoked", "good"]);
+
+	seen.length = 0;
+	await withFallback([account("revoked"), account("good")], call, {
+		cooldowns,
+		now: () => 1000,
+	});
+	t.deepEqual(seen, ["good"]);
+});
