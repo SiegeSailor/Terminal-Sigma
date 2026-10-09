@@ -693,6 +693,17 @@ test("greys from the temples, a little more every year from 35", (t) => {
 		).length;
 
 	t.is(greyIn(34), 0);
+
+	// The first grey pixels sit at the temples, 3 or more columns from the center.
+	const columnsOf = (age: number, keys: string) =>
+		scene({ activity: "focus", look: { ...defaultLook, age } }).flatMap((row) =>
+			[...row].flatMap((key, column) => (keys.includes(key) ? [column] : [])),
+		);
+	const crown = columnsOf(30, "hi");
+	const center = (Math.min(...crown) + Math.max(...crown)) / 2;
+	const first = columnsOf(45, "HJ");
+	t.true(first.length > 0);
+	t.true(first.every((column) => Math.abs(column - center) >= 3));
 	t.is(greyOf(35), 0);
 	t.is(greyOf(70), 1);
 
@@ -711,4 +722,88 @@ test("greys from the temples, a little more every year from 35", (t) => {
 		),
 		"never less grey with age",
 	);
+});
+
+test("keeps the same pixels grey on a moving head", (t) => {
+	const look = { ...defaultLook, age: 50 };
+	const hairy = /[hiHJIK]/v;
+
+	// The grey mask around the head, mirrored to face right, across a cycle.
+	const maskAt = (input: Scene) => {
+		const rows = scene({ look, ...input });
+		const top = rows.findIndex((row) => hairy.test(row));
+		const columns = [...(rows[top] ?? "")].flatMap((key, column) =>
+			hairy.test(key) ? [column] : [],
+		);
+		const center = Math.round(((columns[0] ?? 0) + (columns.at(-1) ?? 0)) / 2);
+		const window = rows.slice(top, top + 5).map((row) =>
+			Array.from({ length: 15 }, (_, index) => {
+				const key = row[center - 7 + index] ?? ".";
+				return "HJIK".includes(key) ? "G" : hairy.test(key) ? "h" : ".";
+			}).join(""),
+		);
+		const eyes = rows
+			.slice(top, top + 9)
+			.map((row) => row.slice(center - 4, center + 5))
+			.find((row) => row.includes("e"));
+		const faceLeft =
+			eyes !== undefined &&
+			[...eyes].filter((key) => key === "e").length === 1 &&
+			eyes.indexOf("e") < 4;
+
+		return (
+			faceLeft ? window.map((row) => [...row].toReversed().join("")) : window
+		).flatMap((row, y) =>
+			[...row].flatMap((key, x) =>
+				key === "." ? [] : [[`${x},${y}`, key] as const],
+			),
+		);
+	};
+
+	for (const input of [
+		{ activity: "idle" as const, mood: "sleepy" as const },
+		{ activity: "eat" as const },
+		{ activity: "run" as const },
+		{ activity: "focus" as const },
+	]) {
+		// A hair pixel that shows in 2 frames is grey in both or in neither;
+		// a prop may cover it in between.
+		const seen = new Map<string, string>();
+		let flips = 0;
+
+		for (let counter = 0; counter < 48; counter++) {
+			for (const [place, key] of maskAt({ ...input, counter })) {
+				if (seen.get(place) === undefined) {
+					seen.set(place, key);
+				} else if (seen.get(place) !== key) {
+					flips++;
+				}
+			}
+		}
+
+		t.is(flips, 0, `${input.activity} keeps its grey`);
+	}
+});
+
+test("draws stubble and glasses in more than a pixel or 2", (t) => {
+	const differences = (look: Partial<Look>, activity: Activity) => {
+		const draw = (extra: Partial<Look>) =>
+			scene({ activity, counter: 2, look: { ...defaultLook, ...extra } });
+		const [a, b] = [draw(look), draw({})];
+
+		return a.reduce(
+			(sum, row, index) =>
+				sum +
+				[...row].filter((key, column) => key !== b[index]?.[column]).length,
+			0,
+		);
+	};
+
+	for (const [activity, minimum] of [
+		["focus", 5],
+		["run", 4],
+	] as const) {
+		t.true(differences({ facialHair: "stubble" }, activity) >= minimum);
+		t.true(differences({ glasses: true }, activity) >= minimum);
+	}
 });

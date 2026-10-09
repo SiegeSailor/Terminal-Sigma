@@ -17,7 +17,7 @@ import {
 	type SceneInput,
 	stageHeight,
 } from "../pixel-art.js";
-import { hairStyles, skinTones } from "../i18n.js";
+import { facialHairs, hairColors, hairStyles, skinTones } from "../i18n.js";
 import { themes } from "../theme.js";
 
 export type Rgb = readonly [number, number, number];
@@ -157,6 +157,19 @@ export const sheets: Record<string, SceneInput[]> = {
 			...base,
 			look: { ...defaultLook, skinTone, hairStyle },
 		})),
+	),
+	// Hair color, glasses, and facial hair, in front (even rows) and profile.
+	appearanceExtras: hairColors.flatMap((hairColor) =>
+		[false, true].flatMap((glasses) =>
+			facialHairs.flatMap((facialHair) =>
+				[0, 24].map((counter) => ({
+					...base,
+					activity: counter === 0 ? ("focus" as const) : ("run" as const),
+					counter,
+					look: { ...defaultLook, hairColor, glasses, facialHair },
+				})),
+			),
+		),
 	),
 	ages: Array.from({ length: 12 }, (_, index) => ({
 		...base,
