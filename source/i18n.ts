@@ -236,7 +236,7 @@ const en = {
 		no: "No",
 		saved: "Appearance saved. Your character changed to match.",
 		needsProfile:
-			"Fill in your body and goal first; your appearance is saved with them.",
+			"Fill in your body and goal first, then choose your appearance.",
 	},
 	profileSections: {
 		body: "Body and goal",
@@ -738,7 +738,7 @@ const traditionalChinese: Messages = {
 		yes: "是",
 		no: "否",
 		saved: "外觀已儲存，角色也跟著改變了。",
-		needsProfile: "請先填寫身體與目標，外觀會和它們一起儲存。",
+		needsProfile: "請先填寫身體與目標，再選擇外觀。",
 	},
 	form: {
 		profileTitle: "個人資料",
@@ -1217,8 +1217,7 @@ const korean: Messages = {
 		yes: "예",
 		no: "아니요",
 		saved: "외모를 저장했습니다. 캐릭터도 바뀌었어요.",
-		needsProfile:
-			"먼저 신체와 목표를 입력하세요. 외모는 그것과 함께 저장됩니다.",
+		needsProfile: "먼저 신체와 목표를 입력한 다음 외모를 고르세요.",
 	},
 	form: {
 		profileTitle: "프로필",

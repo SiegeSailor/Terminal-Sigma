@@ -368,6 +368,7 @@ test("keeps unknown profile fields when saving the profile", async (t) => {
 				gender: "male",
 				workStyle: "desk",
 				goal: "maintain",
+				skinTone: 2,
 				newerField: "kept",
 			},
 		}),
@@ -380,7 +381,11 @@ test("keeps unknown profile fields when saving the profile", async (t) => {
 		...Array.from({ length: 8 }, () => "\r"),
 	]);
 	t.true(actionsIn(file).includes("profileSaved"));
-	t.like(loadProgress(file).profile, { name: "Ken", newerField: "kept" });
+	t.like(loadProgress(file).profile, {
+		name: "Ken",
+		skinTone: 2,
+		newerField: "kept",
+	});
 
 	unmount();
 });
@@ -776,10 +781,14 @@ test("chooses an appearance, previewing it before saving", async (t) => {
 });
 
 test("asks for the body first when there is no profile", async (t) => {
-	const { stdin, lastFrame, unmount } = start();
+	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["5", "\r", down, "\r", "\r", "\r", "\r", "\r", "\r"]);
-	t.true((lastFrame() ?? "").includes("body and goal first"));
+	await type(stdin, ["5", "\r", down, "\r"]);
+	const frame = lastFrame() ?? "";
+	t.true(frame.includes("then choose your appearance"));
+	t.false(frame.includes("Skin tone"), "no appearance form to fill in");
+	t.false(actionsIn(file).includes("appearanceSaved"));
+	t.is(loadProgress(file).profile, undefined);
 
 	unmount();
 });

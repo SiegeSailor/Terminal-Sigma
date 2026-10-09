@@ -790,9 +790,6 @@ export default function App({
 
 	const submitAppearance = (values: Record<string, string>) => {
 		if (!progress.profile) {
-			setDraftAppearance({});
-			setProfileSection("body");
-			say(messages.appearance.needsProfile, "error");
 			return;
 		}
 
@@ -1069,8 +1066,14 @@ export default function App({
 					onSelect={(value) => {
 						if (value === "back") {
 							backToMenu();
+						} else if (value === "appearance" && progress.profile) {
+							setProfileSection("appearance");
 						} else {
-							setProfileSection(value === "appearance" ? "appearance" : "body");
+							if (value === "appearance") {
+								say(messages.appearance.needsProfile, "error");
+							}
+
+							setProfileSection("body");
 						}
 					}}
 				/>
