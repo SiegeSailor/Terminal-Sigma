@@ -3,13 +3,17 @@ import type { Mood } from "../i18n.js";
 import {
 	type Activity,
 	advance,
+	bodyFatOf,
 	composeScene,
 	cycleOf,
 	defaultLook,
+	fatStages,
+	fatStep,
 	gearOf,
 	type Look,
 	lookOf,
 	type Motion,
+	muscleStages,
 	paletteOf,
 	placeOf,
 	stageHeight,
@@ -32,16 +36,18 @@ const activities: Activity[] = [
 const moods: Mood[] = ["sleepy", "content", "happy"];
 const width = 32;
 
+const profileOf = (profile: Partial<Parameters<typeof lookOf>[0]> = {}) => ({
+	age: 30,
+	height: 170,
+	weight: 65,
+	gender: "other" as const,
+	workStyle: "desk" as const,
+	goal: "maintain" as const,
+	...profile,
+});
+
 const lookFor = (profile: Partial<Parameters<typeof lookOf>[0]> = {}) =>
-	lookOf({
-		age: 30,
-		height: 170,
-		weight: 65,
-		gender: "other",
-		workStyle: "desk",
-		goal: "maintain",
-		...profile,
-	});
+	lookOf(profileOf(profile));
 
 const looks: Look[] = [
 	defaultLook,
@@ -209,13 +215,95 @@ test("draws the body from the profile", (t) => {
 test("tells muscle from fat at the same weight by body fat", (t) => {
 	const profile = { gender: "male", height: 178, weight: 82 } as const;
 
-	t.is(lookFor({ ...profile, bodyFat: 10 }).build, "athletic");
-	t.is(lookFor({ ...profile, bodyFat: 30 }).build, "heavy");
-	t.is(lookFor(profile).build, "stocky", "BMI decides without body fat");
+	t.is(lookFor({ ...profile, bodyFat: 10 }).fat, 2);
+	t.is(lookFor({ ...profile, bodyFat: 30 }).fat, 12);
+	t.is(lookFor(profile).fat, 8, "Deurenberg's estimate without body fat");
+	t.is(
+		lookFor({ ...profile, bodyFat: 10 }).muscle,
+		1,
+		"lean and heavy is muscle",
+	);
 	t.notDeepEqual(
 		scene({ look: lookFor({ ...profile, bodyFat: 10 }) }),
 		scene({ look: lookFor({ ...profile, bodyFat: 30 }) }),
 	);
+});
+
+test("draws a different body for every 2 points of body fat", (t) => {
+	t.is(fatStep, 2);
+
+	for (const gender of ["female", "male", "other"] as const) {
+		const frames = Array.from({ length: fatStages + 1 }, (_, fat) => {
+			const look = { ...defaultLook, gender, fat };
+			// The front at rest and the side mid-stride, since a belly shows in profile.
+			return [...scene({ look }), ...scene({ look, counter: 24 })].join("\n");
+		});
+
+		t.is(new Set(frames).size, fatStages + 1, `for ${gender}`);
+	}
+
+	t.is(lookFor({ gender: "male", bodyFat: 6 }).fat, 0);
+	t.is(lookFor({ gender: "male", bodyFat: 8 }).fat, 1);
+	t.is(lookFor({ gender: "male", bodyFat: 60 }).fat, fatStages);
+	t.true(
+		Array.from(
+			{ length: 40 },
+			(_, kilos) => lookFor({ weight: 50 + kilos }).fat,
+		).every((fat, index, all) => index === 0 || fat >= (all[index - 1] ?? 0)),
+		"never leaner for more weight",
+	);
+	// 1.2 × 22.04 + 0.23 × 30 − 0 − 5.4 = 27.95 for a 30-year-old woman, 165 cm and 60 kg.
+	t.true(
+		Math.abs(
+			bodyFatOf(profileOf({ gender: "female", weight: 60, height: 165 })) -
+				27.95,
+		) < 0.05,
+	);
+});
+
+test("grows muscle with strength work, up to a limit", (t) => {
+	t.is(lookFor().muscle, 0);
+	t.is(lookFor({ goal: "buildMuscle" }).muscle, 1);
+	t.is(lookOf(profileOf(), 150).muscle, 1);
+	t.is(lookOf(profileOf(), 100_000).muscle, 2, "logs add at most 2");
+
+	const frames = Array.from({ length: muscleStages + 1 }, (_, muscle) =>
+		scene({ look: { ...defaultLook, muscle } }).join(""),
+	);
+	t.is(new Set(frames).size, muscleStages + 1);
+});
+
+test("stands 1 pixel taller for every 5 cm", (t) => {
+	const heights = [150, 155, 160, 165, 170, 175, 180, 185].map(
+		(height) => lookFor({ height }).height,
+	);
+
+	t.is(new Set(heights).size, heights.length);
+});
+
+test("keeps the widest body within 11 pixels of its center", (t) => {
+	const widest = {
+		...defaultLook,
+		gender: "male" as const,
+		height: 35,
+		fat: fatStages,
+		muscle: muscleStages,
+	};
+
+	for (const counter of [0, 24]) {
+		// At home, the middle of the 32-pixel stage, the body may reach 11 each way.
+		t.true(extentOf(scene({ look: widest, counter })).columns <= 23);
+	}
+
+	// The idle walk rests at its right edge from tick 28 and at its left from 61;
+	// nothing is clipped there, so the body keeps the width it has at home.
+	const home = extentOf(scene({ look: widest })).columns;
+
+	for (const counter of [30, 62]) {
+		const { columns, left } = extentOf(scene({ look: widest, counter }));
+		t.is(columns, home, `at tick ${counter}`);
+		t.true(left >= 0 && left + columns <= width);
+	}
 });
 
 test("dresses up with the level, with nothing on top of the head", (t) => {

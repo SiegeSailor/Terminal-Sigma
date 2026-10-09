@@ -11,6 +11,7 @@ import {
 	composeScene,
 	cycleOf,
 	defaultLook,
+	fatStages,
 	paletteOf,
 	type SceneInput,
 	stageHeight,
@@ -120,6 +121,12 @@ export const sheets: Record<string, SceneInput[]> = {
 			...base,
 			activity,
 			counter: Math.floor((cycleOf(activity, width) * step) / 8),
+		})),
+	),
+	bodies: (["female", "male", "other"] as const).flatMap((gender) =>
+		Array.from({ length: 8 }, (_, step) => ({
+			...base,
+			look: { ...defaultLook, gender, fat: Math.round((fatStages * step) / 7) },
 		})),
 	),
 	levels: Array.from({ length: 10 }, (_, index) => ({

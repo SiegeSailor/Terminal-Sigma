@@ -19,27 +19,27 @@ export type Activity =
 	| "stretch"
 	| "levelUp";
 
-export type Build = "slim" | "athletic" | "average" | "stocky" | "heavy";
 export type Hair = "dark" | "grey" | "white";
 
-// What the profile decides: the height in pixels, the body shape, the
-// clothes for the work style, and the hair for the age.
+// What the profile decides: the height in pixels, how much fat and muscle the
+// body carries as stages, the clothes for the work style, and the hair for
+// the age.
 export type Look = Readonly<{
 	height: number;
-	build: Build;
+	fat: number;
+	muscle: number;
 	gender: Gender;
 	style: WorkStyle;
 	hair: Hair;
-	isMuscular: boolean;
 }>;
 
 export const defaultLook: Look = {
 	height: 29,
-	build: "average",
+	fat: 5,
+	muscle: 0,
 	gender: "other",
 	style: "desk",
 	hair: "dark",
-	isMuscular: false,
 };
 
 type Profile = Readonly<{
@@ -52,49 +52,105 @@ type Profile = Readonly<{
 	goal: HealthGoal;
 }>;
 
-// Body fat that counts as lean, soft, and heavy, by gender.
-const fatBands: Record<Gender, readonly [number, number, number]> = {
-	female: [21, 32, 38],
-	male: [13, 22, 28],
-	other: [17, 27, 33],
+// The leanest body fat drawn, by gender; every 2 points above it is 1 stage.
+const leanFloor: Record<Gender, number> = { female: 14, male: 6, other: 10 };
+export const fatStep = 2;
+
+// Each stage of body fat adds 1 feature, in this order, so every stage draws
+// a different body and the shape fills out evenly. Stage 0 is the leanest.
+const fatFeatures = [
+	"waist",
+	"cheeks",
+	"hips",
+	"belly",
+	"thigh",
+	"waist",
+	"jaw",
+	"hips",
+	"belly",
+	"arm",
+	"waist",
+	"chin",
+	"thigh",
+	"hips",
+	"belly",
+	"calf",
+	"waist",
+	"chest",
+	"thigh",
+	"hips",
+	"belly",
+] as const;
+export const fatStages = fatFeatures.length;
+
+// Muscle fills out the chest, the arms, then the shoulders.
+const muscleFeatures = ["chest", "arm", "shoulder"] as const;
+export const muscleStages = muscleFeatures.length;
+
+// 150 intensity-weighted minutes of strength work in 28 days is 1 stage.
+export const muscleMinutes = 150;
+
+type Feature = (typeof fatFeatures)[number] | (typeof muscleFeatures)[number];
+
+const countOf = (features: readonly Feature[]) => {
+	const counts: Record<Feature, number> = {
+		arm: 0,
+		belly: 0,
+		calf: 0,
+		cheeks: 0,
+		chest: 0,
+		chin: 0,
+		hips: 0,
+		jaw: 0,
+		shoulder: 0,
+		thigh: 0,
+		waist: 0,
+	};
+
+	for (const feature of features) {
+		counts[feature] += 1;
+	}
+
+	return counts;
 };
 
-// Body fat tells muscle from fat at the same weight; without it, BMI decides.
-function buildOf(profile: Profile): Build {
-	const bmi = profile.weight / (profile.height / 100) ** 2;
+const clamp = (value: number, minimum: number, maximum: number) =>
+	Math.min(Math.max(value, minimum), maximum);
 
-	if (profile.bodyFat === undefined) {
-		if (bmi < 19.5) {
-			return "slim";
-		}
+const bmiOf = (profile: Profile) =>
+	profile.weight / (profile.height / 100) ** 2;
 
-		if (bmi >= 30) {
-			return "heavy";
-		}
+const sexOf: Record<Gender, number> = { female: 0, male: 1, other: 0.5 };
 
-		return bmi >= 25 ? "stocky" : "average";
-	}
+// Body fat as given, or else Deurenberg's estimate from BMI and age:
+// 1.2 × BMI + 0.23 × age − 10.8 × sex − 5.4 (Br J Nutr 1991;65:105-114).
+export const bodyFatOf = (profile: Profile) =>
+	profile.bodyFat ??
+	1.2 * bmiOf(profile) +
+		0.23 * profile.age -
+		10.8 * sexOf[profile.gender] -
+		5.4;
 
-	const [lean, soft, heavy] = fatBands[profile.gender];
-
-	if (profile.bodyFat < lean) {
-		return bmi >= 23 ? "athletic" : "slim";
-	}
-
-	if (profile.bodyFat >= heavy) {
-		return "heavy";
-	}
-
-	return profile.bodyFat >= soft ? "stocky" : "average";
-}
-
-// 145 cm draws 26 pixels tall and 205 cm 34.
-export function lookOf(profile: Profile | undefined): Look {
+// 145 cm draws 26 pixels tall, and every 5 cm adds 1, from 22 to 35.
+export function lookOf(profile: Profile | undefined, strengthLoad = 0): Look {
 	if (!profile) {
 		return defaultLook;
 	}
 
-	const build = buildOf(profile);
+	const fat = clamp(
+		Math.round((bodyFatOf(profile) - leanFloor[profile.gender]) / fatStep),
+		0,
+		fatStages,
+	);
+	const muscle = clamp(
+		(profile.goal === "buildMuscle" ? 1 : 0) +
+			(profile.workStyle === "athlete" ? 1 : 0) +
+			// Lean yet heavy for the height means muscle.
+			(fat <= 3 && bmiOf(profile) >= 23 ? 1 : 0) +
+			Math.min(Math.floor(strengthLoad / muscleMinutes), 2),
+		0,
+		muscleStages,
+	);
 	let hair: Hair = "dark";
 
 	if (profile.age >= 70) {
@@ -104,15 +160,12 @@ export function lookOf(profile: Profile | undefined): Look {
 	}
 
 	return {
-		height: Math.min(
-			Math.max(Math.round(26 + (profile.height - 145) / 7.5), 24),
-			35,
-		),
-		build,
+		height: clamp(Math.round(26 + (profile.height - 145) / 5), 22, 35),
+		fat,
+		muscle,
 		gender: profile.gender,
 		style: profile.workStyle,
 		hair,
-		isMuscular: build === "athletic" || profile.goal === "buildMuscle",
 	};
 }
 
@@ -146,6 +199,12 @@ type Body = Readonly<{
 	ankle: number;
 	arm: number;
 	reach: number;
+	side: number;
+	belly: number;
+	cheeks: boolean;
+	jaw: number;
+	doubleChin: boolean;
+	shoulderCap: number;
 }>;
 
 // The feet stand on row 2, in the middle of their shadow.
@@ -158,55 +217,18 @@ const frames: Record<Gender, readonly [number, number, number]> = {
 };
 
 // A 7-row head and a neck take 8 of the height; legs take 55% of the rest.
-function bodyOf(look: Look): Body {
+// A big meal in the last hour shows for that hour.
+function bodyOf(look: Look, isFull = false): Body {
 	const span = look.height - 8;
 	const legs = Math.round(span * 0.55);
 	const torso = span - legs;
-	let [chest, waist, hips] = frames[look.gender];
-
-	switch (look.build) {
-		case "slim": {
-			chest -= look.gender === "male" ? 1 : 0;
-			waist = Math.max(waist - 1, 2);
-			hips = Math.max(hips - 1, 3);
-			break;
-		}
-
-		case "athletic": {
-			chest += 1;
-			break;
-		}
-
-		case "stocky": {
-			waist += 1;
-			hips += 1;
-			break;
-		}
-
-		case "heavy": {
-			chest += 1;
-			waist += 3;
-			hips += 2;
-			break;
-		}
-
-		case "average": {
-			break;
-		}
-	}
-
-	if (look.isMuscular && look.build !== "athletic") {
-		chest += 1;
-	}
-
-	let thigh = Math.max(hips - 1, 3);
-
-	if (look.build === "heavy") {
-		thigh = hips;
-	} else if (look.build === "slim") {
-		thigh = Math.max(hips - 1, 2);
-	}
-
+	const [frameChest, frameWaist, frameHips] = frames[look.gender];
+	const fat = countOf(fatFeatures.slice(0, look.fat));
+	const strong = countOf(muscleFeatures.slice(0, look.muscle));
+	const full = isFull ? 1 : 0;
+	const chest = frameChest + fat.chest + strong.chest;
+	const waist = Math.max(frameWaist - 1, 2) + fat.waist + full;
+	const thigh = Math.max(frameHips - 2, 2) + fat.thigh;
 	const hip = ground + legs;
 	const shoulder = hip + torso - 1;
 	const chin = shoulder + 2;
@@ -221,12 +243,19 @@ function bodyOf(look: Look): Body {
 		shin: ground + Math.floor(legs / 4),
 		chest,
 		waist,
-		hips,
+		hips: Math.max(frameHips - 1, 3) + fat.hips,
 		thigh,
-		calf: Math.max(thigh - 1, 2),
+		calf: Math.max(thigh - 1, 2) + fat.calf,
 		ankle: Math.max(thigh - 2, 2),
-		arm: look.isMuscular || look.build === "heavy" ? 3 : 2,
+		arm: Math.min(2 + fat.arm + strong.arm, 4),
 		reach: torso + 3,
+		// The hands hang just outside the wider of the chest and the waist.
+		side: Math.max(chest, waist) + 1,
+		belly: fat.belly + full,
+		cheeks: fat.cheeks > 0,
+		jaw: 2 + fat.jaw,
+		doubleChin: fat.chin > 0,
+		shoulderCap: strong.shoulder,
 	};
 }
 
@@ -285,16 +314,16 @@ const pointsOf = ([x0, y0]: Point, [x1, y1]: Point): Point[] => {
 
 // Where a hand rests with the arm hanging, nudged by `swing`.
 const hanging = (b: Body, side: number, swing = 0): Point => [
-	side * (b.chest + 1),
+	side * b.side,
 	b.shoulder - b.reach + 1 + swing,
 ];
 
 const breathing = (t: number, every = 6) => Math.floor(t / every) % 2;
 
-// The stage edges the character walks between.
+// The stage edges the character walks between, wide enough for the widest body.
 const marginOf = (width: number) => {
-	const minimum = 9;
-	return { minimum, maximum: Math.max(width - 10, minimum + 1) };
+	const minimum = 11;
+	return { minimum, maximum: Math.max(width - 12, minimum + 1) };
 };
 
 export const homeOf = (width: number) => Math.floor(width / 2);
@@ -649,7 +678,7 @@ function sceneOf(
 			// A coffee, sipped every few seconds.
 			const isSipping = at >= 28;
 			const hand = (b: Body): Point =>
-				isSipping ? [2, b.chin] : [b.chest + 2, b.hip + 2];
+				isSipping ? [2, b.chin] : [b.side + 1, b.hip + 2];
 
 			return still(
 				(b) => ({
@@ -673,7 +702,7 @@ function sceneOf(
 			const isRaised = at >= 12 && at < 24;
 			const isChewing = at >= 16 && at < 24;
 			const hand = (b: Body): Point =>
-				isRaised ? [2, b.chin - 1] : [b.chest + 2, b.hip + 3];
+				isRaised ? [2, b.chin - 1] : [b.side + 1, b.hip + 3];
 
 			return still(
 				(b) => ({
@@ -745,7 +774,7 @@ function sceneOf(
 						[1, b.top + 3],
 						[1, b.top + 4],
 						[b.chest + 8, b.shoulder + 1],
-						[b.chest + 1, b.shoulder - b.reach + 1 + (at % 2)],
+						[b.side, b.shoulder - b.reach + 1 + (at % 2)],
 					];
 					const [x, y] = reaches[phase] ?? [1, b.top + 3];
 					return {
@@ -1022,10 +1051,10 @@ function paintLegsFront({ put, b, look }: Paint, pose: Front) {
 		}
 	}
 
-	// The thighs meet at the crotch, and all the way down on a heavy build.
+	// The thighs meet at the crotch, and all the way down from stage 14.
 	let crotch = b.hip - 2;
 
-	if (look.build === "heavy") {
+	if (look.fat >= 14) {
 		crotch = look.style === "athlete" ? shorts : b.knee;
 	}
 
@@ -1055,10 +1084,16 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 
 	// The shoulder line runs out over the tops of the arms.
 	const shoulderKey = look.style === "athlete" ? "s" : top.main;
-	span(upper, -(b.chest + 1), b.chest + 1, b.shoulder, shoulderKey);
+	span(
+		upper,
+		-(b.chest + 1 + b.shoulderCap),
+		b.chest + 1 + b.shoulderCap,
+		b.shoulder,
+		shoulderKey,
+	);
 	span(upper, -(b.chest - 2), b.chest - 2, b.shoulder, top.main);
 
-	if (look.build === "heavy") {
+	if (b.belly >= 3) {
 		// The belly's curve.
 		span(upper, -(b.waist - 1), b.waist - 1, b.hip + 1, top.shade);
 	}
@@ -1119,11 +1154,11 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 		}
 
 		case "athlete": {
-			// A racerback tank with a stripe; abs show on a lean build.
+			// A racerback tank with a stripe; abs show on a lean, muscular body.
 			span(upper, -1, 1, b.shoulder, "s");
 			span(upper, -b.chest, b.chest, b.shoulder - 3, top.shade);
 
-			if (look.build === "athletic") {
+			if (look.fat <= 3 && look.muscle >= 2) {
 				for (let y = b.hip + 2; y < b.shoulder - 4; y += 2) {
 					upper(-1, y, top.shade);
 					upper(1, y, top.shade);
@@ -1239,10 +1274,9 @@ function paintHeadFront({ upper, b, look, gear }: Paint, pose: Front) {
 		upper(x, y - nod, key);
 	};
 
-	const { chin } = b;
+	const { chin, jaw } = b;
 	const [hair, light] = hairOf[look.hair];
 	const turn = pose.turn ?? 0;
-	const jaw = look.build === "heavy" ? 3 : 2;
 
 	span(head, -jaw, jaw, chin, "s");
 	head(-jaw, chin, "q");
@@ -1254,6 +1288,16 @@ function paintHeadFront({ upper, b, look, gear }: Paint, pose: Front) {
 
 	head(3, chin + 1, "q");
 	head(3, chin + 2, "q");
+
+	if (b.cheeks) {
+		head(-4, chin + 1, "s");
+		head(4, chin + 1, "q");
+	}
+
+	if (b.doubleChin) {
+		span(head, -2, 2, chin - 1, "q");
+	}
+
 	span(head, -3, 3, chin + 5, hair);
 	span(head, -2, 1, chin + 5, light);
 	span(head, -2, 2, chin + 6, hair);
@@ -1484,10 +1528,8 @@ function paintSide(paint: Paint, pose: Side) {
 		let forward = front;
 		let behind = back;
 
-		if (!isChest && look.build === "heavy") {
-			forward += 2;
-		} else if (!isChest && look.build === "stocky") {
-			forward += 1;
+		if (!isChest) {
+			forward += b.belly;
 		}
 
 		if (y - b.hip < 2 && look.gender === "female") {
