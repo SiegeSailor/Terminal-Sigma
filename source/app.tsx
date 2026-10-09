@@ -138,7 +138,11 @@ type AppProps = Readonly<{
 
 type View = "menu" | MenuKey;
 type QuoteEditor = "interval" | "categories" | "excluded" | "author" | "work";
-type Flash = Readonly<{ activity: Activity; until: number }>;
+type Flash = Readonly<{
+	activity: Activity;
+	until: number;
+	experience: number;
+}>;
 
 const flashMilliseconds = 6000;
 const recentCount = 4;
@@ -367,8 +371,10 @@ export default function App({
 			activity: Activity,
 		) => {
 			let next = update(progress);
-			const after = levelOf(experienceOf(next));
-			const leveledUp = after > levelOf(experienceOf(progress));
+			const before = experienceOf(progress);
+			const gained = experienceOf(next) - before;
+			const after = levelOf(before + gained);
+			const leveledUp = after > levelOf(before);
 
 			if (leveledUp) {
 				next = withEvent(next, "levelUp", String(after));
@@ -385,6 +391,7 @@ export default function App({
 				setFlash({
 					activity: leveledUp ? "levelUp" : activity,
 					until: Date.now() + flashMilliseconds,
+					experience: gained,
 				});
 			}
 
@@ -997,6 +1004,10 @@ export default function App({
 		activityLabel = `${messages.activity.levelUp} ${messages.level(level)}`;
 	}
 
+	if (flash && flash.until > now && flash.experience > 0) {
+		activityLabel = `${activityLabel} ${messages.gained(flash.experience)}`;
+	}
+
 	let timerSignal = isRunning ? clock : messages.signal.paused;
 
 	if (isIdle) {
@@ -1328,6 +1339,7 @@ export default function App({
 	const todayPanel = (
 		<TodayPanel
 			isCompact={layout.isTodayCompact}
+			isReduced={isReducedMotion(env)}
 			sections={sectionsOf(language, palette, progress, now, experience)}
 			title={messages.today.title}
 			width={layout.todayWidth}

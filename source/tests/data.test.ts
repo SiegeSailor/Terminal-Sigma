@@ -11,6 +11,7 @@ import {
 } from "../content.js";
 import { commonFoodCount, foodSuggestions } from "../foods.js";
 import { type Language, messagesOf } from "../i18n.js";
+import { easeOutCubic, tweenOf } from "../motion.js";
 import {
 	type EntryOf,
 	type Logged,
@@ -318,4 +319,14 @@ test("plays an animation for every kind of log", (t) => {
 	for (const kind of ["mood", "habit", "note"] as const) {
 		t.is(activityOfKind(kind), "write");
 	}
+});
+
+test("eases out toward the target and lands on it", (t) => {
+	t.is(easeOutCubic(0), 0);
+	t.is(easeOutCubic(1), 1);
+	t.is(easeOutCubic(2), 1);
+	t.true(easeOutCubic(0.5) > 0.5, "fast first, then slow");
+	t.is(tweenOf(10, 20, 0, 500), 10);
+	t.is(tweenOf(10, 20, 500, 500), 20);
+	t.is(tweenOf(10, 20, 100, 0), 20);
 });

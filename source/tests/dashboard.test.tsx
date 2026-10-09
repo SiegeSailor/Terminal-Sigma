@@ -798,3 +798,14 @@ test("shows the streak beside the character's name", async (t) => {
 
 	unmount();
 });
+
+test("says what a log earned on the character's label", async (t) => {
+	const { stdin, lastFrame, unmount } = start();
+
+	// Log, then 1 glass of water. Recent shows "+1 XP" too, so look for the
+	// label itself.
+	await type(stdin, ["1", "\r", "w", "\r"]);
+	t.true(await shows(lastFrame, "Drinking water… +1 XP"));
+
+	unmount();
+});

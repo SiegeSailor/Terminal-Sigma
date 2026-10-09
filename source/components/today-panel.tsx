@@ -1,5 +1,6 @@
 import React from "react";
-import { Box, Text } from "ink";
+import { Box, Text, useAnimation } from "ink";
+import { glideMilliseconds, tweenOf } from "../motion.js";
 import { usePalette } from "../theme.js";
 
 export type Metric = Readonly<{
@@ -20,17 +21,49 @@ type TodayPanelProps = Readonly<{
 	sections: readonly Section[];
 	width: number;
 	isCompact?: boolean;
+	isReduced?: boolean;
 }>;
 
 const percentOf = (metric: Metric) =>
 	Math.min(Math.max(Math.round(metric.value), 0), 100);
 
+// Glides from the shown value to a new one; useAnimation's clock keeps the
+// render pure, which xo's react-hooks/purity requires.
+function useGlide(value: number, isReduced: boolean) {
+	const [span, setSpan] = React.useState({ from: value, to: value });
+	const isMoving = !isReduced && span.from !== span.to;
+	const { time, reset } = useAnimation({ interval: 40, isActive: isMoving });
+	const shown = isMoving
+		? tweenOf(span.from, span.to, time, glideMilliseconds)
+		: span.to;
+
+	React.useEffect(() => {
+		if (value !== span.to) {
+			setSpan({ from: shown, to: value });
+			reset();
+		}
+	}, [value, span.to, shown, reset]);
+
+	React.useEffect(() => {
+		if (isMoving && time >= glideMilliseconds) {
+			setSpan({ from: span.to, to: span.to });
+		}
+	}, [isMoving, time, span.to]);
+
+	return isReduced ? value : shown;
+}
+
 // A half-height bar: "▀" fills only the top of its row, so the bottom half
 // spaces the items apart without a whole blank row. Text centers in its row,
 // so the percentage sits on the label's row instead of beside the bar.
-function Bar({ metric, width }: Readonly<{ metric: Metric; width: number }>) {
+function Bar({
+	metric,
+	width,
+	isReduced,
+}: Readonly<{ metric: Metric; width: number; isReduced: boolean }>) {
 	const palette = usePalette();
-	const filled = Math.round((percentOf(metric) / 100) * width);
+	const percent = useGlide(percentOf(metric), isReduced);
+	const filled = Math.round((percent / 100) * width);
 
 	return (
 		<Text>
@@ -47,6 +80,7 @@ export default function TodayPanel({
 	sections,
 	width,
 	isCompact = false,
+	isReduced = false,
 }: TodayPanelProps) {
 	const palette = usePalette();
 	const gap = isCompact ? 0 : 1;
@@ -90,7 +124,7 @@ export default function TodayPanel({
 									<Text>{`${percentOf(metric)}%`}</Text>
 								</Box>
 							</Box>
-							<Bar metric={metric} width={barWidth} />
+							<Bar isReduced={isReduced} metric={metric} width={barWidth} />
 						</Box>
 					))}
 					{section.advice ? (
