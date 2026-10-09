@@ -316,6 +316,10 @@ export type Asker = (request: AskRequest) => Promise<AskReply>;
 // 1 request, traced as 1 trace, tried on each account until 1 answers. Never
 // rejects: a failure to load or trace is every account failing.
 export const aiAsker: Asker = async (request) => {
+	if (request.accounts.length === 0) {
+		return { ok: false, attempts: [] };
+	}
+
 	try {
 		const [{ generateText, Output }, tracer] = await Promise.all([
 			import("ai"),
@@ -356,7 +360,8 @@ export const aiAsker: Asker = async (request) => {
 								// Answered, but not in the shape asked: no cooldown, no fallback.
 								if (
 									error instanceof Error &&
-									error.name === "AI_NoObjectGeneratedError"
+									(error.name === "AI_NoObjectGeneratedError" ||
+										error.name === "AI_NoOutputGeneratedError")
 								) {
 									return undefined;
 								}

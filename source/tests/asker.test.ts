@@ -361,9 +361,25 @@ test("builds each provider's model without calling it", async (t) => {
 });
 
 /* eslint-disable @typescript-eslint/naming-convention -- the wire format */
-// An OpenAI-compatible server on this machine that always answers `content`.
-const serve = async (content: string, status = 200) => {
+// An OpenAI-compatible server on this machine that answers `content`, or
+// never answers when `hang`. Every account it makes is local, with its own id.
+let serial = 0;
+const serve = async ({
+	content = "",
+	status = 200,
+	finish = "stop",
+	hang = false,
+}: Readonly<{
+	content?: string;
+	status?: number;
+	finish?: string;
+	hang?: boolean;
+}> = {}) => {
 	const server = createServer((_request, response) => {
+		if (hang) {
+			return;
+		}
+
 		response.writeHead(status, { "content-type": "application/json" });
 		response.end(
 			JSON.stringify({
@@ -375,7 +391,7 @@ const serve = async (content: string, status = 200) => {
 					{
 						index: 0,
 						message: { role: "assistant", content },
-						finish_reason: "stop",
+						finish_reason: finish,
 					},
 				],
 				usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
@@ -387,57 +403,129 @@ const serve = async (content: string, status = 200) => {
 	});
 	const address = server.address();
 	const port = typeof address === "object" && address ? address.port : 0;
+	const local = (): Account => {
+		serial += 1;
+		return {
+			...account(`local-${serial}`, "compatible"),
+			baseUrl: `http://127.0.0.1:${port}/v1`,
+		};
+	};
 
 	return {
-		close: () => server.close(),
-		account: {
-			...account("local", "compatible"),
-			baseUrl: `http://127.0.0.1:${port}/v1`,
+		close() {
+			server.closeAllConnections();
+			server.close();
 		},
+		local,
 	};
 };
 
 /* eslint-enable @typescript-eslint/naming-convention */
 
-const ask = async (accounts: Account[], schema?: zod.ZodType) =>
+const ask = async (
+	accounts: Account[],
+	extra: Partial<Parameters<typeof aiAsker>[0]> = {},
+) =>
 	aiAsker({
 		accounts,
 		kind: "chat",
 		instructions: "Be brief.",
 		turns: [{ role: "user", content: "hi" }],
 		sessionId: "s",
-		schema,
 		env: {},
+		...extra,
 	});
 
+const shape = zod.object({ a: zod.number() });
+
 test("asks a server, and reads an object that fits the schema", async (t) => {
-	const server = await serve('{"a":1}');
+	const server = await serve({ content: '{"a":1}' });
 	t.teardown(server.close);
 
-	t.like(await ask([server.account]), { ok: true, result: '{"a":1}' });
-	t.like(await ask([server.account], zod.object({ a: zod.number() })), {
+	t.like(await ask([server.local()]), { ok: true, result: '{"a":1}' });
+	t.like(await ask([server.local()], { schema: shape }), {
 		ok: true,
 		result: { a: 1 },
 	});
 });
 
 test("an unreadable object is answered, not failed over", async (t) => {
-	const server = await serve("not json");
+	const bad = await serve({ content: "not json" });
+	const wrong = await serve({ content: '{"a":"x"}' });
+	t.teardown(bad.close);
+	t.teardown(wrong.close);
+
+	for (const server of [bad, wrong]) {
+		// eslint-disable-next-line no-await-in-loop -- 1 server at a time.
+		const reply = await ask([server.local(), server.local()], {
+			schema: shape,
+		});
+
+		t.like(reply, { ok: true, result: undefined });
+		t.is(reply.attempts.length, 1);
+	}
+});
+
+test("an empty reply cut short is unreadable, not unreachable", async (t) => {
+	const server = await serve({ finish: "length" });
 	t.teardown(server.close);
-	const reply = await ask(
-		[server.account, account("next")],
-		zod.object({ a: zod.number() }),
-	);
+	const [first, second] = [server.local(), server.local()];
+	const reply = await ask([first, second], { schema: shape });
 
 	t.like(reply, { ok: true, result: undefined });
 	t.is(reply.attempts.length, 1);
+	t.is(reply.attempts[0]?.failure, undefined);
+
+	// No cooldown: the same account is still first in line.
+	t.like(await ask([first, second], { schema: shape }), {
+		ok: true,
+		account: { id: first.id },
+	});
 });
 
 test("never rejects when a request fails", async (t) => {
-	const server = await serve("x", 500);
+	const server = await serve({ status: 500 });
 	t.teardown(server.close);
-	const reply = await ask([{ ...server.account, id: "down" }]);
+	const reply = await ask([server.local()]);
 
 	t.false(reply.ok);
 	t.is(reply.attempts.length, 1);
+});
+
+test("asks no one without an account", async (t) => {
+	t.deepEqual(await ask([]), { ok: false, attempts: [] });
+});
+
+test("never rejects when a callback throws", async (t) => {
+	const server = await serve({ content: "x" });
+	t.teardown(server.close);
+	const reply = await ask([server.local()], {
+		onAttempt() {
+			throw new Error("boom");
+		},
+	});
+
+	t.false(reply.ok);
+	t.is(reply.attempts[0]?.failure?.kind, "network");
+});
+
+test("an abort mid-request stops before the next account", async (t) => {
+	const server = await serve({ hang: true });
+	t.teardown(server.close);
+	const controller = new AbortController();
+	const tried: string[] = [];
+	const pending = ask([server.local(), server.local()], {
+		signal: controller.signal,
+		onAttempt(account) {
+			tried.push(account.id);
+			setTimeout(() => {
+				controller.abort();
+			}, 50);
+		},
+	});
+	const reply = await pending;
+
+	t.false(reply.ok);
+	t.is(tried.length, 1);
+	t.is(reply.attempts.at(-1)?.failure?.kind, "aborted");
 });
