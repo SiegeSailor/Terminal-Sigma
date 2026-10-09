@@ -902,24 +902,75 @@ test("suggests the workout today's plan names, until one is logged", (t) => {
 	);
 });
 
-test("puts an estimate into the line as totals for every serving", (t) => {
-	const line = "2 mystery stew, toast";
-	const result = parseQuickLog(line, { progress: empty, now, language: "en" });
-	const [stew] = result.ok ? result.drafts : [];
-	const estimate = { calories: 300, protein: 10, carbs: 30, fat: 12 };
+const estimated = (line: string) => {
+	const context = { progress: empty, now, language: "en" } as const;
+	const result = parseQuickLog(line, context);
+	const stew = result.ok
+		? result.drafts.find((draft) => draft.kind === "meal" && !draft.isKnown)
+		: undefined;
 
+	return stew?.kind === "meal"
+		? withEstimate(
+				line,
+				stew,
+				{ calories: 300, protein: 10, carbs: 30, fat: 12 },
+				context,
+			)
+		: undefined;
+};
+
+test("puts an estimate into the line as totals for every serving", (t) => {
 	t.is(
-		stew?.kind === "meal" ? withEstimate(line, stew, estimate) : "",
+		estimated("2 mystery stew, toast"),
 		"2 mystery stew 600kcal 20p 60c 24f, toast",
 	);
+	t.is(estimated("zorb x2, zorb"), "2 zorb 600kcal 20p 60c 24f, zorb");
+	t.is(estimated("2 mystery  stew"), "2 mystery stew 600kcal 20p 60c 24f");
+});
 
-	const spaced = "2 mystery  stew";
-	const loose = parseQuickLog(spaced, { progress: empty, now, language: "en" });
-	const [draft] = loose.ok ? loose.drafts : [];
+test("writes an estimate the parser reads back, even after a Chinese name", (t) => {
+	const line = estimated("媽媽的湯2碗");
+	const result = line
+		? parseQuickLog(line, { progress: empty, now, language: "en" })
+		: undefined;
 
-	t.is(
-		draft?.kind === "meal" ? withEstimate(spaced, draft, estimate) : "x",
-		undefined,
-		"a food the line does not spell the same way is not estimated",
-	);
+	t.like(result?.ok ? result.drafts[0] : undefined, {
+		calories: 600,
+		fat: 24,
+	});
+});
+
+test("the planned workout suggestion parses back with its minutes and intensity", (t) => {
+	const nine = Date.parse(local(9));
+	const progress = progressSchema.parse({
+		language: "en",
+		plans: [
+			{
+				at: local(8, 0, 1),
+				title: "Base building",
+				days: [
+					{
+						weekday: new Date(nine).getDay(),
+						activity: "running",
+						minutes: 30,
+						intensity: "light",
+					},
+				],
+			},
+		],
+	});
+	const line = suggestionsOf(progress, nine).find(
+		({ label }) => label === "on today's plan",
+	)?.line;
+	const result = parseQuickLog(line ?? "", {
+		progress,
+		now: nine,
+		language: "en",
+	});
+
+	t.like(result.ok ? result.drafts[0] : undefined, {
+		kind: "workout",
+		minutes: 30,
+		intensity: "light",
+	});
 });

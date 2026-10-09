@@ -318,6 +318,11 @@ export default function App({
 	// A line the Log view starts from, with a counter that remounts it.
 	const [draftLine, setDraftLine] =
 		React.useState<Readonly<{ line: string; count: number }>>();
+	// The text the Log view shows now, to tell whether an estimate is stale.
+	const typed = React.useRef("");
+	const reportTyped = React.useCallback((text: string) => {
+		typed.current = text;
+	}, []);
 	// The log being edited in the Log view, and what History deleted, newest
 	// last, for its undo.
 	const [editing, setEditing] = React.useState<Log>();
@@ -1141,32 +1146,53 @@ export default function App({
 					setAsking(account.label);
 				}
 			},
-		}).then((reply) => {
-			if (aborter.signal.aborted) {
-				return;
-			}
+		}).then(
+			(reply) => {
+				if (aborter.signal.aborted) {
+					return;
+				}
 
-			setAsking(undefined);
-			const words = messagesOf(latest.current.language ?? "en");
-			const estimate = reply.ok
-				? estimateSchema.safeParse(reply.result)
-				: undefined;
-			const filled =
-				reply.ok && estimate?.success
-					? withEstimate(line, draft, estimate.data)
+				setAsking(undefined);
+				const words = messagesOf(latest.current.language ?? "en");
+				const estimate = reply.ok
+					? estimateSchema.safeParse(reply.result)
 					: undefined;
+				if (typed.current !== line) {
+					say(words.log.estimateStale, "error");
+					return;
+				}
 
-			if (!reply.ok || filled === undefined) {
-				say(words.log.estimateFailed, "error");
-				return;
-			}
+				const filled =
+					reply.ok && estimate?.success
+						? withEstimate(line, draft, estimate.data, {
+								progress: latest.current,
+								now: Date.parse(draft.at),
+								language: latest.current.language ?? "en",
+							})
+						: undefined;
 
-			setDraftLine((current) => ({
-				line: filled,
-				count: (current?.count ?? 0) + 1,
-			}));
-			say(words.log.estimated(reply.account.label), "success");
-		});
+				if (!reply.ok || filled === undefined) {
+					say(words.log.estimateFailed, "error");
+					return;
+				}
+
+				setDraftLine((current) => ({
+					line: filled,
+					count: (current?.count ?? 0) + 1,
+				}));
+				say(words.log.estimated(reply.account.label), "success");
+			},
+			() => {
+				// The asker never rejects, but a rejection must not leave the spinner on.
+				if (!aborter.signal.aborted) {
+					setAsking(undefined);
+					say(
+						messagesOf(latest.current.language ?? "en").log.estimateFailed,
+						"error",
+					);
+				}
+			},
+		);
 	};
 
 	const savePlan = () => {
@@ -1829,6 +1855,7 @@ export default function App({
 				progress={progress}
 				onEstimate={editing ? undefined : estimateFood}
 				onLog={editing ? replaceLog : logLine}
+				onTextChange={reportTyped}
 				onUndo={undoLine}
 			/>
 		),

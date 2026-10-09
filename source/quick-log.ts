@@ -232,7 +232,7 @@ const grams = (value: number) => Math.round(value * 10) / 10;
 // 1 item of a meal: "2 eggs", "雞蛋2顆", "ramen 500kcal", or "450kcal 30p".
 // Typed amounts are totals and win outright; otherwise a known food gives its
 // serving × the quantity, and an unknown one logs with no amounts at all.
-function mealOf(
+export function mealOf(
 	item: string,
 	at: number,
 	{ progress, language }: ParseContext,
@@ -1351,10 +1351,10 @@ export function completionOf(
 	};
 }
 
-// The prefix of a line picks its parser; a line without 1 is a meal.
-// The line with an estimate for 1 serving of a food it named, written as
-// totals for every serving, so Enter logs it as typed amounts. Undefined when
-// the line does not spell the food the way the parser read it (double spaces).
+// The line with an estimate for 1 serving of the unknown food the parser read,
+// rewritten as that item's totals for every serving, so Enter logs it as typed
+// amounts. Undefined unless parsing the new line gives back that food with
+// exactly those amounts.
 export function withEstimate(
 	line: string,
 	draft: MealDraft,
@@ -1364,22 +1364,75 @@ export function withEstimate(
 		carbs: number;
 		fat: number;
 	}>,
+	context: ParseContext,
 ): string | undefined {
-	const text = line.normalize("NFKC");
-	const at = text.lastIndexOf(draft.food);
-	const total = (value: number) => plain(value * draft.servings);
+	const parts = line.normalize("NFKC").split(/([,+、])/v);
+	const at = Date.parse(draft.at);
+	const index = parts.findIndex(
+		(part, position) =>
+			position % 2 === 0 &&
+			part.trim() !== "" &&
+			(() => {
+				const meal = mealOf(part.trim(), at, context);
+				return (
+					meal &&
+					!meal.isKnown &&
+					keyOf(meal.food) === keyOf(draft.food) &&
+					meal.servings === draft.servings
+				);
+			})(),
+	);
 
-	if (at === -1) {
+	if (index === -1) {
 		return undefined;
 	}
 
-	return [
-		text.slice(0, at),
-		`${draft.food} ${Math.round(estimate.calories * draft.servings)}kcal ${total(estimate.protein)}p ${total(estimate.carbs)}c ${total(estimate.fat)}f`,
-		text.slice(at + draft.food.length),
+	const total = (value: number) => Number(plain(value * draft.servings));
+	const amounts = {
+		calories: Math.round(estimate.calories * draft.servings),
+		protein: total(estimate.protein),
+		carbs: total(estimate.carbs),
+		fat: total(estimate.fat),
+	};
+	const written = lineOf(
+		{
+			kind: "meal",
+			at: draft.at,
+			index: 0,
+			entry: {
+				at: draft.at,
+				food: draft.food,
+				servings: draft.servings,
+				...amounts,
+			},
+		},
+		context.language,
+	);
+	const lead = /^\s*/v.exec(parts[index] ?? "")?.[0] ?? "";
+	const trail = /\s*$/v.exec(parts[index] ?? "")?.[0] ?? "";
+	const next = [
+		...parts.slice(0, index),
+		`${lead}${written}${trail}`,
+		...parts.slice(index + 1),
 	].join("");
+	const position = parts
+		.slice(0, index + 1)
+		.filter((part, spot) => spot % 2 === 0 && part.trim() !== "").length;
+	const check = parseQuickLog(next, context);
+	const back = check.ok ? check.drafts[position - 1] : undefined;
+
+	return back?.kind === "meal" &&
+		back.isKnown &&
+		keyOf(back.food) === keyOf(draft.food) &&
+		back.calories === amounts.calories &&
+		back.protein === amounts.protein &&
+		back.carbs === amounts.carbs &&
+		back.fat === amounts.fat
+		? next
+		: undefined;
 }
 
+// The prefix of a line picks its parser; a line without 1 is a meal.
 const parsers: Partial<Record<string, Parser>> = {
 	w: water,
 	water,

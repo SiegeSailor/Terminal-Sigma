@@ -1116,3 +1116,81 @@ test("estimates an unknown food with the Coach, and logs it on Enter", async (t)
 
 	unmount();
 });
+
+// A reply the test releases by hand, to hold an estimate in flight.
+const held = () => {
+	const requests: AskRequest[] = [];
+	const releases: Array<() => void> = [];
+	const asker: Asker = async (request) => {
+		requests.push(request);
+		await new Promise<void>((resolve) => {
+			releases.push(resolve);
+		});
+		return request.accounts[0]
+			? {
+					ok: true,
+					result: { calories: 450, protein: 20, carbs: 50, fat: 15 },
+					account: request.accounts[0],
+					attempts: [{ account: request.accounts[0] }],
+				}
+			: { ok: false, attempts: [] };
+	};
+
+	return { asker, requests, releases };
+};
+
+test("drops an estimate that arrives after the line changed", async (t) => {
+	const { asker, releases } = held();
+	const { stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asker,
+	);
+	t.teardown(unmount);
+
+	await type(stdin, ["1", "\r", "mystery stew", "\t", "s"]);
+	releases[0]?.();
+	await settle();
+	const frame = lastFrame() ?? "";
+
+	t.true(frame.includes("mystery stews"));
+	t.false(frame.includes("450kcal"));
+});
+
+test("a second Tab aborts the first estimate, and Esc aborts the second", async (t) => {
+	const { asker, requests } = held();
+	const { stdin, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asker,
+	);
+	t.teardown(unmount);
+
+	await type(stdin, ["1", "\r", "mystery stew", "\t", "\t"]);
+	t.is(requests.length, 2);
+	t.true(requests[0]?.signal?.aborted);
+	t.false(requests[1]?.signal?.aborted);
+
+	await type(stdin, [escape]);
+	t.true(requests[1]?.signal?.aborted);
+});
+
+test("Tab on an unknown food without an account asks nothing and logs no event", async (t) => {
+	const { asker, requests } = asking(() => ({ ok: false, attempts: [] }));
+	const { file, stdin, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		{},
+		asker,
+	);
+	t.teardown(unmount);
+
+	await type(stdin, ["1", "\r", "mystery stew", "\t"]);
+	t.is(requests.length, 0);
+	t.false(actionsIn(file).includes("coachAsked"));
+});

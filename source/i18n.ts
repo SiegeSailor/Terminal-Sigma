@@ -568,6 +568,8 @@ const en = {
 		estimated: (label: string) => `${label} estimated it; Enter logs it.`,
 		estimateFailed: "The Coach could not estimate that; add its kcal yourself.",
 		estimateNeedsAccount: "Add a Coach account to estimate foods.",
+		estimateStale:
+			"The line changed while the Coach was estimating; try Tab again.",
 		// Only a line that added entries can be undone; a goal is typed back.
 		logged: (summary: string, xp: number, canUndo: boolean) =>
 			`Logged ${summary}${xp > 0 ? ` · +${xp} XP` : ""}${canUndo ? " · u to undo" : ""}`,
@@ -1183,6 +1185,7 @@ const traditionalChinese: Messages = {
 		estimated: (label) => `${label} 已估算，按 Enter 記錄。`,
 		estimateFailed: "教練無法估算，請自行加上熱量。",
 		estimateNeedsAccount: "請先新增教練帳號才能估算食物。",
+		estimateStale: "教練估算時內容已更動，請再按一次 Tab。",
 		logged: (summary, xp, canUndo) =>
 			`已記錄 ${summary}${xp > 0 ? ` · +${xp} XP` : ""}${canUndo ? " · 輸入 u 復原" : ""}`,
 		edited: (summary) => `已更新 ${summary}。`,
@@ -1790,6 +1793,8 @@ const korean: Messages = {
 		estimated: (label) => `${label}이(가) 추정했습니다. Enter로 기록하세요.`,
 		estimateFailed: "코치가 추정하지 못했습니다. 열량을 직접 입력하세요.",
 		estimateNeedsAccount: "음식을 추정하려면 코치 계정을 추가하세요.",
+		estimateStale:
+			"코치가 추정하는 동안 줄이 바뀌었습니다. Tab을 다시 누르세요.",
 		logged: (summary, xp, canUndo) =>
 			`${summary} 기록함${xp > 0 ? ` · +${xp} XP` : ""}${canUndo ? " · u로 되돌리기" : ""}`,
 		edited: (summary) => `${summary} 수정함.`,

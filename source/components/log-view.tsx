@@ -27,6 +27,9 @@ type LogViewProps = Readonly<{
 	draftLine?: string;
 	// Whether a Coach account exists, so the hint can offer an estimate.
 	canEstimate?: boolean;
+	// Reports the text as it changes, so a late estimate can tell whether the
+	// line it was asked about is still there.
+	onTextChange?: (text: string) => void;
 	// Asks the Coach about a food nobody knows, or says an account is needed.
 	onEstimate?: (line: string, draft: MealDraft) => void;
 	// Whether the line was saved; a line that was not stays to try again.
@@ -88,6 +91,7 @@ export default function LogView({
 	initialLine,
 	draftLine,
 	canEstimate,
+	onTextChange,
 	onEstimate,
 	onLog,
 	onUndo,
@@ -115,6 +119,9 @@ export default function LogView({
 				(draft): draft is MealDraft => draft.kind === "meal" && !draft.isKnown,
 			)
 		: undefined;
+	React.useEffect(() => {
+		onTextChange?.(text);
+	}, [text, onTextChange]);
 	const type = (typed: string) => {
 		setText((current) => current + typed);
 		setPicked(-1);
