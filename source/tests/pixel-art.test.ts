@@ -935,3 +935,19 @@ test("shows bed head in more than 3 pixels, for any hair", (t) => {
 		}
 	}
 });
+
+test("shows a scale beside the feet while weighing in", (t) => {
+	const weigh = scene({ activity: "weigh", counter: 12 });
+	const idle = scene();
+	let different = 0;
+
+	for (const [y, row] of weigh.entries()) {
+		for (const [x, key] of [...row].entries()) {
+			if (Math.abs(x - homeOf(width)) > 3 && key !== idle[y]?.[x]) {
+				different++;
+			}
+		}
+	}
+
+	t.true(different >= 12);
+});

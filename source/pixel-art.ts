@@ -870,10 +870,20 @@ function sceneOf(
 		}
 
 		case "drink": {
-			// Lift the bottle, drink with the eyes closed, and lower it.
-			const isDrinking = at >= 8 && at < 18;
-			const hand = (b: Body): Point =>
-				isDrinking ? [1, b.chin + 1] : [b.side + 1, b.hip + 2];
+			// Raise the bottle in 8 ticks, drink with the eyes closed, and lower it.
+			const rise = Math.min(Math.max((at - 2) / 8, 0), 1);
+			const fall = Math.min(Math.max((at - 14) / 8, 0), 1);
+			const progress = rise - fall;
+			const isDrinking = progress === 1;
+			const hand = (b: Body): Point => {
+				const [x0, y0] = [b.side + 1, b.hip + 2];
+				const [x1, y1] = [1, b.chin + 1];
+
+				return [
+					Math.round(x0 + (x1 - x0) * progress),
+					Math.round(y0 + (y1 - y0) * progress),
+				];
+			};
 
 			return still(
 				(b) => ({
@@ -892,24 +902,32 @@ function sceneOf(
 		}
 
 		case "weigh": {
-			// Step onto the scale, look down while it settles, and step off.
-			const isOn = at >= 4 && at < 20;
+			// Hop onto the scale, look down while it settles, and hop off.
+			const lift =
+				[
+					0, 0, 0, 0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 0, 0, 0,
+					0,
+				][at] ?? 0;
 
 			return still(
 				(b) => ({
 					view: "front",
 					mouth,
 					bob: breathing(at, 4),
-					nod: isOn && at >= 8 ? 1 : 0,
+					nod: lift === 1 && at >= 8 ? 1 : 0,
 					hands: [hanging(b, -1), hanging(b, 1)],
 				}),
 				undefined,
-				isOn ? 1 : 0,
+				lift,
 				[
-					(put) => {
-						span(put, -5, 5, ground - 1, "d");
-						span(put, -5, 5, ground, "D");
-						put(0, ground - 1, Math.floor(at / 3) % 2 === 0 ? "y" : "d");
+					(put, _upper, b) => {
+						// Clamped to the body's reach, which ground draws leave out.
+						const w = Math.min(5, b.side + 1);
+						span(put, -w, w, ground - 2, "D");
+						span(put, -w, w, ground - 1, "d");
+						span(put, -w, w, ground, "I");
+						span(put, w - 2, w - 1, ground - 1, "e");
+						put(w - 2, ground - 1, Math.floor(at / 3) % 2 === 0 ? "g" : "F");
 					},
 				],
 			);
