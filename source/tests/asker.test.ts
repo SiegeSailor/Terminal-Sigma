@@ -8,6 +8,7 @@ import {
 	withFallback,
 } from "../asker.js";
 import type { Account } from "../config.js";
+import { stopTracing, tracerOf } from "../tracing.js";
 
 const account = (
 	id: string,
@@ -291,4 +292,20 @@ test("calls onAttempt per tried account and skips a 401'd one next time", async 
 		now: () => 1000,
 	});
 	t.deepEqual(seen, ["good"]);
+});
+
+test("traces nothing and loads nothing without both Langfuse keys", async (t) => {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	const tracer = await tracerOf({ LANGFUSE_PUBLIC_KEY: "pk-lf-1" });
+
+	t.false(tracer.isOn);
+	t.is(
+		await tracer.trace(
+			"coach-chat",
+			{ sessionId: "s1", tags: [] },
+			async () => 42,
+		),
+		42,
+	);
+	await t.notThrowsAsync(stopTracing());
 });

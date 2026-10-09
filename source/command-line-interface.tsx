@@ -13,6 +13,7 @@ import {
 	timerOptionsOf,
 } from "./config.js";
 import { loadProgress, progressFile } from "./progress.js";
+import { stopTracing } from "./tracing.js";
 import { npmUpdater } from "./update.js";
 
 const cli = meow(
@@ -85,6 +86,8 @@ const instance = render(
 );
 
 await instance.waitUntilExit();
+// Langfuse batches its traces; send the last ones before leaving.
+await stopTracing();
 
 // After an update, the same command starts the version just installed.
 if (isRestarting) {

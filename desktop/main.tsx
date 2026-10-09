@@ -17,6 +17,7 @@ import {
 	type Progress,
 	progressFile,
 } from "../source/progress.js";
+import { stopTracing } from "../source/tracing.js";
 import { desktopUpdater } from "./update.js";
 
 type Size = Readonly<{ columns: number; rows: number }>;
@@ -119,9 +120,12 @@ async function start() {
 			},
 		);
 
-		void instance.waitUntilExit().finally(() => {
-			app.quit();
-		});
+		void instance
+			.waitUntilExit()
+			.then(stopTracing)
+			.finally(() => {
+				app.quit();
+			});
 	});
 
 	// The dashboard rings the bell when a focus or break ends.
