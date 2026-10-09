@@ -118,6 +118,7 @@ export const strengthLoadOf = (progress: Progress, now: number) =>
 export function signalsOf(
 	progress: Progress,
 	now: number,
+	// Newest first, as `logsOf` returns it.
 	logs: readonly Log[] = logsOf(progress),
 ): Signals {
 	const today = todayOf(progress, now);

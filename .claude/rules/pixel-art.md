@@ -12,7 +12,7 @@ The character is a person with realistic proportions for its size: a 7-row head,
 
 ## What Shapes It
 
-5 things feed `composeScene`, and each one must change the character visibly, not by a pixel:
+5 things feed `composeScene`, and each one must change the character visibly, by several pixels:
 
 | Input    | Comes From                      | Changes                                                                                                                                                                                                 |
 | -------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -24,7 +24,7 @@ The character is a person with realistic proportions for its size: a 7-row head,
 
 Fat and muscle are stages, not builds: each stage of `fatFeatures` or `muscleFeatures` adds 1 feature (a waist, a belly, an arm, a chest, and so on), and gender, appearance, and work style change what the rest of the body looks like. The slots are the gadget (headphones, then a smartwatch too), the wear (a scarf, then a jacket too), the headwear (a cap, then sunglasses instead), and the carry (a backpack, then a medal too). Every level from 2 to 9 changes exactly 1 of them, and nothing ever sits on top of the head but hair, the cap, and bed head until the cap covers it.
 
-Painters write skin only as `s` and `q`, and hair only as `h` and `i`; `plant` in `drawScene` recolors them by skin tone, hair color, and age, ranking each hair pixel so the temples grey first and the grey stays steady from frame to frame. A new stage of fat or muscle must change a pixel in the front or side frame at the default height, or the test fails. Fat stages 0 to 21 and muscle stages 0 to 3 make the widest body, so the walk's margin is not a constant: `reachOf(look)` measures the columns the body covers on either side of its center in every pose, never under 9, and the motion adopts a new look's reach when the idle loop comes home.
+Painters write skin only as `s` and `q`, and hair only as `h` and `i`; `plant` in `drawScene` recolors them by skin tone, hair color, and age, ranking each hair pixel so the temples grey first and the grey stays steady from frame to frame. A new stage must make a visible change of several pixels at the default height, or the test fails: at least 6 px for muscle stages (tested in front only), 5 for stubble and glasses, and 12 for `weigh`; fat stages are tested in front and side. Fat stages 0 to 21 and muscle stages 0 to 3 make the widest body, so the walk's margin is not a constant: `reachOf(look)` measures the columns the body covers on either side of its center in every pose, never under 9, and the motion adopts a new look's reach when the idle loop comes home to its anchor, or at an activity switch when the clamp moves 2 px or less.
 
 ## How It Is Painted
 
