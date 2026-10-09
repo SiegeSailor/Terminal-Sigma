@@ -41,6 +41,9 @@ const activities: Activity[] = [
 	"lift",
 	"stretch",
 	"levelUp",
+	"drink",
+	"weigh",
+	"write",
 ];
 const moods: Mood[] = ["sleepy", "content", "happy"];
 const width = 32;

@@ -1,5 +1,6 @@
 import test from "ava";
 import {
+	activityOfKind,
 	appearanceOf,
 	describeEvent,
 	describeLog,
@@ -307,4 +308,14 @@ test("reads an appearance from the form's values, ignoring what is missing", (t)
 	});
 	t.deepEqual(appearanceOf({ hairStyle: "mohawk", skinTone: "9" }), {});
 	t.deepEqual(appearanceOf({}), {});
+});
+
+test("plays an animation for every kind of log", (t) => {
+	t.is(activityOfKind("water"), "drink");
+	t.is(activityOfKind("body"), "weigh");
+	t.is(activityOfKind("steps"), "weigh");
+
+	for (const kind of ["mood", "habit", "note"] as const) {
+		t.is(activityOfKind(kind), "write");
+	}
 });

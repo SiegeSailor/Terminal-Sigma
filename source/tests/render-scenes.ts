@@ -106,6 +106,9 @@ const activities: Activity[] = [
 	"lift",
 	"stretch",
 	"levelUp",
+	"drink",
+	"weigh",
+	"write",
 ];
 
 const base: SceneInput = {

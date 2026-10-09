@@ -27,7 +27,10 @@ export type Activity =
 	| "run"
 	| "lift"
 	| "stretch"
-	| "levelUp";
+	| "levelUp"
+	| "drink"
+	| "weigh"
+	| "write";
 
 // What the profile decides: the height in pixels, how much fat and muscle the
 // body carries as stages, the clothes for the work style, and the age and
@@ -319,6 +322,7 @@ type Scene = Readonly<{
 	lift: number;
 	pose: (b: Body) => Pose;
 	props?: Draw[];
+	ground?: Draw[];
 }>;
 
 const span = (put: Put, from: number, to: number, y: number, key: string) => {
@@ -432,6 +436,9 @@ const cycles: Record<Exclude<Activity, "idle" | "run">, number> = {
 	lift: 32,
 	stretch: 40,
 	levelUp: 16,
+	drink: 24,
+	weigh: 24,
+	write: 32,
 };
 
 function cycleWith(
@@ -498,6 +505,16 @@ const mug =
 			upper(x + 1 - sway, y + 5, "v");
 			upper(x + 2 - sway, y + 6, "v");
 		}
+	};
+
+const bottle =
+	([x, y]: Point): Draw =>
+	(_put, upper) => {
+		for (let dy = 0; dy < 4; dy++) {
+			span(upper, x, x + 1, y + dy, "W");
+		}
+
+		span(upper, x, x + 1, y + 4, "d");
 	};
 
 const apple =
@@ -618,13 +635,12 @@ function sceneOf(
 	const cycle = cycleWith(activity, width, anchor, mood, reach);
 	const at = t % cycle;
 	const mouth = smileOf(mood);
-	const still = (pose: Scene["pose"], props?: Draw[], lift = 0): Scene => ({
-		x: anchor,
-		facing: 1,
-		lift,
-		pose,
-		props,
-	});
+	const still = (
+		pose: Scene["pose"],
+		props?: Draw[],
+		lift = 0,
+		grounded?: Draw[],
+	): Scene => ({ x: anchor, facing: 1, lift, pose, props, ground: grounded });
 
 	if (activity === "idle" && mood === "sleepy") {
 		// Dozing on its feet: nodding off, yawning, with Zs drifting up.
@@ -850,6 +866,80 @@ function sceneOf(
 				}),
 				[sparkles(at)],
 				lift,
+			);
+		}
+
+		case "drink": {
+			// Lift the bottle, drink with the eyes closed, and lower it.
+			const isDrinking = at >= 8 && at < 18;
+			const hand = (b: Body): Point =>
+				isDrinking ? [1, b.chin + 1] : [b.side + 1, b.hip + 2];
+
+			return still(
+				(b) => ({
+					view: "front",
+					mouth: isDrinking ? "open" : mouth,
+					eyes: isDrinking ? "closed" : "open",
+					bob: breathing(at, 2),
+					hands: [undefined, hand(b)],
+				}),
+				[
+					(put, upper, b) => {
+						bottle(hand(b))(put, upper, b);
+					},
+				],
+			);
+		}
+
+		case "weigh": {
+			// Step onto the scale, look down while it settles, and step off.
+			const isOn = at >= 4 && at < 20;
+
+			return still(
+				(b) => ({
+					view: "front",
+					mouth,
+					bob: breathing(at, 4),
+					nod: isOn && at >= 8 ? 1 : 0,
+					hands: [hanging(b, -1), hanging(b, 1)],
+				}),
+				undefined,
+				isOn ? 1 : 0,
+				[
+					(put) => {
+						span(put, -5, 5, ground - 1, "d");
+						span(put, -5, 5, ground, "D");
+						put(0, ground - 1, Math.floor(at / 3) % 2 === 0 ? "y" : "d");
+					},
+				],
+			);
+		}
+
+		case "write": {
+			// Jot in a notebook held at the chest, the pencil moving along the line.
+			const stroke = Math.floor(at / 2) % 4;
+
+			return still(
+				(b) => ({
+					view: "front",
+					mouth,
+					bob: breathing(at, 8),
+					nod: 1,
+					hands: [
+						[-2, b.shoulder - 3],
+						[stroke - 1, b.shoulder - 2],
+					],
+				}),
+				[
+					(_put, upper, b) => {
+						for (let y = b.shoulder - 5; y <= b.shoulder - 2; y++) {
+							span(upper, -3, 2, y, "Q");
+						}
+
+						span(upper, -3, 2, b.shoulder - 1, "U");
+						upper(stroke - 1, b.shoulder - 3 + (stroke % 2), "g");
+					},
+				],
 			);
 		}
 	}
@@ -2204,6 +2294,9 @@ function reachOf(look: Look): number {
 			"eat",
 			"lift",
 			"levelUp",
+			"drink",
+			"weigh",
+			"write",
 		] as const) {
 			measure(
 				activity,
@@ -2265,6 +2358,10 @@ function drawScene(
 	};
 
 	paintShadow(plant(0), b, scene.lift);
+
+	for (const draw of withProps ? (scene.ground ?? []) : []) {
+		draw(plant(0), plant(0), b);
+	}
 
 	if (pose.view === "side") {
 		paintSide(paint, pose);

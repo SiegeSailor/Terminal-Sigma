@@ -168,6 +168,9 @@ const en = {
 		lift: "Lifting…",
 		stretch: "Stretching…",
 		levelUp: "Level up!",
+		drink: "Drinking water…",
+		weigh: "Weighing in…",
+		write: "Writing…",
 	},
 	mood: {
 		sleepy: "Dozing… log something to wake me",
@@ -675,6 +678,9 @@ const traditionalChinese: Messages = {
 		lift: "重訓中…",
 		stretch: "伸展中…",
 		levelUp: "升級了！",
+		drink: "喝水中…",
+		weigh: "量體重中…",
+		write: "寫字中…",
 	},
 	mood: {
 		sleepy: "打瞌睡中…記錄點什麼來叫醒我",
@@ -1148,6 +1154,9 @@ const korean: Messages = {
 		lift: "웨이트 중…",
 		stretch: "스트레칭 중…",
 		levelUp: "레벨 업!",
+		drink: "물 마시는 중…",
+		weigh: "체중 재는 중…",
+		write: "쓰는 중…",
 	},
 	mood: {
 		sleepy: "꾸벅꾸벅… 뭐라도 기록해서 깨워 주세요",
