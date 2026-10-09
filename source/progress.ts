@@ -10,11 +10,15 @@ import path from "node:path";
 import process from "node:process";
 import zod from "zod";
 import {
+	facialHairs,
 	genders,
+	hairColors,
+	hairStyles,
 	healthGoals,
 	intensities,
 	type Intensity,
 	languages,
+	skinTones,
 	workStyles,
 } from "./i18n.js";
 import {
@@ -158,6 +162,12 @@ const profileShape = {
 	gender: zod.enum(genders),
 	workStyle: zod.enum(workStyles),
 	goal: zod.enum(healthGoals),
+	// The character's appearance, added after 1.6.0, so all optional.
+	skinTone: zod.literal(skinTones).optional(),
+	hairStyle: zod.enum(hairStyles).optional(),
+	hairColor: zod.enum(hairColors).optional(),
+	glasses: zod.boolean().optional(),
+	facialHair: zod.enum(facialHairs).optional(),
 };
 // Parsing keeps the fields a newer version wrote; the types stay strict.
 const profileSchema = zod.looseObject(profileShape);

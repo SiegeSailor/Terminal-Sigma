@@ -36,6 +36,25 @@ export const healthGoals = [
 ] as const;
 export type HealthGoal = (typeof healthGoals)[number];
 
+export const skinTones = [1, 2, 3, 4, 5] as const;
+export type SkinTone = (typeof skinTones)[number];
+
+export const hairStyles = [
+	"short",
+	"long",
+	"bob",
+	"ponytail",
+	"bun",
+	"buzz",
+] as const;
+export type HairStyle = (typeof hairStyles)[number];
+
+export const hairColors = ["black", "brown", "blonde", "red"] as const;
+export type HairColor = (typeof hairColors)[number];
+
+export const facialHairs = ["none", "stubble", "beard"] as const;
+export type FacialHair = (typeof facialHairs)[number];
+
 export type Mood = "sleepy" | "content" | "happy";
 
 // "15 seconds", "1 分鐘", "1시간": the quote intervals in words.

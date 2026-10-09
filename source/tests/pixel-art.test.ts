@@ -1,5 +1,11 @@
 import test from "ava";
-import type { Mood } from "../i18n.js";
+import {
+	facialHairs,
+	hairColors,
+	hairStyles,
+	type Mood,
+	skinTones,
+} from "../i18n.js";
 import {
 	type Activity,
 	advance,
@@ -10,6 +16,7 @@ import {
 	fatStages,
 	fatStep,
 	gearOf,
+	greyOf,
 	homeOf,
 	type Look,
 	lookOf,
@@ -626,4 +633,82 @@ test("encodes a contact sheet of scenes as a PNG", (t) => {
 	// IHDR's width and height, after the signature, the length, and the type.
 	t.is(png.readUInt32BE(16), 2 * (width + 2) * 6);
 	t.is(png.readUInt32BE(20), (stageHeight + 2) * 6);
+});
+
+test("draws every skin tone, hair style, hair color, and beard", (t) => {
+	const kinds = <Value>(
+		values: readonly Value[],
+		lookAt: (value: Value) => Look,
+	) =>
+		new Set(
+			values.map((value) =>
+				[
+					...scene({ look: lookAt(value) }),
+					...scene({ look: lookAt(value), counter: 24 }),
+				].join(""),
+			),
+		).size;
+
+	t.is(
+		kinds(skinTones, (skinTone) => ({ ...defaultLook, skinTone })),
+		5,
+	);
+	t.is(
+		kinds(hairStyles, (hairStyle) => ({ ...defaultLook, hairStyle })),
+		6,
+	);
+	t.is(
+		kinds(hairColors, (hairColor) => ({ ...defaultLook, hairColor })),
+		4,
+	);
+	t.is(
+		kinds(facialHairs, (facialHair) => ({ ...defaultLook, facialHair })),
+		3,
+	);
+	t.not(
+		scene({ look: { ...defaultLook, glasses: true } }).join(""),
+		scene().join(""),
+	);
+});
+
+test("keeps each gender's old hair when the profile has no appearance", (t) => {
+	t.is(lookFor({ gender: "male" }).hairStyle, "short");
+	t.is(lookFor({ gender: "female" }).hairStyle, "long");
+	t.is(
+		lookFor({ gender: "female", workStyle: "athlete" }).hairStyle,
+		"ponytail",
+	);
+	t.is(lookFor({ gender: "other" }).hairStyle, "bob");
+	t.like(lookFor({ hairStyle: "bun", skinTone: 5, glasses: true }), {
+		hairStyle: "bun",
+		skinTone: 5,
+		glasses: true,
+	});
+});
+
+test("greys from the temples, a little more every year from 35", (t) => {
+	const greyIn = (age: number) =>
+		[...scene({ look: { ...defaultLook, age } }).join("")].filter((key) =>
+			"HJIK".includes(key),
+		).length;
+
+	t.is(greyIn(34), 0);
+	t.is(greyOf(35), 0);
+	t.is(greyOf(70), 1);
+
+	const ages = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85];
+	t.is(
+		new Set(
+			ages.map((age) => scene({ look: { ...defaultLook, age } }).join("")),
+		).size,
+		ages.length,
+		"every 5 years looks different",
+	);
+	t.true(
+		[36, 40, 45, 50, 55, 60, 65, 70].every(
+			(age, index, all) =>
+				index === 0 || greyIn(age) >= greyIn(all[index - 1] ?? age),
+		),
+		"never less grey with age",
+	);
 });

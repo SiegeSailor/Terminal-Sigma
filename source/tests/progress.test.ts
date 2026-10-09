@@ -406,3 +406,32 @@ test("takes the latest weigh-in over the profile, unless the profile is newer", 
 	);
 	t.is(profileNow(progressSchema.parse({})), undefined);
 });
+
+test("saves an appearance and rejects a style it does not know", (t) => {
+	const file = temporaryFile();
+	const profile = {
+		name: "Ken",
+		age: 30,
+		height: 175,
+		weight: 70,
+		gender: "male",
+		workStyle: "desk",
+		goal: "maintain",
+	} as const;
+
+	saveProgress(file, {
+		...sample,
+		profile: { ...profile, skinTone: 4, hairStyle: "bun", glasses: true },
+	});
+	t.like(loadProgress(file).profile, {
+		skinTone: 4,
+		hairStyle: "bun",
+		glasses: true,
+	});
+
+	writeFileSync(
+		file,
+		JSON.stringify({ ...sample, profile: { ...profile, hairStyle: "mohawk" } }),
+	);
+	t.throws(() => loadProgress(file), { message: /unreadable/v });
+});

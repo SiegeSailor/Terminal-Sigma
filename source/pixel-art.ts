@@ -1,4 +1,13 @@
-import type { Gender, HealthGoal, Mood, WorkStyle } from "./i18n.js";
+import type {
+	FacialHair,
+	Gender,
+	HairColor,
+	HairStyle,
+	HealthGoal,
+	Mood,
+	SkinTone,
+	WorkStyle,
+} from "./i18n.js";
 import type { Palette } from "./theme.js";
 
 // The character stands on a stage as wide as its panel and 40 pixels tall.
@@ -19,18 +28,21 @@ export type Activity =
 	| "stretch"
 	| "levelUp";
 
-export type Hair = "dark" | "grey" | "white";
-
 // What the profile decides: the height in pixels, how much fat and muscle the
-// body carries as stages, the clothes for the work style, and the hair for
-// the age.
+// body carries as stages, the clothes for the work style, and the age and
+// appearance.
 export type Look = Readonly<{
 	height: number;
 	fat: number;
 	muscle: number;
 	gender: Gender;
 	style: WorkStyle;
-	hair: Hair;
+	age: number;
+	skinTone: SkinTone;
+	hairStyle: HairStyle;
+	hairColor: HairColor;
+	glasses: boolean;
+	facialHair: FacialHair;
 }>;
 
 export const defaultLook: Look = {
@@ -39,7 +51,12 @@ export const defaultLook: Look = {
 	muscle: 0,
 	gender: "other",
 	style: "desk",
-	hair: "dark",
+	age: 30,
+	skinTone: 3,
+	hairStyle: "bob",
+	hairColor: "brown",
+	glasses: false,
+	facialHair: "none",
 };
 
 type Profile = Readonly<{
@@ -50,7 +67,21 @@ type Profile = Readonly<{
 	gender: Gender;
 	workStyle: WorkStyle;
 	goal: HealthGoal;
+	skinTone?: SkinTone;
+	hairStyle?: HairStyle;
+	hairColor?: HairColor;
+	glasses?: boolean;
+	facialHair?: FacialHair;
 }>;
+
+// Before appearance existed, gender and work style chose the hair.
+const hairStyleOf = (profile: Profile): HairStyle => {
+	if (profile.gender === "female") {
+		return profile.workStyle === "athlete" ? "ponytail" : "long";
+	}
+
+	return profile.gender === "male" ? "short" : "bob";
+};
 
 // The leanest body fat drawn, by gender; every 2 points above it is 1 stage.
 const leanFloor: Record<Gender, number> = { female: 14, male: 6, other: 10 };
@@ -151,21 +182,18 @@ export function lookOf(profile: Profile | undefined, strengthLoad = 0): Look {
 		0,
 		muscleStages,
 	);
-	let hair: Hair = "dark";
-
-	if (profile.age >= 70) {
-		hair = "white";
-	} else if (profile.age >= 55) {
-		hair = "grey";
-	}
-
 	return {
 		height: clamp(Math.round(26 + (profile.height - 145) / 5), 22, 35),
 		fat,
 		muscle,
 		gender: profile.gender,
 		style: profile.workStyle,
-		hair,
+		age: profile.age,
+		skinTone: profile.skinTone ?? 3,
+		hairStyle: profile.hairStyle ?? hairStyleOf(profile),
+		hairColor: profile.hairColor ?? "brown",
+		glasses: profile.glasses ?? false,
+		facialHair: profile.facialHair ?? "none",
 	};
 }
 
@@ -1019,12 +1047,6 @@ const bottomOf: Record<
 	},
 };
 
-const hairOf: Record<Hair, readonly [string, string]> = {
-	dark: ["h", "i"],
-	grey: ["H", "J"],
-	white: ["I", "K"],
-};
-
 // An oval on the ground with the feet in its middle, shrinking in the air.
 function paintShadow(put: Put, b: Body, lift: number) {
 	const half = b.hips + 5 - Math.min(lift, 3);
@@ -1034,43 +1056,50 @@ function paintShadow(put: Put, b: Body, lift: number) {
 	span(put, -half + 2, half - 2, ground + 1, "A");
 }
 
-// Long hair falls behind the shoulders, so it goes on before the body.
+// Long hair, a bob, and a ponytail fall behind the head, so they go on first.
 function paintHairBehind({ upper, b, look, counter }: Paint, nod: number) {
-	const [hair, light] = hairOf[look.hair];
 	const head = (x: number, y: number, key: string) => {
 		upper(x, y - nod, key);
 	};
 
-	if (look.gender === "other") {
-		for (let y = b.chin + 1; y <= b.chin + 4; y++) {
-			head(-4, y, hair);
-			head(4, y, hair);
+	switch (look.hairStyle) {
+		case "bob": {
+			for (let y = b.chin + 1; y <= b.chin + 4; y++) {
+				head(-4, y, "h");
+				head(4, y, "h");
+			}
+
+			break;
 		}
 
-		return;
-	}
+		case "ponytail": {
+			// A ponytail that swings.
+			const sway = Math.floor(counter / 3) % 2;
+			head(4, b.chin + 4, "h");
+			head(5, b.chin + 3, "h");
+			head(5 + sway, b.chin + 2, "i");
+			head(5 + sway, b.chin + 1, "h");
+			break;
+		}
 
-	if (look.gender !== "female") {
-		return;
-	}
+		case "long": {
+			for (let y = b.shoulder - 3; y <= b.chin + 4; y++) {
+				head(-4, y, "h");
+				head(4, y, y % 3 === 0 ? "i" : "h");
+			}
 
-	if (look.style === "athlete") {
-		// A ponytail that swings.
-		const sway = Math.floor(counter / 3) % 2;
-		head(4, b.chin + 4, hair);
-		head(5, b.chin + 3, hair);
-		head(5 + sway, b.chin + 2, light);
-		head(5 + sway, b.chin + 1, hair);
-		return;
-	}
+			for (let y = b.shoulder - 2; y < b.chin; y++) {
+				span(upper, -3, 3, y, "h");
+			}
 
-	for (let y = b.shoulder - 3; y <= b.chin + 4; y++) {
-		head(-4, y, hair);
-		head(4, y, y % 3 === 0 ? light : hair);
-	}
+			break;
+		}
 
-	for (let y = b.shoulder - 2; y < b.chin; y++) {
-		span(upper, -3, 3, y, hair);
+		case "bun":
+		case "buzz":
+		case "short": {
+			break;
+		}
 	}
 }
 
@@ -1368,13 +1397,13 @@ function paintArm(
 }
 
 function paintHeadFront({ upper, b, look, gear }: Paint, pose: Front) {
-	const nod = pose.nod ?? 0;
+	// Past 72, the head sits 1 pixel lower, as the back rounds.
+	const nod = (pose.nod ?? 0) + (look.age >= 72 ? 1 : 0);
 	const head = (x: number, y: number, key: string) => {
 		upper(x, y - nod, key);
 	};
 
 	const { chin, jaw } = b;
-	const [hair, light] = hairOf[look.hair];
 	const turn = pose.turn ?? 0;
 
 	span(head, -jaw, jaw, chin, "s");
@@ -1397,17 +1426,45 @@ function paintHeadFront({ upper, b, look, gear }: Paint, pose: Front) {
 		span(head, -2, 2, chin - 1, "q");
 	}
 
-	span(head, -3, 3, chin + 5, hair);
-	span(head, -2, 1, chin + 5, light);
-	span(head, -2, 2, chin + 6, hair);
-	head(-1, chin + 6, light);
+	// Lines that come with the years: smile lines from 50, crow's feet from 62.
+	if (look.age >= 50) {
+		head(turn - 2, chin + 1, "q");
+		head(turn + 2, chin + 1, "q");
+	}
+
+	if (look.age >= 62) {
+		head(turn - 3, chin + 3, "q");
+		head(turn + 3, chin + 3, "q");
+	}
+
+	// A beard along the jaw and up the cheeks, or stubble on the chin.
+	if (look.facialHair === "beard") {
+		span(head, -jaw, jaw, chin, "h");
+
+		for (const x of [-3, -2, 2, 3]) {
+			head(x, chin + 1, "h");
+		}
+	} else if (look.facialHair === "stubble") {
+		for (let x = 1 - jaw; x < jaw; x += 2) {
+			head(x, chin, "i");
+		}
+	}
+
+	// The crown, with a lighter streak unless it is cropped close.
+	span(head, -3, 3, chin + 5, "h");
+	span(head, -2, 2, chin + 6, "h");
+
+	if (look.hairStyle !== "buzz") {
+		span(head, -2, 1, chin + 5, "i");
+		head(-1, chin + 6, "i");
+	}
 
 	// Eyes, brows, the shadow under the nose, and the mouth.
 	const eye = pose.eyes === "closed" ? "q" : "e";
 	head(turn - 2, chin + 3, eye);
 	head(turn + 2, chin + 3, eye);
-	head(turn - 2, chin + 4, hair);
-	head(turn + 2, chin + 4, hair);
+	head(turn - 2, chin + 4, "h");
+	head(turn + 2, chin + 4, "h");
 	head(turn, chin + 2, "q");
 
 	if (pose.mouth === "smile") {
@@ -1420,25 +1477,58 @@ function paintHeadFront({ upper, b, look, gear }: Paint, pose: Front) {
 		span(head, turn - 1, turn, chin + 1, "q");
 	}
 
-	// Short hair with sideburns and ears, a side-swept fringe, or a bob.
-	if (look.gender === "male") {
-		head(-3, chin + 4, hair);
-		head(3, chin + 4, hair);
-	} else if (look.gender === "female") {
-		span(head, -3, -1, chin + 4, hair);
-		head(3, chin + 4, hair);
-		head(-3, chin + 3, hair);
-		head(3, chin + 3, hair);
-	} else {
-		span(head, -3, -2, chin + 4, hair);
-		head(3, chin + 4, hair);
+	// The fringe or sideburns of each style.
+	switch (look.hairStyle) {
+		case "short": {
+			head(-3, chin + 4, "h");
+			head(3, chin + 4, "h");
+			break;
+		}
+
+		case "long":
+		case "ponytail":
+		case "bun": {
+			span(head, -3, -1, chin + 4, "h");
+			head(3, chin + 4, "h");
+			head(-3, chin + 3, "h");
+			head(3, chin + 3, "h");
+			break;
+		}
+
+		case "bob": {
+			span(head, -3, -2, chin + 4, "h");
+			head(3, chin + 4, "h");
+			break;
+		}
+
+		case "buzz": {
+			break;
+		}
 	}
 
-	if (look.gender === "male" && gear.gadget === 0) {
+	if (look.hairStyle === "bun") {
+		// A knot on top of the head.
+		span(head, -1, 1, chin + 7, "h");
+		span(head, -1, 1, chin + 8, "h");
+		head(0, chin + 8, "i");
+	}
+
+	// Ears show beside short hair, unless headphones cover them.
+	if (
+		(look.hairStyle === "short" || look.hairStyle === "buzz") &&
+		gear.gadget === 0
+	) {
 		head(-4, chin + 2, "q");
 		head(-4, chin + 3, "s");
 		head(4, chin + 2, "q");
 		head(4, chin + 3, "q");
+	}
+
+	if (look.glasses) {
+		// Thin frames around both eyes and over the nose.
+		for (const x of [turn - 3, turn - 1, turn, turn + 1, turn + 3]) {
+			head(x, chin + 3, "d");
+		}
 	}
 
 	if (gear.gadget >= 1) {
@@ -1520,13 +1610,19 @@ function paintSideLeg(
 	}
 }
 
-function paintSideHead({ upper, b, look, gear }: Paint, pose: Side) {
-	const { chin } = b;
-	const [hair, light] = hairOf[look.hair];
+function paintSideHead({ upper: body, b, look, gear }: Paint, pose: Side) {
+	// Past 72, the head leans 1 pixel forward and down.
+	const lean = look.age >= 72 ? 1 : 0;
+	const upper: Put = (x, y, key) => {
+		body(x + lean, y - lean, key);
+	};
 
-	// The neck and the head in profile, nose forward and hair behind.
-	span(upper, -1, 1, b.shoulder + 1, "s");
-	upper(-1, b.shoulder + 1, "q");
+	const { chin } = b;
+
+	// The neck stays on the body, and the head in profile has its nose
+	// forward and its hair behind.
+	span(body, -1, 1, b.shoulder + 1, "s");
+	body(-1, b.shoulder + 1, "q");
 	span(upper, -1, 2, chin, "s");
 	upper(-1, chin, "q");
 	span(upper, -2, 3, chin + 1, "s");
@@ -1536,31 +1632,80 @@ function paintSideHead({ upper, b, look, gear }: Paint, pose: Side) {
 	}
 
 	upper(4, chin + 2, "s");
-	span(upper, -3, 3, chin + 5, hair);
-	span(upper, -2, 2, chin + 6, hair);
-	upper(0, chin + 5, light);
-	span(upper, -3, -1, chin + 4, hair);
-	span(upper, -3, -2, chin + 3, hair);
-	upper(-3, chin + 2, hair);
+	span(upper, -3, 3, chin + 5, "h");
+	span(upper, -2, 2, chin + 6, "h");
+
+	if (look.hairStyle !== "buzz") {
+		upper(0, chin + 5, "i");
+	}
+
+	// Cropped close, the hair stops above the ear.
+	if (look.hairStyle !== "buzz") {
+		span(upper, -3, -1, chin + 4, "h");
+		span(upper, -3, -2, chin + 3, "h");
+		upper(-3, chin + 2, "h");
+	}
+
 	upper(-1, chin + 3, "q");
 	upper(2, chin + 3, "e");
-	upper(2, chin + 4, hair);
+	upper(2, chin + 4, "h");
 	upper(3, chin + 1, pose.mouth === "smile" ? "m" : "q");
 
-	if (look.gender === "female" && look.style !== "athlete") {
-		for (let y = b.shoulder - 3; y <= chin + 3; y++) {
-			span(upper, -4, -3, y, hair);
+	if (look.age >= 50) {
+		upper(2, chin + 1, "q");
+	}
+
+	if (look.facialHair === "beard") {
+		span(upper, -1, 2, chin, "h");
+		upper(-2, chin + 1, "h");
+		upper(-1, chin + 1, "h");
+	} else if (look.facialHair === "stubble") {
+		upper(0, chin, "i");
+		upper(2, chin, "i");
+	}
+
+	switch (look.hairStyle) {
+		case "long": {
+			for (let y = b.shoulder - 3; y <= chin + 3; y++) {
+				span(upper, -4, -3, y, "h");
+			}
+
+			break;
 		}
-	} else if (look.gender === "female") {
-		const sway = Math.floor(pose.frame / 2) % 2;
-		upper(-4, chin + 4, hair);
-		upper(-5, chin + 3 - sway, hair);
-		upper(-5, chin + 2 - sway, light);
-	} else if (look.gender === "other") {
-		for (let y = chin + 1; y <= chin + 3; y++) {
-			upper(-3, y, hair);
-			upper(-4, y, hair);
+
+		case "ponytail": {
+			const sway = Math.floor(pose.frame / 2) % 2;
+			upper(-4, chin + 4, "h");
+			upper(-5, chin + 3 - sway, "h");
+			upper(-5, chin + 2 - sway, "i");
+			break;
 		}
+
+		case "bob": {
+			for (let y = chin + 1; y <= chin + 3; y++) {
+				upper(-3, y, "h");
+				upper(-4, y, "h");
+			}
+
+			break;
+		}
+
+		case "bun": {
+			upper(-4, chin + 5, "h");
+			upper(-4, chin + 6, "h");
+			upper(-5, chin + 6, "i");
+			break;
+		}
+
+		case "buzz":
+		case "short": {
+			break;
+		}
+	}
+
+	if (look.glasses) {
+		upper(1, chin + 3, "d");
+		upper(3, chin + 3, "d");
 	}
 
 	if (gear.gadget >= 1) {
@@ -1687,7 +1832,7 @@ function paintSide(paint: Paint, pose: Side) {
 
 function paintFront(paint: Paint, pose: Front) {
 	const { b } = paint;
-	paintHairBehind(paint, pose.nod ?? 0);
+	paintHairBehind(paint, (pose.nod ?? 0) + (paint.look.age >= 72 ? 1 : 0));
 	paintLegsFront(paint, pose);
 	paintTorsoFront(paint);
 
@@ -1716,7 +1861,18 @@ export function paletteOf(palette: Palette): ReadonlyMap<string, string> {
 	const { cloak, cloakShade, scarf, scarfShade, glow } = palette.sprite;
 
 	return new Map([
+		["0", "#1E1A19"],
+		["1", "#3B3431"],
+		["2", "#C49A55"],
+		["3", "#E3C483"],
+		["4", "#8A3A20"],
+		["5", "#B65A36"],
+		["6", "#F5D9C4"],
+		["7", "#E0B9A0"],
+		["8", "#EBC4A0"],
+		["9", "#D4A47F"],
 		["A", "#141414"],
+		["a", "#B5815D"],
 		["B", "#3E3226"],
 		["b", "#6B4A2E"],
 		["C", cloak],
@@ -1726,6 +1882,7 @@ export function paletteOf(palette: Palette): ReadonlyMap<string, string> {
 		["E", mix(cloak, "#FFFFFF", 0.16)],
 		["e", "#2B2B2B"],
 		["F", "#C8473F"],
+		["f", "#946245"],
 		["G", "#6FA35A"],
 		["g", "#D9B45A"],
 		["H", "#9C9C9C"],
@@ -1733,7 +1890,9 @@ export function paletteOf(palette: Palette): ReadonlyMap<string, string> {
 		["I", "#E4E4E4"],
 		["i", "#6B4A33"],
 		["J", "#BDBDBD"],
+		["j", "#7B5139"],
 		["K", "#C4C4C4"],
+		["k", "#5C3A27"],
 		["L", "#4A505B"],
 		["l", glow],
 		["M", "#424A58"],
@@ -1755,6 +1914,7 @@ export function paletteOf(palette: Palette): ReadonlyMap<string, string> {
 		["U", "#B4AE9F"],
 		["V", "#4A5536"],
 		["v", "#9AA0A8"],
+		["W", "#9FD4F2"],
 		["w", "#F2F2F2"],
 		["X", "#2F3540"],
 		["x", "#3D414B"],
@@ -1763,6 +1923,64 @@ export function paletteOf(palette: Palette): ReadonlyMap<string, string> {
 		["Z", "#C8C8C8"],
 		["z", scarfShade],
 	]);
+}
+
+// Skin, tones 1 to 5, as [main, shade] and hair as [main, light]; tone 3 and brown are the
+// keys every painter writes, so they map to themselves.
+const skinKeys: ReadonlyArray<readonly [string, string]> = [
+	["6", "7"],
+	["8", "9"],
+	["s", "q"],
+	["a", "f"],
+	["j", "k"],
+];
+const hairKeys: Record<HairColor, readonly [string, string]> = {
+	black: ["0", "1"],
+	brown: ["h", "i"],
+	blonde: ["2", "3"],
+	red: ["4", "5"],
+};
+
+// How much of the hair is grey, from 35 to 70, and white, from 60 to 85.
+export const greyOf = (age: number) => clamp((age - 35) / 35, 0, 1);
+export const whiteOf = (age: number) => clamp((age - 60) / 25, 0, 1);
+
+// A fixed rank for every hair pixel, temples first, so hair greys from the
+// sides up and a grey pixel stays grey from frame to frame.
+const rankOf = (x: number, y: number) =>
+	(Math.abs(x) >= 3 ? 0 : 0.5) + ((((x * 3 + y * 5) % 8) + 8) % 8) / 16;
+
+function recolorOf(look: Look) {
+	const [skin = "s", skinShade = "q"] = skinKeys[look.skinTone - 1] ?? [];
+	const [hair, hairLight] = hairKeys[look.hairColor];
+	const grey = greyOf(look.age);
+	const white = whiteOf(look.age);
+
+	return (key: string, x: number, y: number) => {
+		if (key === "s") {
+			return skin;
+		}
+
+		if (key === "q") {
+			return skinShade;
+		}
+
+		if (key !== "h" && key !== "i") {
+			return key;
+		}
+
+		const rank = rankOf(x, y);
+
+		if (rank < white) {
+			return key === "h" ? "I" : "K";
+		}
+
+		if (rank < grey) {
+			return key === "h" ? "H" : "J";
+		}
+
+		return key === "h" ? hair : hairLight;
+	};
 }
 
 export type SceneInput = Readonly<{
@@ -1859,6 +2077,7 @@ function drawScene(
 	);
 	const scene = sceneOf(activity, counter, width, mood, anchor, reach);
 	const b = bodyOf(look, isFull);
+	const recolor = recolorOf(look);
 	const pose = scene.pose(b);
 	// The character's x = 0 is its center column, mirrored when facing left.
 	const plant =
@@ -1868,7 +2087,7 @@ function drawScene(
 			const row = canvas[stageHeight - 1 - (y + rise)];
 
 			if (row && column >= 0 && column < width && key !== ".") {
-				row[column] = key;
+				row[column] = recolor(key, x, y);
 			}
 		};
 
