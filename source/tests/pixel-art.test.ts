@@ -28,6 +28,7 @@ import {
 	startMotion,
 	toSegments,
 } from "../pixel-art.js";
+import { quietSignals, type Signals } from "../signals.js";
 import { themeNames, themes } from "../theme.js";
 import { pngOf, sheetOf } from "./render-scenes.js";
 
@@ -79,6 +80,7 @@ type Scene = Partial<{
 	level: number;
 	look: Look;
 	mood: Mood;
+	signals: Signals;
 }>;
 
 const scene = (input: Scene = {}) =>
@@ -805,5 +807,64 @@ test("draws stubble and glasses in more than a pixel or 2", (t) => {
 	] as const) {
 		t.true(differences({ facialHair: "stubble" }, activity) >= minimum);
 		t.true(differences({ glasses: true }, activity) >= minimum);
+	}
+});
+
+test("shows how the day is going", (t) => {
+	const base = scene().join("");
+	const showing = (signals: Partial<Signals>, input: Scene = {}) =>
+		scene({ ...input, signals: { ...quietSignals, ...signals } }).join("");
+
+	t.is(showing({}), base, "defaults to quiet signals");
+	t.not(showing({ rest: "tired" }), base, "shadows under the eyes");
+	t.true(showing({ exertion: "sweaty" }).includes("W"), "sweat");
+	t.true(showing({ exertion: "flushed" }).includes("r"), "red cheeks");
+	t.true(showing({ isThirsty: true }).includes("W"), "a water bubble");
+	t.true(showing({ isHungry: true }).includes("F"), "an apple bubble");
+	t.not(showing({ isFull: true }), base, "a fuller belly");
+	t.true(showing({ face: "bright" }).includes("m"), "a smile");
+	t.not(showing({ face: "sad" }), base, "knit brows");
+	t.not(showing({ isBedHead: true }), base, "bed head");
+	t.not(
+		showing({ isBedHead: true }, { level: 2 }),
+		scene({ level: 2 }).join(""),
+		"bed head shows past the headphones",
+	);
+	t.is(
+		showing({ isBedHead: true }, { level: 5 }),
+		scene({ level: 5 }).join(""),
+		"a cap covers bed head",
+	);
+	t.false(
+		showing({ isThirsty: true }, { activity: "focus" }).includes("W"),
+		"no bubble while busy",
+	);
+});
+
+test("keeps a wish bubble on the stage at both walk edges", (t) => {
+	const bubble = (look: Look, anchor: number, counter: number) => {
+		const draw = (signals: Signals) =>
+			scene({ look, anchor, counter, signals });
+		const [wished, quiet] = [
+			draw({ ...quietSignals, isThirsty: true, isHungry: true }),
+			draw(quietSignals),
+		];
+
+		return wished.reduce(
+			(sum, row, y) =>
+				sum +
+				[...row].filter((key, x) => key !== quiet[y]?.[x] && key !== ".")
+					.length,
+			0,
+		);
+	};
+
+	for (const look of looks) {
+		for (const counter of [0, 40]) {
+			const middle = bubble(look, homeOf(width), counter);
+			t.true(middle >= 8, "a bubble is drawn");
+			t.is(bubble(look, 8, counter), middle, "whole at the left edge");
+			t.is(bubble(look, width - 9, counter), middle, "whole at the right edge");
+		}
 	}
 });

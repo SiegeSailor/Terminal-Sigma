@@ -11,6 +11,7 @@ import {
 	startMotion,
 	toSegments,
 } from "../pixel-art.js";
+import type { Signals } from "../signals.js";
 import { spinnerFrames, usePalette } from "../theme.js";
 
 type Wanted = Readonly<{ activity: Activity; mood: Mood }>;
@@ -22,6 +23,7 @@ type CharacterProps = Readonly<{
 	activity: Activity;
 	look: Look;
 	mood: Mood;
+	signals: Signals;
 	label: string;
 	width: number;
 }>;
@@ -33,6 +35,7 @@ export default function Character({
 	activity,
 	look,
 	mood,
+	signals,
 	label,
 	width,
 }: CharacterProps) {
@@ -71,6 +74,7 @@ export default function Character({
 			reach: motion.reach,
 			level: levelNumber,
 			look,
+			signals,
 			mood: motion.mood,
 			width: stage,
 		}),

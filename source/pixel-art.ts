@@ -8,6 +8,7 @@ import type {
 	SkinTone,
 	WorkStyle,
 } from "./i18n.js";
+import { quietSignals, type Signals } from "./signals.js";
 import type { Palette } from "./theme.js";
 
 // The character stands on a stage as wide as its panel and 40 pixels tall.
@@ -987,6 +988,7 @@ type Paint = Readonly<{
 	look: Look;
 	gear: Gear;
 	counter: number;
+	signals: Signals;
 }>;
 
 type Tones = Readonly<{ main: string; shade: string; light: string }>;
@@ -1457,7 +1459,7 @@ function paintFringe(head: Put, look: Look, chin: number, isCapped: boolean) {
 	}
 }
 
-function paintHeadFront({ upper, b, look, gear }: Paint, pose: Front) {
+function paintHeadFront({ upper, b, look, gear, signals }: Paint, pose: Front) {
 	// Past 72, the head sits 1 pixel lower, as the back rounds.
 	const nod = (pose.nod ?? 0) + (look.age >= 72 ? 1 : 0);
 	const { chin, jaw } = b;
@@ -1510,20 +1512,44 @@ function paintHeadFront({ upper, b, look, gear }: Paint, pose: Front) {
 		head(-1, chin + 6, "i");
 	}
 
+	// Today's mood shows even when the targets do not say so.
+	const mouth = pose.mouth ?? (signals.face === "bright" ? "smile" : undefined);
+	// On a sad day the brows knit toward the nose.
+	const brow = signals.face === "sad" ? 1 : 2;
+
 	// Eyes, brows, the shadow under the nose, and the mouth.
 	const eye = pose.eyes === "closed" ? "q" : "e";
 	head(turn - 2, chin + 3, eye);
 	head(turn + 2, chin + 3, eye);
-	head(turn - 2, chin + 4, "h", -2);
-	head(turn + 2, chin + 4, "h", 2);
+	head(turn - brow, chin + 4, "h", -2);
+	head(turn + brow, chin + 4, "h", 2);
 	head(turn, chin + 2, "q");
 
-	if (pose.mouth === "smile") {
+	// Shadows under the eyes after a short night, red cheeks after a hard workout.
+	if (signals.rest === "tired") {
+		for (const x of [-3, -2, 2, 3]) {
+			head(x, chin + 2, "L");
+		}
+	}
+
+	if (signals.exertion === "flushed") {
+		for (const x of [-3, -2, 2, 3]) {
+			head(x, chin + 2, "r");
+			head(x, chin + 1, "r");
+		}
+	}
+
+	if (mouth === "smile") {
 		span(head, turn - 1, turn + 1, chin + 1, "m");
 		head(turn - 2, chin + 2, "r");
 		head(turn + 2, chin + 2, "r");
-	} else if (pose.mouth === "open") {
+	} else if (mouth === "open") {
 		span(head, turn - 1, turn, chin + 1, "e");
+	} else if (signals.face === "sad") {
+		// The corners turn down.
+		head(turn - 1, chin, "m");
+		span(head, turn, turn, chin + 1, "m");
+		head(turn + 1, chin, "m");
 	} else {
 		span(head, turn - 1, turn, chin + 1, "q");
 	}
@@ -1567,12 +1593,24 @@ function paintHeadFront({ upper, b, look, gear }: Paint, pose: Front) {
 		span(head, -3, 3, chin + 6, "S");
 		head(-2, chin + 6, "T");
 		span(head, -4 + turn, 4 + turn, chin + 5, "z");
-	} else if (gear.headwear === 2) {
-		// Sunglasses with a glint.
-		span(head, -3, -1, chin + 3, "e");
-		span(head, 1, 3, chin + 3, "e");
-		head(0, chin + 3, "e");
-		head(-2, chin + 3, "w");
+	} else {
+		if (gear.headwear === 2) {
+			// Sunglasses with a glint.
+			span(head, -3, -1, chin + 3, "e");
+			span(head, 1, 3, chin + 3, "e");
+			head(0, chin + 3, "e");
+			head(-2, chin + 3, "w");
+		}
+
+		// Strands stand up from the crown, above the band when there is one;
+		// a cap covers them.
+		if (signals.isBedHead) {
+			const top = chin + (gear.gadget >= 1 ? 8 : 7);
+			head(-2, top, "h");
+			head(0, top, "h");
+			head(0, top + 1, "i");
+			head(2, top, "h");
+		}
 	}
 }
 
@@ -1627,7 +1665,10 @@ function paintSideLeg(
 	}
 }
 
-function paintSideHead({ upper: body, b, look, gear }: Paint, pose: Side) {
+function paintSideHead(
+	{ upper: body, b, look, gear, signals }: Paint,
+	pose: Side,
+) {
 	// Past 72, the head leans 1 pixel forward and down.
 	const lean = look.age >= 72 ? 1 : 0;
 	const { chin } = b;
@@ -1739,9 +1780,19 @@ function paintSideHead({ upper: body, b, look, gear }: Paint, pose: Side) {
 		span(upper, -3, 2, chin + 6, "S");
 		span(upper, -2, 1, chin + 7, "S");
 		span(upper, 2, 5, chin + 5, "z");
-	} else if (gear.headwear === 2) {
-		span(upper, 1, 3, chin + 3, "e");
-		upper(0, chin + 4, "e");
+	} else {
+		if (gear.headwear === 2) {
+			span(upper, 1, 3, chin + 3, "e");
+			upper(0, chin + 4, "e");
+		}
+
+		// Strands stand up from the crown, above the band when there is one.
+		if (signals.isBedHead) {
+			const top = chin + (gear.gadget >= 1 ? 8 : 7);
+			upper(-2, top, "h");
+			upper(0, top, "h");
+			upper(0, top + 1, "i");
+		}
 	}
 }
 
@@ -1847,6 +1898,61 @@ function paintSide(paint: Paint, pose: Side) {
 
 	// The near arm swings in front of the body.
 	arm(frame, false);
+}
+
+// Drops running down the temples after a workout.
+function paintSweat({ upper, b, counter, signals }: Paint) {
+	if (signals.exertion === "none") {
+		return;
+	}
+
+	// Each drop is 2 pixels tall and falls 1 row every 2 ticks.
+	for (const [x, offset] of [
+		[-4, 0],
+		[4, 2],
+	] as const) {
+		const y = b.chin + 5 - ((Math.floor(counter / 2) + offset) % 4);
+		upper(x, y, "W");
+		upper(x, y - 1, "W");
+	}
+}
+
+// A thought bubble of a water drop or an apple, shown every other 2 seconds
+// while idling; thirst and hunger take turns. It opens toward the middle of
+// the stage, so it stays on the stage at either walk edge.
+function paintWish(
+	{ upper: draw, b, counter, signals }: Paint,
+	direction: number,
+) {
+	const wishes = [
+		...(signals.isThirsty ? (["water"] as const) : []),
+		...(signals.isHungry ? (["food"] as const) : []),
+	];
+
+	if (wishes.length === 0 || Math.floor(counter / 20) % 2 === 1) {
+		return;
+	}
+
+	const wish = wishes[Math.floor(counter / 40) % wishes.length];
+	const upper: Put = (x, y, key) => {
+		draw(direction * x, y, key);
+	};
+
+	const x = b.side + 2;
+	const y = b.top - 1;
+	upper(x - 1, y - 2, "v");
+	upper(x, y - 1, "v");
+
+	if (wish === "water") {
+		upper(x + 2, y + 2, "W");
+		span(upper, x + 1, x + 3, y + 1, "W");
+		span(upper, x + 1, x + 3, y, "W");
+		upper(x + 2, y - 1, "W");
+	} else {
+		span(upper, x + 1, x + 3, y + 1, "F");
+		span(upper, x + 1, x + 3, y, "F");
+		upper(x + 2, y + 2, "G");
+	}
 }
 
 function paintFront(paint: Paint, pose: Front) {
@@ -2028,6 +2134,8 @@ export type SceneInput = Readonly<{
 	mood: Mood;
 	width: number;
 	anchor?: number;
+	// What the day says about the character; quiet by default.
+	signals?: Signals;
 	// The walk margin the motion began with; the look's own by default.
 	reach?: number;
 }>;
@@ -2104,6 +2212,7 @@ function drawScene(
 		mood,
 		width,
 		anchor = homeOf(width),
+		signals = quietSignals,
 	}: SceneInput,
 	reach: number,
 	withProps: boolean,
@@ -2113,7 +2222,7 @@ function drawScene(
 		Array.from({ length: width }, () => "."),
 	);
 	const scene = sceneOf(activity, counter, width, mood, anchor, reach);
-	const b = bodyOf(look, isFull);
+	const b = bodyOf(look, isFull || signals.isFull);
 	const recolor = recolorOf(look);
 	const pose = scene.pose(b);
 	// The character's x = 0 is its center column, mirrored when facing left.
@@ -2137,6 +2246,7 @@ function drawScene(
 		look,
 		gear: gearOf(level),
 		counter,
+		signals,
 	};
 
 	paintShadow(plant(0), b, scene.lift);
@@ -2145,6 +2255,13 @@ function drawScene(
 		paintSide(paint, pose);
 	} else {
 		paintFront(paint, pose);
+	}
+
+	paintSweat(paint);
+
+	if (activity === "idle" && mood !== "sleepy") {
+		// Toward the middle of the stage, whichever way the body faces.
+		paintWish(paint, scene.x < width / 2 ? scene.facing : -scene.facing);
 	}
 
 	for (const draw of withProps ? (scene.props ?? []) : []) {

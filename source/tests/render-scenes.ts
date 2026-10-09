@@ -17,6 +17,7 @@ import {
 	type SceneInput,
 	stageHeight,
 } from "../pixel-art.js";
+import { quietSignals } from "../signals.js";
 import { facialHairs, hairColors, hairStyles, skinTones } from "../i18n.js";
 import { themes } from "../theme.js";
 
@@ -175,6 +176,28 @@ export const sheets: Record<string, SceneInput[]> = {
 		...base,
 		look: { ...defaultLook, age: 30 + index * 5, facialHair: "beard" as const },
 	})),
+	// Each signal beside the quiet frame, then bed head under headphones and a cap.
+	signals: [
+		...(
+			[
+				{},
+				{ rest: "tired" },
+				{ exertion: "sweaty" },
+				{ exertion: "flushed" },
+				{ isThirsty: true },
+				{ isHungry: true },
+				{ isFull: true },
+				{ face: "bright" },
+				{ face: "sad" },
+				{ isBedHead: true },
+			] as const
+		).map((signals) => ({ ...base, signals: { ...quietSignals, ...signals } })),
+		...[2, 5].map((level) => ({
+			...base,
+			level,
+			signals: { ...quietSignals, isBedHead: true },
+		})),
+	],
 	levels: Array.from({ length: 10 }, (_, index) => ({
 		...base,
 		level: index + 1,
