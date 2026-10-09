@@ -1,14 +1,21 @@
+import { createServer } from "node:http";
 import test from "ava";
+import zod from "zod";
 import { APICallError, RetryError } from "ai";
 import {
 	accountsOf,
 	cooldownOf,
 	defaultModels,
 	failureOf,
+	aiAsker,
+	modelOf,
 	withFallback,
 } from "../asker.js";
 import type { Account } from "../config.js";
 import { stopTracing, tracerOf } from "../tracing.js";
+
+// The local fake server lacks structured outputs, which the SDK warns about.
+globalThis.AI_SDK_LOG_WARNINGS = false;
 
 const account = (
 	id: string,
@@ -329,4 +336,108 @@ test.serial("reports a flush that outlasts its timer", async (t) => {
 	);
 
 	t.true(await stopTracing(0));
+});
+
+test("builds each provider's model without calling it", async (t) => {
+	for (const provider of [
+		"openai",
+		"anthropic",
+		"google",
+		"xai",
+		"compatible",
+	] as const) {
+		// eslint-disable-next-line no-await-in-loop -- 1 provider at a time.
+		const model = await modelOf(account(provider, provider));
+
+		t.true(
+			typeof model === "object" && model.provider.startsWith(provider),
+			`${provider} provider`,
+		);
+		t.is(
+			typeof model === "object" ? model.modelId : model,
+			defaultModels[provider],
+		);
+	}
+});
+
+/* eslint-disable @typescript-eslint/naming-convention -- the wire format */
+// An OpenAI-compatible server on this machine that always answers `content`.
+const serve = async (content: string, status = 200) => {
+	const server = createServer((_request, response) => {
+		response.writeHead(status, { "content-type": "application/json" });
+		response.end(
+			JSON.stringify({
+				id: "x",
+				object: "chat.completion",
+				created: 0,
+				model: "m",
+				choices: [
+					{
+						index: 0,
+						message: { role: "assistant", content },
+						finish_reason: "stop",
+					},
+				],
+				usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+			}),
+		);
+	});
+	await new Promise<void>((resolve) => {
+		server.listen(0, "127.0.0.1", resolve);
+	});
+	const address = server.address();
+	const port = typeof address === "object" && address ? address.port : 0;
+
+	return {
+		close: () => server.close(),
+		account: {
+			...account("local", "compatible"),
+			baseUrl: `http://127.0.0.1:${port}/v1`,
+		},
+	};
+};
+
+/* eslint-enable @typescript-eslint/naming-convention */
+
+const ask = async (accounts: Account[], schema?: zod.ZodType) =>
+	aiAsker({
+		accounts,
+		kind: "chat",
+		instructions: "Be brief.",
+		turns: [{ role: "user", content: "hi" }],
+		sessionId: "s",
+		schema,
+		env: {},
+	});
+
+test("asks a server, and reads an object that fits the schema", async (t) => {
+	const server = await serve('{"a":1}');
+	t.teardown(server.close);
+
+	t.like(await ask([server.account]), { ok: true, result: '{"a":1}' });
+	t.like(await ask([server.account], zod.object({ a: zod.number() })), {
+		ok: true,
+		result: { a: 1 },
+	});
+});
+
+test("an unreadable object is answered, not failed over", async (t) => {
+	const server = await serve("not json");
+	t.teardown(server.close);
+	const reply = await ask(
+		[server.account, account("next")],
+		zod.object({ a: zod.number() }),
+	);
+
+	t.like(reply, { ok: true, result: undefined });
+	t.is(reply.attempts.length, 1);
+});
+
+test("never rejects when a request fails", async (t) => {
+	const server = await serve("x", 500);
+	t.teardown(server.close);
+	const reply = await ask([{ ...server.account, id: "down" }]);
+
+	t.false(reply.ok);
+	t.is(reply.attempts.length, 1);
 });

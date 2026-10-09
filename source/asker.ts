@@ -1,4 +1,8 @@
+/* eslint-disable @typescript-eslint/naming-convention -- third-party names */
+import type { LanguageModel } from "ai";
+import type zod from "zod";
 import type { Account, Config, Environment, Provider } from "./config.js";
+import { tracerOf } from "./tracing.js";
 
 // A starting model for each provider, which the user can change per account.
 // Checked against each provider's model list on 2026-10-07.
@@ -249,3 +253,133 @@ export async function withFallback<Result>(
 
 	return { ok: false, attempts };
 }
+
+// Each provider's package loads only when an account of it is used. Every
+// saved account's key is passed explicitly, never left to the SDK's env fallback.
+export async function modelOf(account: Account): Promise<LanguageModel> {
+	const { apiKey, baseUrl: baseURL, model } = account;
+
+	switch (account.provider) {
+		case "openai": {
+			const { createOpenAI } = await import("@ai-sdk/openai");
+			return createOpenAI({ apiKey, baseURL })(model);
+		}
+
+		case "anthropic": {
+			const { createAnthropic } = await import("@ai-sdk/anthropic");
+			return createAnthropic({ apiKey, baseURL })(model);
+		}
+
+		case "google": {
+			const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
+			return createGoogleGenerativeAI({ apiKey, baseURL })(model);
+		}
+
+		case "xai": {
+			const { createXai } = await import("@ai-sdk/xai");
+			return createXai({ apiKey, baseURL })(model);
+		}
+
+		case "compatible": {
+			// Ollama's OpenAI-compatible endpoint, unless the account names another,
+			// such as LM Studio, OpenRouter, or an OmniRoute gateway.
+			const { createOpenAICompatible } =
+				await import("@ai-sdk/openai-compatible");
+			return createOpenAICompatible({
+				name: "compatible",
+				baseURL: baseURL ?? "http://localhost:11434/v1",
+				apiKey,
+			})(model);
+		}
+	}
+}
+
+export type Turn = Readonly<{ role: "user" | "assistant"; content: string }>;
+
+export type AskRequest = Readonly<{
+	accounts: readonly Account[];
+	kind: string;
+	instructions: string;
+	turns: readonly Turn[];
+	sessionId: string;
+	schema?: zod.ZodType;
+	env: Environment;
+	signal?: AbortSignal;
+	onAttempt?: (account: Account) => void;
+}>;
+
+// The text, or the object the schema describes; `undefined` when the model
+// answered but its JSON did not fit the schema.
+export type AskReply = Fallback<unknown>;
+export type Asker = (request: AskRequest) => Promise<AskReply>;
+
+// 1 request, traced as 1 trace, tried on each account until 1 answers. Never
+// rejects: a failure to load or trace is every account failing.
+export const aiAsker: Asker = async (request) => {
+	try {
+		const [{ generateText, Output }, tracer] = await Promise.all([
+			import("ai"),
+			tracerOf(request.env),
+		]);
+		const functionId = `coach-${request.kind}`;
+
+		return await tracer.trace(
+			functionId,
+			{ sessionId: request.sessionId, tags: [request.kind] },
+			async () =>
+				withFallback(
+					request.accounts,
+					async (account) => {
+						const common = {
+							model: await modelOf(account),
+							instructions: request.instructions,
+							messages: request.turns.map((turn) => ({ ...turn })),
+							maxRetries: 0,
+							timeout: 60_000,
+							abortSignal: request.signal,
+							telemetry: {
+								functionId,
+								isEnabled: tracer.isOn,
+								recordInputs: true,
+								recordOutputs: true,
+							},
+						};
+
+						if (request.schema) {
+							try {
+								const { output } = await generateText({
+									...common,
+									output: Output.object({ schema: request.schema }),
+								});
+								return output;
+							} catch (error) {
+								// Answered, but not in the shape asked: no cooldown, no fallback.
+								if (
+									error instanceof Error &&
+									error.name === "AI_NoObjectGeneratedError"
+								) {
+									return undefined;
+								}
+
+								throw error;
+							}
+						}
+
+						const { text } = await generateText(common);
+						return text;
+					},
+					{ signal: request.signal, onAttempt: request.onAttempt },
+				),
+		);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+
+		return {
+			ok: false,
+			attempts: request.accounts.map((account) => ({
+				account,
+				failure: { kind: "network", message },
+			})),
+		};
+	}
+};
