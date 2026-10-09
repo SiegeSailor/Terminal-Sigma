@@ -156,6 +156,18 @@ export const sheets: Record<string, SceneInput[]> = {
 		];
 		return frames.map((frame) => ({ ...base, look, ...frame }));
 	}),
+	// Tall characters leveling up: the hop stays under the stage's top.
+	tall: [33, 35].flatMap((height) =>
+		[1, 5, 10].flatMap((level) =>
+			[0, 4, 6, 8].map((counter) => ({
+				...base,
+				activity: "levelUp" as const,
+				counter,
+				level,
+				look: { ...defaultLook, height },
+			})),
+		),
+	),
 	appearance: skinTones.flatMap((skinTone) =>
 		hairStyles.map((hairStyle) => ({
 			...base,

@@ -2523,6 +2523,33 @@ function reachOf(look: Look): number {
 	return reach;
 }
 
+// The rows between the top of the head and gear, standing still, and the
+// stage's top row, which stays free.
+function crownRoom(
+	level: number,
+	look: Look,
+	width: number,
+	anchor: number,
+	reach: number,
+) {
+	const { rows } = drawScene(
+		{
+			activity: "idle",
+			counter: 0,
+			level,
+			look,
+			mood: "content",
+			width,
+			anchor,
+		},
+		reach,
+		false,
+	);
+	const first = rows.findIndex((row) => /[^.]/v.test(row));
+
+	return Math.max(first - 1, 0);
+}
+
 function drawScene(
 	{
 		activity,
@@ -2544,7 +2571,19 @@ function drawScene(
 	const scene = sceneOf(activity, counter, width, mood, anchor, reach);
 	const b = bodyOf(look, isFull || signals.isFull);
 	const recolor = recolorOf(look);
-	const pose = scene.pose(b);
+	let pose = scene.pose(b);
+	let { lift } = scene;
+
+	if (activity === "levelUp" && pose.view === "front") {
+		// A tall body hops only as far as the room above its crown, and its
+		// raised hands stop at the stage's top row.
+		lift = Math.min(lift, crownRoom(level, look, width, anchor, reach));
+		const [left, right] = pose.hands ?? [];
+		const cap = (hand?: Point): Point | undefined =>
+			hand && [hand[0], Math.min(hand[1], stageHeight - 2 - lift)];
+		pose = { ...pose, hands: [cap(left), cap(right)] };
+	}
+
 	// The character's x = 0 is its center column, mirrored when facing left.
 	const plant =
 		(rise: number): Put =>
@@ -2557,11 +2596,11 @@ function drawScene(
 			}
 		};
 
-	const put = plant(scene.lift);
+	const put = plant(lift);
 	const bob = pose.view === "front" ? (pose.bob ?? 0) : 0;
 	const paint: Paint = {
 		put,
-		upper: plant(scene.lift - bob),
+		upper: plant(lift - bob),
 		b,
 		look,
 		gear: gearOf(level),
@@ -2570,7 +2609,7 @@ function drawScene(
 	};
 
 	paintScenery(canvas, signals, counter);
-	paintShadow(plant(0), b, scene.lift);
+	paintShadow(plant(0), b, lift);
 	paintRoom(canvas, signals.room);
 
 	for (const draw of withProps ? (scene.ground ?? []) : []) {

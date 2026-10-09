@@ -1036,3 +1036,26 @@ test("keeps every room pixel, and draws each sun only in its corner", (t) => {
 		t.deepEqual(outside, [], `${daylight} stays in its corner`);
 	}
 });
+
+test("keeps a tall character's head on stage through the level-up hop", (t) => {
+	for (const height of [33, 35]) {
+		for (const level of [1, 5, 10]) {
+			for (let counter = 0; counter < cycleOf("levelUp", width); counter++) {
+				const top = scene({
+					activity: "levelUp",
+					counter,
+					level,
+					look: { ...defaultLook, height },
+					mood: "happy",
+				})[0];
+
+				// Sparkles are the only thing allowed to clip.
+				t.is(
+					(top ?? "").replaceAll(/[.y]/gv, ""),
+					"",
+					`height ${height}, level ${level}, tick ${counter}`,
+				);
+			}
+		}
+	}
+});
