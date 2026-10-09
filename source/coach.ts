@@ -186,3 +186,52 @@ export function saveCoach(file: string, coach: Coach) {
 // older turns if conversations ever need a longer memory.
 export const recentTurnsOf = (session: Session, limit = 20): Turn[] =>
 	session.turns.slice(-limit).map(({ role, content }) => ({ role, content }));
+
+// The session with these turns added, or a new session holding them.
+export function withTurns(
+	coach: Coach,
+	session: Session,
+	turns: Session["turns"],
+): Coach {
+	const isKnown = coach.sessions.some((known) => known.id === session.id);
+
+	return {
+		sessions: isKnown
+			? coach.sessions.map((known) =>
+					known.id === session.id
+						? { ...known, turns: [...known.turns, ...turns] }
+						: known,
+				)
+			: [
+					...coach.sessions,
+					{ ...session, turns: [...session.turns, ...turns] },
+				],
+	};
+}
+
+// 2024-01-07 was a Sunday, so weekday 0 lands on it.
+const weekdayOf = (weekday: number, language: Language) =>
+	new Intl.DateTimeFormat(language, { weekday: "short" }).format(
+		new Date(2024, 0, 7 + weekday),
+	);
+
+export function planTextOf(
+	plan: PlanReply,
+	language: Language,
+	messages: Messages,
+) {
+	return [
+		plan.title,
+		...plan.days.map((day) =>
+			[
+				weekdayOf(day.weekday, language),
+				messages.logs.workoutEntry(
+					messages.workoutActivity[day.activity],
+					day.minutes,
+					messages.intensity[day.intensity],
+				),
+				...(day.note ? [day.note] : []),
+			].join(" · "),
+		),
+	].join("\n");
+}

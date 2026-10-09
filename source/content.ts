@@ -1,6 +1,14 @@
+import { defaultModels } from "./asker.js";
+import { coachKinds } from "./coach.js";
 import type { Option } from "./components/choice.js";
 import type { Field } from "./components/entry-form.js";
 import type { Section } from "./components/today-panel.js";
+import {
+	type Account,
+	accountSchema,
+	type Provider,
+	providers,
+} from "./config.js";
 import { exerciseName, setGroupsOf } from "./exercises.js";
 import { adviceOf, targetsOf } from "./health.js";
 import {
@@ -51,14 +59,14 @@ export const characterWidth = 36;
 export const menuListWidth = 26;
 
 // Header and footer take 5 rows. The character's panel is 25 rows tall,
-// Today 23 with its spacing or 20 compact, the menu 15 with its 4 headings
-// and 9 items, and Recent 7.
+// Today 23 with its spacing or 20 compact, the menu 16 with its 4 headings
+// and 10 items, and Recent 7.
 const chromeRows = 5;
 const characterRows = 25;
 const todayRows = 23;
 const compactTodayRows = 20;
-const menuRows = 15;
-const compactMenuRows = 11;
+const menuRows = 16;
+const compactMenuRows = 12;
 const recentRows = 7;
 // The description beside the menu list needs at least this many columns.
 const descriptionColumns = 36;
@@ -264,6 +272,7 @@ export function moodOf(progress: Progress, now: number): Mood {
 export const menuOrder = [
 	"log",
 	"timer",
+	"coach",
 	"logs",
 	"quotes",
 	"profile",
@@ -278,6 +287,7 @@ export type MenuKey = (typeof menuOrder)[number];
 export const menuGroups = {
 	log: "today",
 	timer: "today",
+	coach: "today",
 	logs: "journal",
 	quotes: "settings",
 	profile: "settings",
@@ -309,6 +319,7 @@ export function menuEntriesOf(
 		version: string;
 		newest?: string;
 		savedVariables: number;
+		accounts: number;
 	}>,
 ): MenuEntry[] {
 	const { profile } = state.progress;
@@ -328,6 +339,10 @@ export function menuEntriesOf(
 			: messages.signal.quotesManual,
 		log: messages.signal.loggedToday(loggedToday),
 		timer: state.timerSignal,
+		coach:
+			state.accounts > 0
+				? messages.signal.accounts(state.accounts)
+				: messages.signal.setUp,
 		logs: messages.signal.entries(state.logs.length),
 		profile: profile?.name ?? messages.signal.setUp,
 		theme: messages.themes.names[state.theme],
@@ -342,6 +357,7 @@ export function menuEntriesOf(
 		quotes: messages.describe.quotes,
 		timer: messages.describe.timer(state.focus, state.rest),
 		log: messages.describe.log,
+		coach: messages.describe.coach,
 		logs: messages.describe.logs,
 		profile: messages.describe.profile,
 		theme: messages.describe.theme,
@@ -472,6 +488,130 @@ export const intervalOptionsOf = (messages: Messages): Option[] =>
 		value: String(interval),
 	}));
 
+export function coachOptionsOf(
+	messages: Messages,
+	state: Readonly<{
+		isSetUp: boolean;
+		hasPlan: boolean;
+		hasTurns: boolean;
+		accounts: number;
+	}>,
+): Option[] {
+	const { coach } = messages;
+	const accounts: Option = {
+		label: coach.accounts(state.accounts),
+		value: "accounts",
+	};
+	const back: Option = { label: coach.back, value: "back" };
+
+	if (!state.isSetUp) {
+		return [accounts, back];
+	}
+
+	return [
+		{ label: coach.ask, value: "ask" },
+		{ label: coach.today, value: "today" },
+		{ label: coach.week, value: "week" },
+		{ label: coach.plan, value: "plan" },
+		...(state.hasPlan ? [{ label: coach.savePlan, value: "savePlan" }] : []),
+		...(state.hasTurns ? [{ label: coach.read, value: "read" }] : []),
+		{ label: coach.fresh, value: "fresh" },
+		accounts,
+		back,
+	];
+}
+
+// The fields of a new account, with the model and name of the chosen provider.
+export function accountFieldsOf(
+	messages: Messages,
+	provider: Provider = "openai",
+): Field[] {
+	const { accounts } = messages;
+
+	return [
+		{
+			key: "provider",
+			label: accounts.provider,
+			kind: "select",
+			options: providers.map((option) => ({
+				label: accounts.providers[option],
+				value: option,
+			})),
+			defaultValue: provider,
+		},
+		{
+			key: "label",
+			label: accounts.label,
+			kind: "text",
+			defaultValue: accounts.names[provider],
+		},
+		{
+			key: "apiKey",
+			label: accounts.apiKey,
+			kind: "secret",
+			optional: provider === "compatible",
+		},
+		{
+			key: "model",
+			label: accounts.model,
+			kind: "text",
+			defaultValue: defaultModels[provider],
+		},
+		{
+			key: "baseUrl",
+			label: accounts.baseUrl,
+			kind: "text",
+			optional: true,
+			placeholder:
+				provider === "compatible" ? "http://localhost:11434/v1" : undefined,
+		},
+	];
+}
+
+export function accountOf(
+	values: Readonly<Record<string, string>>,
+	id: string,
+): Account | undefined {
+	// Without its own key, a hosted provider's SDK would send the shell's.
+	if (!values.apiKey && values.provider !== "compatible") {
+		return undefined;
+	}
+
+	const parsed = accountSchema.safeParse({
+		id,
+		provider: values.provider,
+		label: values.label,
+		model: values.model,
+		...(values.apiKey ? { apiKey: values.apiKey } : {}),
+		...(values.baseUrl ? { baseUrl: values.baseUrl } : {}),
+	});
+
+	return parsed.success ? parsed.data : undefined;
+}
+
+// The order the fallback tries, with 1 account moved up or down a place.
+export function movedAccounts(
+	accounts: readonly Account[],
+	id: string,
+	step: -1 | 1,
+): Account[] {
+	const from = accounts.findIndex((account) => account.id === id);
+	const to = from + step;
+	const next = [...accounts];
+
+	if (from === -1 || to < 0 || to >= accounts.length) {
+		return next;
+	}
+
+	const [moving] = next.splice(from, 1);
+
+	if (moving) {
+		next.splice(to, 0, moving);
+	}
+
+	return next;
+}
+
 export const categoryOptionsOf = (messages: Messages): Option[] =>
 	quoteCategories.map((category) => ({
 		label: messages.quotes.categoryNames[category],
@@ -567,6 +707,22 @@ export function describeEvent(messages: Messages, event: Event) {
 		return events.goalChanged(
 			key ? goalText(key, Number(value), messages) : detail,
 		);
+	}
+
+	if (
+		event.action === "accountAdded" ||
+		event.action === "accountMoved" ||
+		event.action === "accountRemoved"
+	) {
+		const provider = providers.find((option) => option === detail);
+		return events[event.action](
+			provider ? messages.accounts.names[provider] : detail,
+		);
+	}
+
+	if (event.action === "coachAsked") {
+		const kind = coachKinds.find((option) => option === detail);
+		return events.coachAsked(kind ? messages.coach.kinds[kind] : detail);
 	}
 
 	if (event.action === "logDeleted" || event.action === "logEdited") {

@@ -5,6 +5,8 @@ import test from "ava";
 import React from "react";
 import { render } from "ink-testing-library";
 import App from "../app.js";
+import type { Asker, AskReply, AskRequest } from "../asker.js";
+import { loadCoach, saveCoach } from "../coach.js";
 import { loadConfig } from "../config.js";
 import { messagesOf } from "../i18n.js";
 import { loadProgress, type Progress, progressSchema } from "../progress.js";
@@ -72,6 +74,7 @@ const start = (
 	file = temporaryFile(),
 	{ updater } = fakeUpdater(),
 	env: Record<string, string | undefined> = {},
+	asker?: Asker,
 ) => {
 	const configFile = path.join(path.dirname(file), "config.json");
 
@@ -81,6 +84,7 @@ const start = (
 		env,
 		...render(
 			<App
+				asker={asker}
 				configFile={configFile}
 				env={env}
 				file={file}
@@ -117,13 +121,14 @@ test("renders the dashboard with the menu in order", async (t) => {
 	const order = [
 		"1. Log",
 		"2. Tomato Timer",
-		"3. History",
-		"4. Everyday Quotes",
-		"5. Profile",
-		"6. Theme",
-		"7. Language",
-		"8. Environment",
-		"9. Software Update",
+		"3. Coach",
+		"4. History",
+		"5. Everyday Quotes",
+		"6. Profile",
+		"7. Theme",
+		"8. Language",
+		"9. Environment",
+		"0. Software Update",
 	].map((label) => frame.indexOf(label));
 
 	t.true(order.every((index, position) => index > (order[position - 1] ?? -1)));
@@ -151,7 +156,7 @@ test("asks for a language on the first run and saves it", async (t) => {
 test("switches to Korean from the menu", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["7", "\r", down, down, "\r"]);
+	await type(stdin, ["8", "\r", down, down, "\r"]);
 
 	t.is(loadProgress(file).language, "ko");
 	t.true((lastFrame() ?? "").includes("토마토 타이머"));
@@ -320,7 +325,7 @@ test("saves a profile and turns it into targets", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
 	await type(stdin, [
-		"5",
+		"6",
 		"\r",
 		"\r",
 		"\r",
@@ -375,7 +380,7 @@ test("keeps unknown profile fields when saving the profile", async (t) => {
 	);
 
 	await type(stdin, [
-		"5",
+		"6",
 		"\r",
 		"\r",
 		...Array.from({ length: 8 }, () => "\r"),
@@ -394,7 +399,7 @@ test("previews a theme while browsing and saves the chosen one", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 	const before = lastFrame() ?? "";
 
-	await type(stdin, ["6", "\r", down]);
+	await type(stdin, ["7", "\r", down]);
 	t.not(lastFrame(), before);
 	t.is(loadProgress(file).theme, undefined);
 
@@ -426,7 +431,7 @@ test("configures everyday quotes", async (t) => {
 	const { file, stdin, unmount } = start();
 
 	// Auto-refresh off, then the interval to 1 hour.
-	await type(stdin, ["4", "\r", down, "\r", down, "\r", down, "\r"]);
+	await type(stdin, ["5", "\r", down, "\r", down, "\r", down, "\r"]);
 	t.like(loadProgress(file).quotes, { autoRefresh: false, interval: 3600 });
 
 	// The cursor comes back on Interval; 2 down is Categories. Tick Art, then
@@ -458,7 +463,7 @@ test("shows recent logs and every action in the logs view", async (t) => {
 	await settle();
 	t.true((lastFrame() ?? "").includes("Oatmeal · 350 kcal"));
 
-	await type(stdin, ["3", "\r"]);
+	await type(stdin, ["4", "\r"]);
 	t.true((lastFrame() ?? "").includes("Opened Terminal Sigma"));
 
 	unmount();
@@ -473,7 +478,7 @@ test("updates to the newest version and restarts into it", async (t) => {
 	);
 	t.teardown(unmount);
 
-	await type(stdin, ["9"]);
+	await type(stdin, ["0"]);
 	t.true(await shows(lastFrame, "v1.1.0 available"));
 
 	await type(stdin, ["\r"]);
@@ -497,7 +502,7 @@ test("saves an environment variable, leaving the shell's alone", async (t) => {
 		{ TERMINAL_SIGMA_BREAK: "10" },
 	);
 
-	await type(stdin, ["8", "\r"]);
+	await type(stdin, ["9", "\r"]);
 	t.true((lastFrame() ?? "").includes("Focus minutes"));
 	t.true(
 		(lastFrame() ?? "").includes("shell"),
@@ -527,7 +532,7 @@ test("masks a saved secret and clears it with an empty value", async (t) => {
 
 	// Data, Focus, Break, Motion, then API Ninjas key.
 	await type(stdin, [
-		"8",
+		"9",
 		"\r",
 		down,
 		down,
@@ -555,7 +560,7 @@ test("marks a newly drawn quote", async (t) => {
 	t.false((lastFrame() ?? "").includes("✦ New"), "the first quote is not news");
 
 	// Everyday Quotes, then Draw a new quote.
-	await type(stdin, ["4", "\r", "\r"]);
+	await type(stdin, ["5", "\r", "\r"]);
 	t.true(await shows(lastFrame, "✦ New"));
 
 	unmount();
@@ -566,7 +571,7 @@ test("a language switch is not a new quote", async (t) => {
 	await settle();
 
 	// Language, then 繁體中文.
-	await type(stdin, ["7", "\r", down, "\r"]);
+	await type(stdin, ["8", "\r", down, "\r"]);
 	t.false((lastFrame() ?? "").includes("✦"));
 	t.true((lastFrame() ?? "").includes(messagesOf("zh-TW").menu.timer));
 
@@ -582,7 +587,7 @@ test("shows the whole new quote at once with reduced motion", async (t) => {
 		{ TERMINAL_SIGMA_MOTION: "reduced" },
 	);
 
-	await type(stdin, ["4", "\r", "\r"]);
+	await type(stdin, ["5", "\r", "\r"]);
 	const quoteLine = () => (lastFrame() ?? "").split("\n")[2];
 	await shows(lastFrame, "✦ New");
 	const before = quoteLine();
@@ -638,7 +643,7 @@ test("edits an older log in place, keeping its day and its neighbor", async (t) 
 	});
 
 	// History, the Diet filter, then the second item of that line.
-	await type(stdin, ["3", "\r", right, right, down, "e"]);
+	await type(stdin, ["4", "\r", right, right, down, "e"]);
 	t.true((lastFrame() ?? "").includes("Toast 160kcal"));
 
 	await type(stdin, [backspace.repeat(13), "Bagel 280kcal", "\r"]);
@@ -663,7 +668,7 @@ test("keeps an edited log's kind", async (t) => {
 	});
 	const before = loadProgress(file);
 
-	await type(stdin, ["3", "\r", right, right, "e"]);
+	await type(stdin, ["4", "\r", right, right, "e"]);
 	await type(stdin, [backspace.repeat(15), "goal water 2.5l", "\r"]);
 	t.deepEqual(loadProgress(file).meals, [{ at, food: "Toast", calories: 160 }]);
 	t.deepEqual(loadProgress(file).goals, before.goals);
@@ -690,7 +695,7 @@ test("cannot edit a workout of several exercises", async (t) => {
 		],
 	});
 
-	await type(stdin, ["3", "\r", right, right, right, "e"]);
+	await type(stdin, ["4", "\r", right, right, right, "e"]);
 	// The footer clips the message, so match its start.
 	t.true((lastFrame() ?? "").includes("This entry can't be written"));
 
@@ -705,7 +710,7 @@ test("deletes a log, puts it back, and logs it again now", async (t) => {
 	});
 
 	// History, then the Water filter: All, Focus, Diet, Workout, Water.
-	await type(stdin, ["3", "\r", right, right, right, right, "d"]);
+	await type(stdin, ["4", "\r", right, right, right, right, "d"]);
 	t.deepEqual(loadProgress(file).water, []);
 	t.true(actionsIn(file).includes("logDeleted"));
 
@@ -740,7 +745,7 @@ test("shows the week's trends, streak, and habits", async (t) => {
 	});
 
 	// History, then left from All to Week, the last filter.
-	await type(stdin, ["3", "\r", left]);
+	await type(stdin, ["4", "\r", left]);
 	const frame = lastFrame() ?? "";
 	t.true(frame.includes("‹ Week ›"));
 	t.false(frame.includes("XP"), "the log summary is for the list");
@@ -764,7 +769,7 @@ test("chooses an appearance, previewing it before saving", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start({ ...empty, profile });
 
 	// Profile, then Appearance.
-	await type(stdin, ["5", "\r", down, "\r"]);
+	await type(stdin, ["6", "\r", down, "\r"]);
 	t.true((lastFrame() ?? "").includes("Skin tone"));
 
 	// Tan, then the defaults for style, color, and facial hair, then glasses.
@@ -783,7 +788,7 @@ test("chooses an appearance, previewing it before saving", async (t) => {
 test("asks for the body first when there is no profile", async (t) => {
 	const { file, stdin, lastFrame, unmount } = start();
 
-	await type(stdin, ["5", "\r", down, "\r"]);
+	await type(stdin, ["6", "\r", down, "\r"]);
 	const frame = lastFrame() ?? "";
 	t.true(frame.includes("then choose your appearance"));
 	t.false(frame.includes("Skin tone"), "no appearance form to fill in");
@@ -817,4 +822,260 @@ test("says what a log earned on the character's label", async (t) => {
 	t.true(await shows(lastFrame, "Drinking water… +1 XP"));
 
 	unmount();
+});
+
+const asking = (reply: (request: AskRequest) => AskReply) => {
+	const requests: AskRequest[] = [];
+	const asker: Asker = async (request) => {
+		requests.push(request);
+		return reply(request);
+	};
+
+	return { asker, requests };
+};
+
+const keys = {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	OPENAI_API_KEY: "sk-test-openai-1234",
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	ANTHROPIC_API_KEY: "sk-ant-test-5678",
+};
+
+test("explains how to set up the Coach without accounts", async (t) => {
+	const { stdin, lastFrame, unmount } = start();
+	t.teardown(unmount);
+
+	await type(stdin, ["3", "\r"]);
+	t.true((lastFrame() ?? "").includes("Add an account under Accounts"));
+});
+
+test("adds an account, masking its key and keeping it out of progress.json", async (t) => {
+	const { file, configFile, stdin, lastFrame, unmount } = start();
+	t.teardown(unmount);
+
+	// Coach, Accounts, Add, then OpenAI, its name, the key, its model, no URL.
+	await type(stdin, [
+		"3",
+		"\r",
+		"\r",
+		"\r",
+		"\r",
+		"\r",
+		"sk-test-123456789",
+		"\r",
+		"\r",
+		"\r",
+	]);
+	t.like(loadConfig(configFile).accounts[0], {
+		provider: "openai",
+		apiKey: "sk-test-123456789",
+		model: "gpt-5.5",
+	});
+	t.true((lastFrame() ?? "").includes("••••6789"));
+	t.false((lastFrame() ?? "").includes("sk-test"));
+	t.false(readFileSync(file, "utf8").includes("sk-test"));
+	t.true(actionsIn(file).includes("accountAdded"));
+});
+
+test("reviews the week and says when it fell back", async (t) => {
+	const { asker, requests } = asking((request) => {
+		const [first, second] = request.accounts;
+		return first && second
+			? {
+					ok: true,
+					result: "Great week!",
+					account: second,
+					attempts: [
+						{
+							account: first,
+							failure: { kind: "rateLimited", message: "429" },
+						},
+						{ account: second },
+					],
+				}
+			: { ok: false, attempts: [] };
+	});
+	const { file, stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asker,
+	);
+	t.teardown(unmount);
+
+	// Coach, then Review my week.
+	await type(stdin, ["3", "\r", down, down, "\r"]);
+	t.true(await shows(lastFrame, "Great week!"));
+	t.true(
+		(lastFrame() ?? "").includes(
+			"OPENAI_API_KEY could not answer, so ANTHROPIC_API_KEY did.",
+		),
+	);
+	t.is(requests[0]?.kind, "week");
+	t.true(requests[0]?.instructions.includes("Daily targets") ?? false);
+	t.deepEqual(
+		loadCoach(
+			path.join(path.dirname(file), "coach.json"),
+		).sessions[0]?.turns.map((turn) => [turn.role, turn.via]),
+		[
+			["user", undefined],
+			["assistant", "ANTHROPIC_API_KEY"],
+		],
+	);
+	t.true(actionsIn(file).includes("coachAsked"));
+	t.false(
+		readFileSync(file, "utf8").includes("Great week"),
+		"answers stay out of progress.json",
+	);
+});
+
+test("saves a planned week", async (t) => {
+	const plan = {
+		title: "Base building",
+		days: [
+			{ weekday: 1, activity: "running", minutes: 30, intensity: "light" },
+		],
+	};
+	const { asker } = asking((request) =>
+		request.accounts[0]
+			? {
+					ok: true,
+					result: plan,
+					account: request.accounts[0],
+					attempts: [{ account: request.accounts[0] }],
+				}
+			: { ok: false, attempts: [] },
+	);
+	const { file, stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asker,
+	);
+	t.teardown(unmount);
+
+	// Coach, then Plan my workouts, then Save this plan just below it.
+	await type(stdin, ["3", "\r", down, down, down, "\r"]);
+	t.true(await shows(lastFrame, "Mon · Running · 30 min · Light"));
+
+	await type(stdin, [down, "\r"]);
+	t.like(loadProgress(file).plans[0], { title: "Base building" });
+	t.true(actionsIn(file).includes("planSaved"));
+});
+
+test("says it could not read a plan that does not fit, and saves nothing", async (t) => {
+	const { asker } = asking((request) =>
+		request.accounts[0]
+			? {
+					ok: true,
+					result: { title: "x", days: [{ weekday: 9 }] },
+					account: request.accounts[0],
+					attempts: [{ account: request.accounts[0] }],
+				}
+			: { ok: false, attempts: [] },
+	);
+	const { file, stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asker,
+	);
+	t.teardown(unmount);
+
+	await type(stdin, ["3", "\r", down, down, down, "\r"]);
+	t.true(await shows(lastFrame, "not a plan Terminal Sigma could read"));
+	t.false((lastFrame() ?? "").includes("Save this plan"));
+	t.deepEqual(
+		loadCoach(path.join(path.dirname(file), "coach.json")).sessions,
+		[],
+	);
+});
+
+test("cancels a request with Esc, and a late answer never shows", async (t) => {
+	const asker: Asker = async (request) =>
+		new Promise((resolve) => {
+			request.signal?.addEventListener("abort", () => {
+				const [account] = request.accounts;
+				resolve(
+					account
+						? {
+								ok: true,
+								result: "Late answer",
+								account,
+								attempts: [{ account }],
+							}
+						: { ok: false, attempts: [] },
+				);
+			});
+		});
+	const { file, stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asker,
+	);
+	t.teardown(unmount);
+
+	await type(stdin, ["3", "\r", down, "\r"]);
+	t.true((lastFrame() ?? "").includes("Asking OPENAI_API_KEY"));
+
+	await type(stdin, [escape]);
+	t.true((lastFrame() ?? "").includes("Cancelled"));
+	t.false((lastFrame() ?? "").includes("Asking"));
+	t.false((lastFrame() ?? "").includes("Late answer"));
+	t.deepEqual(
+		loadCoach(path.join(path.dirname(file), "coach.json")).sessions,
+		[],
+	);
+});
+
+test("scrolls a long answer row by row in Read", async (t) => {
+	const file = temporaryFile();
+	const at = new Date().toISOString();
+	saveCoach(path.join(path.dirname(file), "coach.json"), {
+		sessions: [
+			{
+				id: "s1",
+				startedAt: at,
+				turns: [
+					{
+						role: "assistant",
+						content: Array.from(
+							{ length: 30 },
+							(_, index) => `row ${index + 1}`,
+						).join("\n"),
+						at,
+					},
+				],
+			},
+		],
+	});
+	const { stdin, lastFrame, unmount } = start(empty, file, fakeUpdater(), keys);
+	t.teardown(unmount);
+
+	// Coach, then Read the conversation, after Ask, Today, Week, and Plan.
+	await type(stdin, ["3", "\r", down, down, down, down, "\r"]);
+	t.regex(lastFrame() ?? "", /row 1\b/v, "Read opens on the latest turn");
+	t.false((lastFrame() ?? "").includes("row 30"));
+
+	const rowsShown = () =>
+		Array.from((lastFrame() ?? "").matchAll(/row \d+/gv), ([row]) => row);
+
+	await type(
+		stdin,
+		Array.from({ length: 20 }, () => down),
+	);
+	const bottom = rowsShown();
+	t.true(bottom.includes("row 30"), "the last row comes into view");
+	t.false(bottom.includes("row 1"));
+
+	// Scrolling stops at the last row, so more ↓ do nothing and 1 ↑ moves at once.
+	await type(stdin, [down, down, down]);
+	t.deepEqual(rowsShown(), bottom);
+	await type(stdin, [up]);
+	t.notDeepEqual(rowsShown(), bottom);
 });

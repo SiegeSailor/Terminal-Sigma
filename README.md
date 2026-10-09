@@ -76,15 +76,16 @@ The menu drives everything. It sits in 2 boxes: the items on the left, grouped u
 | --- | -------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `1` | Today    | Log             | The Log line; while focused, today's targets and advice show on the right                                                                                |
 | `2` | Today    | Tomato Timer    | Start a focus, or pause, resume, or stop the running one                                                                                                 |
-| `3` | Journal  | History         | Every log and action, newest first, with the Week tab                                                                                                    |
-| `4` | Settings | Everyday Quotes | A new quote, and the settings below                                                                                                                      |
-| `5` | Settings | Profile         | Your name, age, height, weight, body fat, gender, work style, and health goal, showing saved values, and your character's appearance with a live preview |
-| `6` | Settings | Theme           | The color tone of the dashboard and your character, previewing each one as the cursor moves                                                              |
-| `7` | Settings | Language        | English, Traditional Chinese, or Korean                                                                                                                  |
-| `8` | Settings | Environment     | Every environment variable with its value and source; Enter edits 1, an empty value clears it                                                            |
-| `9` | System   | Software Update | The version you run and the newest one, with an update when there is one                                                                                 |
+| `3` | Today    | Coach           | A review of your day or week, a workout plan, or any question, asked of your own AI accounts, and the accounts in the order they are tried               |
+| `4` | Journal  | History         | Every log and action, newest first, with the Week tab                                                                                                    |
+| `5` | Settings | Everyday Quotes | A new quote, and the settings below                                                                                                                      |
+| `6` | Settings | Profile         | Your name, age, height, weight, body fat, gender, work style, and health goal, showing saved values, and your character's appearance with a live preview |
+| `7` | Settings | Theme           | The color tone of the dashboard and your character, previewing each one as the cursor moves                                                              |
+| `8` | Settings | Language        | English, Traditional Chinese, or Korean                                                                                                                  |
+| `9` | Settings | Environment     | Every environment variable with its value and source; Enter edits 1, an empty value clears it                                                            |
+| `0` | System   | Software Update | The version you run and the newest one, with an update when there is one                                                                                 |
 
-The headings give way to Recent on a terminal shorter than 27 rows. Body fat is optional: press Enter to skip it.
+The headings give way to Recent on a terminal shorter than 28 rows. Body fat is optional: press Enter to skip it.
 
 A stopped focus earns nothing. The dashboard opens with **Log** focused.
 
@@ -183,18 +184,18 @@ The targets are general guidance for healthy adults, not medical advice.
 
 Every view shows its keys at the bottom right:
 
-| Key                       | Action                                                                                                         |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `.`                       | In Log: log your last line again                                                                               |
-| `1` to `9`                | Jump to a menu item                                                                                            |
-| Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters                                                |
-| `e` `d` `r` `u`           | In History: edit, delete, repeat, or put back a log                                                            |
-| Enter                     | Open the item, choose the option, or go to the next field                                                      |
-| Esc                       | Go back to the menu, or out of a quote setting, without logging anything; while editing a log, back to History |
-| `q` or Ctrl+C             | Quit from the menu                                                                                             |
-| Space                     | Tick a category                                                                                                |
-| Tab                       | Copy the picked suggestion into the field, or complete the food name in Log; in History, cycle the filter      |
-| `u`                       | In Log, as the whole line: undo the last line logged                                                           |
+| Key                       | Action                                                                                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.`                       | In Log: log your last line again                                                                                                                              |
+| `1` to `9`, and `0`       | Jump to a menu item, `0` to the 10th                                                                                                                          |
+| Arrows or `h` `j` `k` `l` | Move through the menu, a list, a suggestion, or the log filters; ↑↓ scroll the Coach's conversation                                                           |
+| `e` `d` `r` `u`           | In History: edit, delete, repeat, or put back a log                                                                                                           |
+| Enter                     | Open the item, choose the option, or go to the next field                                                                                                     |
+| Esc                       | Go back to the menu, or out of a quote setting, without logging anything; while editing a log, back to History; while the Coach is asking, cancel the request |
+| `q` or Ctrl+C             | Quit from the menu                                                                                                                                            |
+| Space                     | Tick a category                                                                                                                                               |
+| Tab                       | Copy the picked suggestion into the field, or complete the food name in Log; in History, cycle the filter                                                     |
+| `u`                       | In Log, as the whole line: undo the last line logged                                                                                                          |
 
 When a focus or break ends, the terminal rings its bell.
 
@@ -371,13 +372,33 @@ Caps reset at your local midnight, and entries earn in the order they happened.
 
 ## Config File
 
-`config.json` holds the environment variables you saved in **Environment**, under `env`, and always lives in `~/.terminal-sigma`, whatever `TERMINAL_SIGMA_HOME` says. Names Terminal-Sigma does not know are ignored, and keys it does not know are kept:
+`config.json` holds the environment variables you saved in **Environment**, under `env`, and the Coach's accounts, under `accounts`. It always lives in `~/.terminal-sigma`, whatever `TERMINAL_SIGMA_HOME` says, and only you can read it (mode 600). Names Terminal-Sigma does not know are ignored, and keys it does not know are kept:
 
 ```json
 {
-	"env": { "TERMINAL_SIGMA_FOCUS": "50" }
+	"env": { "TERMINAL_SIGMA_FOCUS": "50" },
+	"accounts": [
+		{
+			"id": "5f0c…",
+			"provider": "compatible",
+			"label": "Ollama",
+			"model": "llama3.2",
+			"baseUrl": "http://localhost:11434/v1"
+		}
+	]
 }
 ```
+
+The Coach tries `accounts` in order, then 1 account for each key your shell or **Environment** sets; when one fails or hits a limit, the next answers. **Accounts** in the Coach adds, reorders, and removes them. Each account has these fields:
+
+| Field      | Description                                                                          |
+| ---------- | ------------------------------------------------------------------------------------ |
+| `apiKey`   | The provider's key; only a `compatible` account, such as a local server, may omit it |
+| `baseUrl`  | Optional: another endpoint, such as `http://localhost:11434/v1` for Ollama           |
+| `id`       | A random ID                                                                          |
+| `label`    | The name shown in **Accounts** and in the footer                                     |
+| `model`    | The model to ask                                                                     |
+| `provider` | `anthropic`, `compatible`, `google`, `openai`, or `xai`                              |
 
 > [!important]
 > If `config.json` is not valid, Terminal-Sigma refuses to start rather than overwrite it. Fix or move the file, then start again.

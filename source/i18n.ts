@@ -1,4 +1,11 @@
-import type { Source, VariableGroup, VariableName } from "./config.js";
+import type { FailureKind } from "./asker.js";
+import type { CoachKind } from "./coach.js";
+import type {
+	Provider,
+	Source,
+	VariableGroup,
+	VariableName,
+} from "./config.js";
 import type { EventAction, Goals, LogKind } from "./progress.js";
 import type { ParseError } from "./quick-log.js";
 import type { QuoteCategory, QuoteMode } from "./quotes.js";
@@ -91,6 +98,10 @@ const en = {
 		environment: "↑↓ move · enter edit · esc back",
 		edit: "enter save · empty enter clears · esc keep",
 		log: "↑↓ pick · tab complete · enter log · esc back",
+		coach: "↑↓ move · enter choose · esc back",
+		ask: "enter send · esc back",
+		read: "↑↓ scroll · esc back",
+		asking: "esc cancel",
 	},
 	groups: {
 		today: "Today",
@@ -108,6 +119,7 @@ const en = {
 		language: "Language",
 		update: "Software Update",
 		environment: "Environment",
+		coach: "Coach",
 	},
 	describe: {
 		quotes:
@@ -125,6 +137,8 @@ const en = {
 		open: "Enter to open",
 		environment:
 			"See and change what environment variables control: the data folder, the timer, motion, and API keys. Your shell's variables always win.",
+		coach:
+			"Feedback on your logs, a workout plan, or a meal estimate from your own AI accounts. Optional: asking sends a summary of your logs to the provider you choose.",
 	},
 	signal: {
 		ready: "Ready",
@@ -137,6 +151,8 @@ const en = {
 		version: (version: string) => `v${version}`,
 		updateAvailable: (version: string) => `v${version} available`,
 		saved: (count: number) => `${count} saved`,
+		accounts: (count: number) =>
+			`${count} ${count === 1 ? "account" : "accounts"}`,
 	},
 	today: {
 		title: "Today",
@@ -433,9 +449,9 @@ const en = {
 		goalChanged: (setting: string) => `Changed a goal · ${setting}`,
 		logDeleted: (kind: string) => `Deleted a log · ${kind}`,
 		logEdited: (kind: string) => `Edited a log · ${kind}`,
-		accountAdded: (provider: string) => `Added a ${provider} account`,
-		accountMoved: (provider: string) => `Reordered the ${provider} account`,
-		accountRemoved: (provider: string) => `Removed a ${provider} account`,
+		accountAdded: (provider: string) => `Added an account · ${provider}`,
+		accountMoved: (provider: string) => `Reordered an account · ${provider}`,
+		accountRemoved: (provider: string) => `Removed an account · ${provider}`,
 		coachAsked: (kind: string) => `Asked the Coach for ${kind}`,
 		conversationStarted: () => "Started a new conversation with the Coach",
 		planSaved: () => "Saved a workout plan",
@@ -450,6 +466,83 @@ const en = {
 				`Estimate the calories and grams of protein, carbohydrate, and fat in 1 typical serving of: ${food}. Name the serving you assumed in "serving".`,
 		},
 		reason: (label: string, failure: string) => `${label}: ${failure}`,
+		setUp:
+			"Add an account under Accounts, or set a key such as ANTHROPIC_API_KEY under Environment. A local model through Ollama works too, free and offline.",
+		ask: "Ask anything",
+		today: "Review my day",
+		week: "Review my week",
+		plan: "Plan my workouts",
+		savePlan: "Save this plan",
+		read: "Read the conversation",
+		fresh: "New conversation",
+		accounts: (count: number) => `Accounts (${count})`,
+		back: "Back",
+		placeholder: "Ask about your training, food, sleep, or habits",
+		you: "You",
+		asking: (label: string) => `Asking ${label}…`,
+		answered: (label: string) => `${label} answered.`,
+		fellBack: (failed: string, label: string) =>
+			`${failed} could not answer, so ${label} did.`,
+		allFailed: (reasons: string) => `No account could answer: ${reasons}.`,
+		failures: {
+			rateLimited: "rate limited",
+			quota: "out of quota",
+			auth: "key rejected",
+			unavailable: "unavailable",
+			badRequest: "request refused",
+			network: "unreachable",
+			aborted: "cancelled",
+		} satisfies Record<FailureKind, string>,
+		cancelled: "Cancelled; nothing was saved.",
+		unreadablePlan:
+			"That answer was not a plan Terminal Sigma could read. Ask again, or move another account to the top.",
+		planSaved: "Plan saved. Log suggests today's workout from it.",
+		started: "New conversation started.",
+		broken: (error: string) =>
+			`coach.json is unreadable, so the Coach stays off until you fix or move it. ${error}`,
+		kinds: {
+			chat: "a question",
+			today: "a day review",
+			week: "a week review",
+			plan: "a workout plan",
+			estimate: "a meal estimate",
+		} satisfies Record<CoachKind, string>,
+	},
+	accounts: {
+		title: "Accounts",
+		order:
+			"Tried from the top: when one fails or hits a limit, the next answers with the same conversation.",
+		add: "Add an account",
+		up: "Move up",
+		down: "Move down",
+		remove: "Remove",
+		back: "Back",
+		shell: "from the shell",
+		fromShell:
+			"This key comes from your shell or Environment; change it there.",
+		provider: "Provider",
+		label: "Name",
+		apiKey: "API key (Enter to skip only for a local server)",
+		model: "Model",
+		baseUrl: "Base URL (optional; e.g. http://localhost:11434/v1 for Ollama)",
+		names: {
+			openai: "OpenAI",
+			anthropic: "Claude",
+			google: "Gemini",
+			xai: "Grok",
+			compatible: "Local",
+		} satisfies Record<Provider, string>,
+		providers: {
+			openai: "OpenAI (ChatGPT)",
+			anthropic: "Anthropic (Claude)",
+			google: "Google (Gemini)",
+			xai: "xAI (Grok)",
+			compatible: "OpenAI-compatible: Ollama, LM Studio, OmniRoute…",
+		} satisfies Record<Provider, string>,
+		added: (label: string) => `Added ${label}.`,
+		removed: (label: string) => `Removed ${label}.`,
+		moved: "Order saved.",
+		invalid: "That account is not valid; check the model and the base URL.",
 	},
 	themes: {
 		changed: (name: string) => `Theme set to ${name}.`,
@@ -648,6 +741,10 @@ const traditionalChinese: Messages = {
 		environment: "↑↓ 移動 · enter 編輯 · esc 返回",
 		edit: "enter 儲存 · 空白 enter 清除 · esc 保留",
 		log: "↑↓ 挑選 · tab 補全 · enter 記錄 · esc 返回",
+		coach: "↑↓ 移動 · enter 選擇 · esc 返回",
+		ask: "enter 送出 · esc 返回",
+		read: "↑↓ 捲動 · esc 返回",
+		asking: "esc 取消",
 	},
 	groups: {
 		today: "今日",
@@ -665,6 +762,7 @@ const traditionalChinese: Messages = {
 		language: "語言",
 		update: "軟體更新",
 		environment: "環境變數",
+		coach: "教練",
 	},
 	describe: {
 		quotes: "換一則語錄，或設定語錄多久更新一次、要看哪些類型。",
@@ -681,6 +779,8 @@ const traditionalChinese: Messages = {
 		open: "按 Enter 開啟",
 		environment:
 			"查看並修改環境變數控制的設定：資料夾、番茄鐘、動態效果與 API 金鑰。終端機設定的變數永遠優先。",
+		coach:
+			"用你自己的 AI 帳號，取得紀錄回饋、運動計畫或餐點估算。選用功能：詢問時會把紀錄摘要傳給你選的供應商。",
 	},
 	signal: {
 		ready: "就緒",
@@ -693,6 +793,7 @@ const traditionalChinese: Messages = {
 		version: (version) => `v${version}`,
 		updateAvailable: (version) => `可更新至 v${version}`,
 		saved: (count) => `已儲存 ${count} 項`,
+		accounts: (count) => `${count} 個帳號`,
 	},
 	today: {
 		title: "今日",
@@ -977,6 +1078,81 @@ const traditionalChinese: Messages = {
 				`估算 1 份常見的${food}有多少熱量，以及蛋白質、碳水化合物和脂肪各幾公克。請在 "serving" 寫明你假設的份量。`,
 		},
 		reason: (label, failure) => `${label}：${failure}`,
+		setUp:
+			"請在「帳號」新增帳號，或在「環境變數」設定 ANTHROPIC_API_KEY 等金鑰。也可以透過 Ollama 使用本機模型，免費又離線。",
+		ask: "隨便問問",
+		today: "檢視今天",
+		week: "檢視這週",
+		plan: "規劃運動",
+		savePlan: "儲存這份計畫",
+		read: "閱讀對話",
+		fresh: "新對話",
+		accounts: (count) => `帳號（${count}）`,
+		back: "返回",
+		placeholder: "問問訓練、飲食、睡眠或習慣",
+		you: "你",
+		asking: (label) => `正在詢問 ${label}…`,
+		answered: (label) => `${label} 已回答。`,
+		fellBack: (failed, label) => `${failed} 無法回答，改由 ${label} 回答。`,
+		allFailed: (reasons) => `沒有帳號能回答：${reasons}。`,
+		failures: {
+			rateLimited: "請求太頻繁",
+			quota: "額度用完",
+			auth: "金鑰被拒",
+			unavailable: "服務暫停",
+			badRequest: "請求被拒",
+			network: "連不上",
+			aborted: "已取消",
+		},
+		cancelled: "已取消，沒有儲存任何內容。",
+		unreadablePlan:
+			"這個回答不是 Terminal Sigma 能讀取的計畫。請再問一次，或把其他帳號移到最上面。",
+		planSaved: "計畫已儲存。「記錄」會依計畫建議今天的運動。",
+		started: "已開始新對話。",
+		broken: (error) =>
+			`coach.json 無法讀取，修好或移走之前教練會先關閉。${error}`,
+		kinds: {
+			chat: "提問",
+			today: "今日檢視",
+			week: "本週檢視",
+			plan: "運動計畫",
+			estimate: "餐點估算",
+		},
+	},
+	accounts: {
+		title: "帳號",
+		order:
+			"從最上面開始嘗試：一個失敗或達到上限時，下一個會接著同一段對話回答。",
+		add: "新增帳號",
+		up: "上移",
+		down: "下移",
+		remove: "移除",
+		back: "返回",
+		shell: "來自終端機",
+		fromShell: "這把金鑰來自終端機或環境變數，請在那裡修改。",
+		provider: "供應商",
+		label: "名稱",
+		apiKey: "API 金鑰（只有本機伺服器可按 Enter 略過）",
+		model: "模型",
+		baseUrl: "基礎網址（選填，例如 Ollama 的 http://localhost:11434/v1）",
+		names: {
+			openai: "OpenAI",
+			anthropic: "Claude",
+			google: "Gemini",
+			xai: "Grok",
+			compatible: "本機",
+		},
+		providers: {
+			openai: "OpenAI（ChatGPT）",
+			anthropic: "Anthropic（Claude）",
+			google: "Google（Gemini）",
+			xai: "xAI（Grok）",
+			compatible: "OpenAI 相容：Ollama、LM Studio、OmniRoute…",
+		},
+		added: (label) => `已新增 ${label}。`,
+		removed: (label) => `已移除 ${label}。`,
+		moved: "順序已儲存。",
+		invalid: "這個帳號無效，請檢查模型與基礎網址。",
 	},
 	themes: {
 		changed: (name) => `主題已設為${name}。`,
@@ -1161,6 +1337,10 @@ const korean: Messages = {
 		environment: "↑↓ 이동 · enter 편집 · esc 뒤로",
 		edit: "enter 저장 · 빈 enter 지우기 · esc 유지",
 		log: "↑↓ 고르기 · tab 완성 · enter 기록 · esc 뒤로",
+		coach: "↑↓ 이동 · enter 선택 · esc 뒤로",
+		ask: "enter 보내기 · esc 뒤로",
+		read: "↑↓ 스크롤 · esc 뒤로",
+		asking: "esc 취소",
 	},
 	groups: {
 		today: "오늘",
@@ -1178,6 +1358,7 @@ const korean: Messages = {
 		language: "언어",
 		update: "앱 업데이트",
 		environment: "환경 변수",
+		coach: "코치",
 	},
 	describe: {
 		quotes:
@@ -1195,6 +1376,8 @@ const korean: Messages = {
 		open: "Enter로 열기",
 		environment:
 			"데이터 폴더, 타이머, 움직임, API 키처럼 환경 변수가 정하는 설정을 보고 바꿉니다. 셸에서 설정한 변수가 항상 우선합니다.",
+		coach:
+			"내 AI 계정으로 기록 피드백, 운동 계획, 식사 추정을 받습니다. 선택 기능이며, 물어보면 기록 요약이 선택한 제공자에게 전송됩니다.",
 	},
 	signal: {
 		ready: "준비",
@@ -1207,6 +1390,7 @@ const korean: Messages = {
 		version: (version) => `v${version}`,
 		updateAvailable: (version) => `v${version} 업데이트 가능`,
 		saved: (count) => `${count}개 저장됨`,
+		accounts: (count) => `계정 ${count}개`,
 	},
 	today: {
 		title: "오늘",
@@ -1495,6 +1679,82 @@ const korean: Messages = {
 				`${food} 1인분의 열량과 단백질, 탄수화물, 지방의 그램 수를 추정해 주세요. 가정한 1인분의 양은 "serving"에 적어 주세요.`,
 		},
 		reason: (label, failure) => `${label}: ${failure}`,
+		setUp:
+			"계정에서 계정을 추가하거나, 환경 변수에서 ANTHROPIC_API_KEY 같은 키를 설정하세요. Ollama로 로컬 모델을 쓰면 무료로, 오프라인에서도 됩니다.",
+		ask: "무엇이든 묻기",
+		today: "오늘 돌아보기",
+		week: "이번 주 돌아보기",
+		plan: "운동 계획 세우기",
+		savePlan: "이 계획 저장",
+		read: "대화 읽기",
+		fresh: "새 대화",
+		accounts: (count) => `계정 (${count})`,
+		back: "뒤로",
+		placeholder: "운동, 식사, 수면, 습관에 대해 물어보세요",
+		you: "나",
+		asking: (label) => `${label}에게 묻는 중…`,
+		answered: (label) => `${label}이(가) 답했습니다.`,
+		fellBack: (failed, label) =>
+			`${failed}이(가) 답하지 못해 ${label}이(가) 답했습니다.`,
+		allFailed: (reasons) => `답할 수 있는 계정이 없습니다: ${reasons}.`,
+		failures: {
+			rateLimited: "요청 한도 초과",
+			quota: "할당량 소진",
+			auth: "키 거부",
+			unavailable: "서비스 불가",
+			badRequest: "요청 거부",
+			network: "연결 불가",
+			aborted: "취소됨",
+		},
+		cancelled: "취소했습니다. 아무것도 저장하지 않았습니다.",
+		unreadablePlan:
+			"Terminal Sigma가 읽을 수 있는 계획이 아니었습니다. 다시 묻거나 다른 계정을 맨 위로 옮기세요.",
+		planSaved: "계획을 저장했습니다. 기록에서 오늘의 운동을 제안합니다.",
+		started: "새 대화를 시작했습니다.",
+		broken: (error) =>
+			`coach.json을 읽을 수 없어, 고치거나 옮길 때까지 코치를 끕니다. ${error}`,
+		kinds: {
+			chat: "질문",
+			today: "오늘 돌아보기",
+			week: "이번 주 돌아보기",
+			plan: "운동 계획",
+			estimate: "식사 추정",
+		},
+	},
+	accounts: {
+		title: "계정",
+		order:
+			"맨 위부터 시도합니다. 하나가 실패하거나 한도에 걸리면 다음 계정이 같은 대화로 답합니다.",
+		add: "계정 추가",
+		up: "위로",
+		down: "아래로",
+		remove: "삭제",
+		back: "뒤로",
+		shell: "셸에서 설정",
+		fromShell: "이 키는 셸이나 환경 변수에서 왔습니다. 그곳에서 바꾸세요.",
+		provider: "제공자",
+		label: "이름",
+		apiKey: "API 키 (로컬 서버만 Enter로 건너뛰기)",
+		model: "모델",
+		baseUrl: "기본 URL (선택, 예: Ollama는 http://localhost:11434/v1)",
+		names: {
+			openai: "OpenAI",
+			anthropic: "Claude",
+			google: "Gemini",
+			xai: "Grok",
+			compatible: "로컬",
+		},
+		providers: {
+			openai: "OpenAI (ChatGPT)",
+			anthropic: "Anthropic (Claude)",
+			google: "Google (Gemini)",
+			xai: "xAI (Grok)",
+			compatible: "OpenAI 호환: Ollama, LM Studio, OmniRoute…",
+		},
+		added: (label) => `${label}을(를) 추가했습니다.`,
+		removed: (label) => `${label}을(를) 삭제했습니다.`,
+		moved: "순서를 저장했습니다.",
+		invalid: "올바르지 않은 계정입니다. 모델과 기본 URL을 확인하세요.",
 	},
 	themes: {
 		changed: (name) => `테마를 ${name}(으)로 설정했습니다.`,

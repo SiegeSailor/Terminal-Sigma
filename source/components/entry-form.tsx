@@ -1,6 +1,7 @@
 import React from "react";
-import { TextInput } from "@inkjs/ui";
+import { PasswordInput, TextInput } from "@inkjs/ui";
 import { Box, Text } from "ink";
+import { maskSecret } from "../config.js";
 import type { Messages } from "../i18n.js";
 import { parseWholeNumber } from "../progress.js";
 import { usePalette } from "../theme.js";
@@ -12,8 +13,10 @@ export type Field = Readonly<
 		| {
 				kind: "text";
 				placeholder?: string;
+				optional?: boolean;
 				suggest?: (text: string) => readonly Suggestion[];
 		  }
+		| { kind: "secret"; placeholder?: string; optional?: boolean }
 		| { kind: "number"; minimum: number; maximum: number; optional?: boolean }
 		| { kind: "select"; options: readonly Option[] }
 	)
@@ -58,7 +61,11 @@ export default function EntryForm({
 			return;
 		}
 
-		if (field.kind === "text" && !value.trim()) {
+		if (
+			(field.kind === "text" || field.kind === "secret") &&
+			!field.optional &&
+			!value.trim()
+		) {
 			setError(messages.form.required);
 			return;
 		}
@@ -87,6 +94,10 @@ export default function EntryForm({
 			);
 		}
 
+		if (done.kind === "secret") {
+			return value ? maskSecret(value) : "–";
+		}
+
 		return value || "–";
 	};
 
@@ -104,6 +115,18 @@ export default function EntryForm({
 						onFocus?.(current.key, value);
 					}}
 					onSelect={accept}
+				/>
+			);
+		}
+
+		if (current.kind === "secret") {
+			return (
+				<PasswordInput
+					key={current.key}
+					placeholder={current.placeholder}
+					onSubmit={(value) => {
+						accept(value);
+					}}
 				/>
 			);
 		}

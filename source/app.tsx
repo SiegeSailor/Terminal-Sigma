@@ -1,12 +1,40 @@
+import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import process from "node:process";
 import zod from "zod";
 import React from "react";
 import { ThemeProvider } from "@inkjs/ui";
 import { Box, Text, useApp, useInput, useStdout, useWindowSize } from "ink";
+import {
+	accountsOf,
+	aiAsker,
+	type Asker,
+	type AskReply,
+	clearCooldown,
+} from "./asker.js";
+import {
+	type Coach,
+	type CoachKind,
+	coachPathOf,
+	contextOf,
+	instructionsOf,
+	loadCoach,
+	type PlanReply,
+	planReplySchema,
+	planTextOf,
+	promptOf,
+	recentTurnsOf,
+	saveCoach,
+	type Session,
+	withTurns,
+} from "./coach.js";
 import AutocompleteInput from "./components/autocomplete-input.js";
 import Character from "./components/character.js";
 import Choice from "./components/choice.js";
+import CoachView, {
+	AccountsView,
+	type CoachMode,
+} from "./components/coach-view.js";
 import EntryForm from "./components/entry-form.js";
 import EnvironmentView from "./components/environment-view.js";
 import Footer, { type Tone } from "./components/footer.js";
@@ -16,9 +44,12 @@ import HistoryView, { LogRow } from "./components/history-view.js";
 import MultiChoice from "./components/multi-choice.js";
 import TodayPanel from "./components/today-panel.js";
 import {
+	type Account,
 	type Config,
 	type Environment,
 	isReducedMotion,
+	type Provider,
+	providers as aiProviders,
 	saveConfig,
 	sourceOf,
 	type VariableName,
@@ -28,8 +59,11 @@ import {
 	writeVariable,
 } from "./config.js";
 import {
+	accountFieldsOf,
+	accountOf,
 	activityOfKind,
 	categoryOptionsOf,
+	coachOptionsOf,
 	characterWidth,
 	intervalOptionsOf,
 	layoutOf,
@@ -38,6 +72,7 @@ import {
 	menuListWidth,
 	menuOrder,
 	moodOf,
+	movedAccounts,
 	appearanceFieldsOf,
 	appearanceOf,
 	profileFieldsOf,
@@ -134,6 +169,8 @@ type AppProps = Readonly<{
 	env?: Environment;
 	initialProgress: Progress;
 	updater: Updater;
+	// Asks the Coach; tests pass a fake, so they never reach a provider.
+	asker?: Asker;
 }>;
 
 type View = "menu" | MenuKey;
@@ -242,6 +279,7 @@ export default function App({
 	env = process.env,
 	initialProgress,
 	updater,
+	asker = aiAsker,
 }: AppProps) {
 	const { exit } = useApp();
 	const { stdout } = useStdout();
@@ -290,6 +328,36 @@ export default function App({
 	const [draftAppearance, setDraftAppearance] = React.useState<
 		Record<string, string>
 	>({});
+	const coachPath = coachPathOf(file);
+	// Coach.json loads once; an unreadable one turns the Coach off rather than
+	// being overwritten.
+	// eslint-disable-next-line react/hook-use-state -- loaded once, never set
+	const [coachLoad] = React.useState(() => {
+		try {
+			return { coach: loadCoach(coachPath), error: undefined };
+		} catch (error) {
+			return { coach: undefined, error: errorText(error) };
+		}
+	});
+	const [coach, setCoach] = React.useState(coachLoad.coach);
+	const latestCoach = React.useRef(coach);
+	const [coachMode, setCoachMode] = React.useState<
+		CoachMode | "accounts" | "add"
+	>("menu");
+	const [chosenAccount, setChosenAccount] = React.useState<string>();
+	const [draftProvider, setDraftProvider] = React.useState<Provider>();
+	// The account being asked; the request's controller lives in a ref, since
+	// xo's react-hooks/immutability rejects calling abort() on a state value.
+	const [asking, setAsking] = React.useState<string>();
+	const controller = React.useRef<AbortController>(undefined);
+	const [pendingPlan, setPendingPlan] = React.useState<PlanReply>();
+	// The Coach option the cursor was last on, so it comes back after a request.
+	const [coachOption, setCoachOption] = React.useState("ask");
+
+	React.useEffect(() => {
+		latestCoach.current = coach;
+	}, [coach]);
+
 	const palette = themes[previewTheme ?? themeName];
 	const uiTheme = React.useMemo(() => uiThemeOf(palette), [palette]);
 	const name = options.name ?? progress.profile?.name ?? "Rook Sigma";
@@ -494,9 +562,28 @@ export default function App({
 		setPreviewTheme(undefined);
 		setProfileSection(undefined);
 		setDraftAppearance({});
+		setCoachMode("menu");
+		setChosenAccount(undefined);
+		setDraftProvider(undefined);
+		setPendingPlan(undefined);
 
 		if (text) {
 			say(text);
+		}
+	};
+
+	// Esc in the Coach cancels the request, or steps back 1 level.
+	const coachBack = () => {
+		if (asking !== undefined) {
+			controller.current?.abort();
+			setAsking(undefined);
+			say(messages.coach.cancelled);
+		} else if (chosenAccount === undefined && coachMode !== "add") {
+			setCoachMode("menu");
+		} else {
+			setChosenAccount(undefined);
+			setDraftProvider(undefined);
+			setCoachMode("accounts");
 		}
 	};
 
@@ -511,6 +598,12 @@ export default function App({
 			} else if (view === "log" && editing && key.escape) {
 				setEditing(undefined);
 				setView("logs");
+			} else if (
+				view === "coach" &&
+				key.escape &&
+				(asking !== undefined || coachMode !== "menu")
+			) {
+				coachBack();
 			} else if (view !== "menu" && key.escape) {
 				backToMenu(view === "profile" ? messages.form.cancelled : undefined);
 			}
@@ -536,6 +629,8 @@ export default function App({
 		</paletteContext.Provider>
 	);
 
+	const accounts = accountsOf(config, env);
+	const session = coach?.sessions.at(-1);
 	const experience = React.useMemo(() => experienceOf(progress), [progress]);
 	const logs = React.useMemo(() => logsOf(progress), [progress]);
 	const signalClock = signalClockOf(now);
@@ -831,6 +926,13 @@ export default function App({
 			writeVariable(env, name, value);
 		}
 
+		// A shell key's account is named after its variable; a fixed key is tried at once.
+		for (const account of accounts) {
+			if (account.label === name) {
+				clearCooldown(account.id);
+			}
+		}
+
 		setConfig(next);
 		setVariableEditor(undefined);
 		const { environment } = messages;
@@ -851,6 +953,293 @@ export default function App({
 			text,
 			"success",
 		);
+	};
+
+	const saveCoachState = (next: Coach) => {
+		try {
+			saveCoach(coachPath, next);
+		} catch (error) {
+			say(messages.notSaved(errorText(error)), "error");
+			return false;
+		}
+
+		setCoach(next);
+		return true;
+	};
+
+	// Keeps the answer, or says why there is none.
+	const finishAsking = (
+		kind: CoachKind,
+		reply: AskReply,
+		current: Session,
+		question: Session["turns"][number],
+	) => {
+		setAsking(undefined);
+		const words = messagesOf(latest.current.language ?? "en");
+
+		if (!reply.ok) {
+			const reasons = reply.attempts
+				.map((attempt) =>
+					words.coach.reason(
+						attempt.account.label,
+						words.coach.failures[attempt.failure?.kind ?? "network"],
+					),
+				)
+				.join(", ");
+			say(words.coach.allFailed(reasons), "error");
+			return;
+		}
+
+		let content = typeof reply.result === "string" ? reply.result : "";
+
+		if (kind === "plan") {
+			const plan = planReplySchema.safeParse(reply.result);
+
+			if (!plan.success) {
+				say(words.coach.unreadablePlan, "error");
+				return;
+			}
+
+			setPendingPlan(plan.data);
+			content = planTextOf(plan.data, latest.current.language ?? "en", words);
+		}
+
+		const base = latestCoach.current;
+
+		if (!base) {
+			return;
+		}
+
+		saveCoachState(
+			withTurns(base, current, [
+				question,
+				{
+					role: "assistant",
+					content,
+					at: new Date().toISOString(),
+					via: reply.account.label,
+				},
+			]),
+		);
+
+		const failed = reply.attempts
+			.filter((attempt) => attempt.failure)
+			.map((attempt) => attempt.account.label);
+		say(
+			failed.length > 0
+				? words.coach.fellBack(failed.join(", "), reply.account.label)
+				: words.coach.answered(reply.account.label),
+			failed.length > 0 ? "info" : "success",
+		);
+	};
+
+	const askCoach = (kind: Exclude<CoachKind, "estimate">, text = "") => {
+		const [first] = accounts;
+
+		if (!coach || !first) {
+			return;
+		}
+
+		const at = new Date().toISOString();
+		const current = coach.sessions.at(-1) ?? {
+			id: randomUUID(),
+			startedAt: at,
+			turns: [],
+		};
+		const question = {
+			role: "user" as const,
+			content: kind === "chat" ? text : promptOf(kind, messages),
+			at,
+		};
+		const aborter = new AbortController();
+		controller.current = aborter;
+		setAsking(first.label);
+		commit(withEvent(progress, "coachAsked", kind));
+
+		void asker({
+			accounts,
+			kind,
+			env,
+			schema: kind === "plan" ? planReplySchema : undefined,
+			sessionId: current.id,
+			signal: aborter.signal,
+			instructions: instructionsOf(
+				language,
+				contextOf(latest.current, Date.now()),
+			),
+			turns: [
+				...recentTurnsOf(current),
+				{ role: "user", content: question.content },
+			],
+			onAttempt(account) {
+				if (!aborter.signal.aborted) {
+					setAsking(account.label);
+				}
+			},
+		}).then(
+			(reply) => {
+				// After Esc, no late answer may reach the screen.
+				if (!aborter.signal.aborted) {
+					finishAsking(kind, reply, current, question);
+				}
+			},
+			// The asker never rejects, but a rejection must not leave the spinner on.
+			(error: unknown) => {
+				if (!aborter.signal.aborted) {
+					setAsking(undefined);
+					say(messages.coach.allFailed(errorText(error)), "error");
+				}
+			},
+		);
+	};
+
+	const savePlan = () => {
+		if (!pendingPlan) {
+			return;
+		}
+
+		const next = withEvent(
+			{
+				...progress,
+				plans: [
+					...progress.plans,
+					{ at: new Date().toISOString(), ...pendingPlan },
+				],
+			},
+			"planSaved",
+		);
+
+		if (commit(next, messages.coach.planSaved, "success")) {
+			setPendingPlan(undefined);
+		}
+	};
+
+	const startConversation = () => {
+		if (!coach) {
+			return;
+		}
+
+		const fresh = {
+			id: randomUUID(),
+			startedAt: new Date().toISOString(),
+			turns: [],
+		};
+
+		if (saveCoachState({ sessions: [...coach.sessions, fresh] })) {
+			setPendingPlan(undefined);
+			commit(
+				withEvent(progress, "conversationStarted"),
+				messages.coach.started,
+			);
+		}
+	};
+
+	const chooseCoachOption = (value: string) => {
+		setCoachOption(value);
+
+		switch (value) {
+			case "ask": {
+				setCoachMode("ask");
+				break;
+			}
+
+			case "today":
+			case "week":
+			case "plan": {
+				askCoach(value);
+				break;
+			}
+
+			case "savePlan": {
+				savePlan();
+				break;
+			}
+
+			case "read": {
+				setCoachMode("read");
+				break;
+			}
+
+			case "fresh": {
+				startConversation();
+				break;
+			}
+
+			case "accounts": {
+				setCoachMode("accounts");
+				break;
+			}
+
+			default: {
+				backToMenu();
+			}
+		}
+	};
+
+	// Saves the accounts to config.json, then logs which provider changed.
+	const changeAccounts = (
+		next: readonly Account[],
+		action: "accountAdded" | "accountMoved" | "accountRemoved",
+		provider: Provider,
+		text: string,
+	) => {
+		const nextConfig = { ...config, accounts: [...next] };
+
+		try {
+			saveConfig(configFile, nextConfig);
+		} catch (error) {
+			say(messages.notSaved(errorText(error)), "error");
+			return;
+		}
+
+		setConfig(nextConfig);
+		commit(withEvent(progress, action, provider), text, "success");
+	};
+
+	const submitAccount = (values: Record<string, string>) => {
+		const account = accountOf(values, randomUUID());
+		setDraftProvider(undefined);
+		setCoachMode("accounts");
+
+		if (!account) {
+			say(messages.accounts.invalid, "error");
+			return;
+		}
+
+		changeAccounts(
+			[...config.accounts, account],
+			"accountAdded",
+			account.provider,
+			messages.accounts.added(account.label),
+		);
+	};
+
+	const chooseAccountAction = (action: "up" | "down" | "remove" | "back") => {
+		const account = config.accounts.find((known) => known.id === chosenAccount);
+		setChosenAccount(undefined);
+
+		if (!account || action === "back") {
+			return;
+		}
+
+		// A changed account is tried again at once, whatever failed before.
+		clearCooldown(account.id);
+
+		if (action === "remove") {
+			changeAccounts(
+				config.accounts.filter((known) => known.id !== account.id),
+				"accountRemoved",
+				account.provider,
+				messages.accounts.removed(account.label),
+			);
+		} else {
+			changeAccounts(
+				movedAccounts(config.accounts, account.id, action === "up" ? -1 : 1),
+				"accountMoved",
+				account.provider,
+				messages.accounts.moved,
+			);
+		}
 	};
 
 	const drawQuote = (settings: QuoteSettings, base: Progress) => {
@@ -1025,6 +1414,7 @@ export default function App({
 		savedVariables: variables.filter(
 			({ name }) => config.env[name] !== undefined,
 		).length,
+		accounts: accounts.length,
 	});
 	const profilePanel = () => {
 		if (profileSection === "body") {
@@ -1081,6 +1471,85 @@ export default function App({
 		);
 	};
 
+	const coachPanel = () => {
+		if (coachLoad.error) {
+			return (
+				<Titled title={messages.menu.coach}>
+					<Text color={palette.error}>
+						{messages.coach.broken(coachLoad.error)}
+					</Text>
+				</Titled>
+			);
+		}
+
+		if (coachMode === "add") {
+			return (
+				<EntryForm
+					key="add"
+					fields={accountFieldsOf(messages, draftProvider)}
+					messages={messages}
+					title={messages.accounts.add}
+					onSubmit={submitAccount}
+					onValues={(values) => {
+						setDraftProvider(
+							aiProviders.find((provider) => provider === values.provider),
+						);
+					}}
+				/>
+			);
+		}
+
+		if (coachMode === "accounts") {
+			return (
+				<AccountsView
+					key={chosenAccount ?? "list"}
+					accounts={accounts}
+					messages={messages}
+					savedIds={new Set(config.accounts.map((account) => account.id))}
+					selected={chosenAccount}
+					onAction={chooseAccountAction}
+					onSelect={(value) => {
+						if (value === "add") {
+							setCoachMode("add");
+						} else if (value === "back") {
+							setCoachMode("menu");
+						} else if (
+							config.accounts.some((account) => account.id === value)
+						) {
+							setChosenAccount(value);
+						} else {
+							say(messages.accounts.fromShell);
+						}
+					}}
+				/>
+			);
+		}
+
+		return (
+			<CoachView
+				key={coachMode}
+				asking={asking}
+				height={Math.max(rows - 9, 6)}
+				initialOption={coachOption}
+				isSetUp={accounts.length > 0}
+				messages={messages}
+				mode={coachMode}
+				options={coachOptionsOf(messages, {
+					isSetUp: accounts.length > 0,
+					hasPlan: pendingPlan !== undefined,
+					hasTurns: (session?.turns.length ?? 0) > 0,
+					accounts: accounts.length,
+				})}
+				session={session}
+				onAsk={(text) => {
+					setCoachMode("menu");
+					askCoach("chat", text);
+				}}
+				onSelect={chooseCoachOption}
+			/>
+		);
+	};
+
 	const focusedEntry =
 		entries.find((entry) => entry.key === focusedMenu) ?? entries[0];
 
@@ -1097,6 +1566,15 @@ export default function App({
 			quoteEditor === "author" || quoteEditor === "work"
 				? messages.hints.suggest
 				: undefined,
+		coach: asking
+			? messages.hints.asking
+			: {
+					menu: messages.hints.coach,
+					ask: messages.hints.ask,
+					read: messages.hints.read,
+					accounts: messages.hints.coach,
+					add: messages.hints.form,
+				}[coachMode],
 	};
 	const hint = hints[view] ?? messages.hints.select;
 
@@ -1272,6 +1750,7 @@ export default function App({
 			/>
 		),
 		profile: profilePanel(),
+		coach: coachPanel(),
 		theme: (
 			<Titled title={messages.menu.theme}>
 				<Choice
@@ -1415,9 +1894,12 @@ export default function App({
 						<Box
 							borderColor={view === "menu" ? palette.accent : palette.border}
 							borderStyle="round"
-							// The Log, History, and Environment views need the width more than the menu.
+							// The Log, History, Environment, and Coach views need the width more than the menu.
 							display={
-								view === "log" || view === "logs" || view === "environment"
+								view === "log" ||
+								view === "logs" ||
+								view === "environment" ||
+								view === "coach"
 									? "none"
 									: "flex"
 							}
@@ -1451,7 +1933,10 @@ export default function App({
 							{view === "menu" ? preview : panels[view]}
 						</Box>
 					</Box>
-					{layout.showRecent && view !== "logs" && view !== "environment"
+					{layout.showRecent &&
+					view !== "logs" &&
+					view !== "environment" &&
+					view !== "coach"
 						? recentBlock
 						: null}
 				</Box>

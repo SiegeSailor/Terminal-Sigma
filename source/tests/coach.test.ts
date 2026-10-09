@@ -8,9 +8,11 @@ import {
 	instructionsOf,
 	loadCoach,
 	planReplySchema,
+	planTextOf,
 	promptOf,
 	recentTurnsOf,
 	saveCoach,
+	withTurns,
 } from "../coach.js";
 import { messagesOf } from "../i18n.js";
 import { progressSchema } from "../progress.js";
@@ -206,4 +208,43 @@ test("writes coach.json for its owner only and keeps newer fields", (t) => {
 	saveCoach(file, coach);
 	t.is(statSync(file).mode.toString(8).slice(-3), "600");
 	t.deepEqual(loadCoach(file), coach);
+});
+
+test("adds turns to their session, or starts it", (t) => {
+	const turn = { role: "user" as const, content: "hi", at: ago(1) };
+	const session = { id: "s1", startedAt: ago(2), turns: [] };
+
+	t.deepEqual(withTurns({ sessions: [] }, session, [turn]), {
+		sessions: [{ ...session, turns: [turn] }],
+	});
+	t.deepEqual(
+		withTurns({ sessions: [{ ...session, turns: [turn] }] }, session, [turn])
+			.sessions[0]?.turns,
+		[turn, turn],
+	);
+});
+
+test("writes a plan as 1 line per day, in the user's language", (t) => {
+	const text = planTextOf(
+		{
+			title: "Base building",
+			days: [
+				{ weekday: 1, activity: "running", minutes: 30, intensity: "light" },
+				{
+					weekday: 3,
+					activity: "strength",
+					minutes: 45,
+					intensity: "vigorous",
+					note: "Legs",
+				},
+			],
+		},
+		"en",
+		messagesOf("en"),
+	);
+
+	t.is(
+		text,
+		"Base building\nMon · Running · 30 min · Light\nWed · Strength · 45 min · Vigorous · Legs",
+	);
 });
