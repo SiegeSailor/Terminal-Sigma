@@ -516,6 +516,7 @@ test("never jumps between animations, and comes home after a run", (t) => {
 
 test("keeps the walk steady when the look changes", (t) => {
 	const slim = { ...defaultLook, gender: "female" as const, fat: 0, muscle: 0 };
+	const middle = { ...defaultLook, gender: "male" as const, fat: 10 };
 	const widest = {
 		...defaultLook,
 		gender: "male" as const,
@@ -523,53 +524,76 @@ test("keeps the walk steady when the look changes", (t) => {
 		fat: fatStages,
 		muscle: muscleStages,
 	};
-	// The shadow's middle column is where the character stands.
-	const standing = (motion: Motion, look: Look) => {
-		const columns = scene({
-			activity: motion.activity,
-			counter: motion.tick,
-			anchor: motion.anchor,
-			reach: motion.reach,
-			look,
-			mood: motion.mood,
-		}).flatMap((row) => [...row].flatMap((key, x) => (key === "A" ? [x] : [])));
-
-		return (Math.min(...columns) + Math.max(...columns)) / 2;
+	const wanted = { activity: "idle", mood: "content" } as const;
+	const reachOf = (look: Look) => {
+		const xs = Array.from(
+			{ length: cycleOf("idle", width, undefined, "content", look) },
+			(_, counter) => placeOf("idle", counter, width, "content", 16, look).x,
+		);
+		return width - 1 - Math.max(...xs);
 	};
 
-	const wanted = { activity: "idle", mood: "content" } as const;
-	let motion = startMotion("idle", "content", width, slim);
-	let look: Look = slim;
-	let previous = standing(motion, look);
+	const unsettled: string[] = [];
 
-	// Walk for 100 ticks, with the look turning wider in the middle of it.
-	for (let tick = 0; tick < 100; tick++) {
-		if (tick === 40) {
-			look = widest;
+	for (const [before, after] of [
+		[slim, widest],
+		[widest, slim],
+		[middle, widest],
+	] as const) {
+		const target = reachOf(after);
+
+		for (const anchor of [9, 16, 22]) {
+			// Only anchors where the old look fits.
+			if (anchor < reachOf(before) || anchor > width - 1 - reachOf(before)) {
+				continue;
+			}
+
+			// Changed while resting at home, walking, and resting at each edge.
+			for (const change of [0, 10, 23, 24, 40, 60, 75, 97, 120]) {
+				let motion: Motion = {
+					...startMotion("idle", "content", width, before),
+					anchor,
+				};
+				let previous = placeOf("idle", 0, width, "content", anchor, before).x;
+
+				for (let tick = 0; tick < 450; tick++) {
+					const look = tick >= change ? after : before;
+					motion = advance(motion, wanted, width, look);
+					const { x } = placeOf(
+						motion.activity,
+						motion.tick,
+						width,
+						motion.mood,
+						motion.anchor,
+						look,
+						motion.reach,
+					);
+					const name = `${before.gender} ${before.fat} to ${after.fat} at ${anchor} ${change} ${tick}`;
+					t.true(Math.abs(x - previous) <= 2, `jumped at ${name}`);
+					previous = x;
+
+					// Adopted within a loop and a shuffle, with no clipping after.
+					const isLate = tick >= change + 130;
+					const isFitting = x >= target && x <= width - 1 - target;
+
+					if (isLate && (motion.reach !== target || !isFitting)) {
+						unsettled.push(name);
+					}
+				}
+			}
 		}
-
-		motion = advance(motion, wanted, width, look);
-		const place = standing(motion, look);
-		t.true(Math.abs(place - previous) <= 2, `jumped at tick ${tick}`);
-		previous = place;
 	}
 
-	// The next activity starts with the wider margin, fitted on the stage.
-	const xs = Array.from(
-		{ length: cycleOf("idle", width, undefined, "content", widest) },
-		(_, counter) => placeOf("idle", counter, width, "content", 16, widest).x,
+	t.deepEqual(unsettled, [], "every look change is adopted");
+
+	// The next activity starts with the wider margin when it fits in 2 pixels.
+	const started = advance(
+		{ ...startMotion("idle", "content", width, slim), anchor: 20, tick: 5 },
+		{ activity: "break", mood: "content" },
+		width,
+		widest,
 	);
-	const reach = width - 1 - Math.max(...xs);
-
-	for (const anchor of [9, 20, 25]) {
-		const started = advance(
-			{ ...startMotion("idle", "content", width, slim), anchor, tick: 5 },
-			{ activity: "break", mood: "content" },
-			width,
-			widest,
-		);
-		t.true(started.anchor >= reach && started.anchor <= width - 1 - reach);
-	}
+	t.is(started.anchor, width - 1 - reachOf(widest));
 });
 
 test("renders 2 pixel rows per terminal row at full width", (t) => {

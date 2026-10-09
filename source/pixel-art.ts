@@ -835,8 +835,9 @@ export function placeOf(
 	mood: Mood,
 	anchor: number,
 	look: Look = defaultLook,
+	reach = reachOf(look),
 ): Readonly<{ x: number; lift: number }> {
-	return placeWith(activity, t, width, mood, anchor, reachOf(look));
+	return placeWith(activity, t, width, mood, anchor, reach);
 }
 
 function placeWith(
@@ -877,7 +878,10 @@ export const startMotion = (
 
 // 1 frame later. A new activity starts where the character stands: idling
 // gives way at once, and anything else first finishes its loop back home, so
-// the character never jumps.
+// the character never jumps. A new look's walk margin is taken up where that
+// is invisible: at a switch that moves the anchor by 2 pixels or less, or in
+// the first rest of an idle loop, where the character shuffles to a spot that
+// fits at 1 pixel a tick.
 export function advance(
 	motion: Motion,
 	wanted: Readonly<{ activity: Activity; mood: Mood }>,
@@ -886,6 +890,9 @@ export function advance(
 ): Motion {
 	const isSame =
 		wanted.activity === motion.activity && wanted.mood === motion.mood;
+	const reach = reachOf(look);
+	const { minimum, maximum } = marginOf(width, reach);
+	const fitted = (x: number) => Math.min(Math.max(x, minimum), maximum);
 
 	if (!isSame) {
 		const { x, lift } = placeWith(
@@ -898,16 +905,48 @@ export function advance(
 		);
 
 		if (motion.activity === "idle" || (x === motion.anchor && lift === 0)) {
-			// A wider look starts from the nearest spot where it fits.
-			const reach = reachOf(look);
-			const { minimum, maximum } = marginOf(width, reach);
+			const isNear = Math.abs(fitted(x) - x) <= 2;
 			return {
 				...wanted,
-				anchor: Math.min(Math.max(x, minimum), maximum),
-				reach,
+				anchor: isNear ? fitted(x) : x,
+				reach: isNear ? reach : motion.reach,
 				tick: 0,
 			};
 		}
+
+		return { ...motion, tick: motion.tick + 1 };
+	}
+
+	if (motion.activity !== "idle") {
+		return { ...motion, tick: motion.tick + 1 };
+	}
+
+	const cycle = cycleWith(
+		"idle",
+		width,
+		motion.anchor,
+		motion.mood,
+		motion.reach,
+	);
+
+	if (motion.tick + 1 >= cycle) {
+		// Home again: the next loop begins with its first rest.
+		return { ...motion, tick: 0 };
+	}
+
+	if (reach !== motion.reach && motion.tick + 1 < pause) {
+		// Resting at the anchor: slide it to where the new look fits, then walk
+		// with the new margins from there.
+		const anchor = fitted(motion.anchor);
+		const step = Math.sign(anchor - motion.anchor);
+		const next = motion.anchor + step;
+
+		return {
+			...motion,
+			anchor: next,
+			reach: next === anchor ? reach : motion.reach,
+			tick: motion.tick + 1,
+		};
 	}
 
 	return { ...motion, tick: motion.tick + 1 };
