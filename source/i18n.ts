@@ -433,7 +433,24 @@ const en = {
 		goalChanged: (setting: string) => `Changed a goal · ${setting}`,
 		logDeleted: (kind: string) => `Deleted a log · ${kind}`,
 		logEdited: (kind: string) => `Edited a log · ${kind}`,
+		accountAdded: (provider: string) => `Added a ${provider} account`,
+		accountMoved: (provider: string) => `Reordered the ${provider} account`,
+		accountRemoved: (provider: string) => `Removed a ${provider} account`,
+		coachAsked: (kind: string) => `Asked the Coach for ${kind}`,
+		conversationStarted: () => "Started a new conversation with the Coach",
+		planSaved: () => "Saved a workout plan",
 	} satisfies Record<EventAction, (detail: string) => string>,
+	coach: {
+		prompts: {
+			today:
+				"Review my day so far against my targets: 1 thing that went well, and the 2 most useful things to do before bed.",
+			week: "Review my last 7 days: 3 wins, 3 concrete adjustments for next week, and any pattern you notice between sleep, food, exercise, and mood.",
+			plan: "Plan my workouts for the next 7 days to suit my goal, my recent training, and my targets. Use 0 for Sunday to 6 for Saturday, and leave rest days out.",
+			estimate: (food: string) =>
+				`Estimate the calories and grams of protein, carbohydrate, and fat in 1 typical serving of: ${food}. Name the serving you assumed in "serving".`,
+		},
+		reason: (label: string, failure: string) => `${label}: ${failure}`,
+	},
 	themes: {
 		changed: (name: string) => `Theme set to ${name}.`,
 		names: {
@@ -943,6 +960,23 @@ const traditionalChinese: Messages = {
 		goalChanged: (setting) => `變更目標 · ${setting}`,
 		logDeleted: (kind) => `刪除紀錄 · ${kind}`,
 		logEdited: (kind) => `編輯紀錄 · ${kind}`,
+		accountAdded: (provider) => `新增 ${provider} 帳號`,
+		accountMoved: (provider) => `調整 ${provider} 帳號順序`,
+		accountRemoved: (provider) => `移除 ${provider} 帳號`,
+		coachAsked: (kind) => `向教練要求${kind}`,
+		conversationStarted: () => "與教練開始新對話",
+		planSaved: () => "儲存運動計畫",
+	},
+	coach: {
+		prompts: {
+			today:
+				"對照我的目標，檢視我今天到目前為止的狀況：1 件做得好的事，以及睡前最值得做的 2 件事。",
+			week: "檢視我過去 7 天：3 個進步、3 個下週具體的調整，以及你發現的睡眠、飲食、運動與心情之間的關聯。",
+			plan: "依我的目標、近期訓練和每日目標，規劃我未來 7 天的運動。週日用 0，週六用 6，休息日不要列出。",
+			estimate: (food) =>
+				`估算 1 份常見的${food}有多少熱量，以及蛋白質、碳水化合物和脂肪各幾公克。請在 "serving" 寫明你假設的份量。`,
+		},
+		reason: (label, failure) => `${label}：${failure}`,
 	},
 	themes: {
 		changed: (name) => `主題已設為${name}。`,
@@ -1444,6 +1478,23 @@ const korean: Messages = {
 		goalChanged: (setting) => `목표 변경 · ${setting}`,
 		logDeleted: (kind) => `기록 삭제 · ${kind}`,
 		logEdited: (kind) => `기록 수정 · ${kind}`,
+		accountAdded: (provider) => `${provider} 계정 추가`,
+		accountMoved: (provider) => `${provider} 계정 순서 변경`,
+		accountRemoved: (provider) => `${provider} 계정 삭제`,
+		coachAsked: (kind) => `코치에게 ${kind} 요청`,
+		conversationStarted: () => "코치와 새 대화 시작",
+		planSaved: () => "운동 계획 저장",
+	},
+	coach: {
+		prompts: {
+			today:
+				"내 목표에 비추어 오늘 지금까지를 점검해 주세요. 잘한 점 1가지와 자기 전에 하면 가장 좋은 일 2가지를 알려 주세요.",
+			week: "지난 7일을 점검해 주세요. 잘한 점 3가지, 다음 주를 위한 구체적인 조정 3가지, 그리고 수면, 식사, 운동, 기분 사이에서 보이는 패턴을 알려 주세요.",
+			plan: "내 목표, 최근 운동, 일일 목표에 맞춰 앞으로 7일의 운동을 계획해 주세요. 일요일은 0, 토요일은 6으로 하고 쉬는 날은 빼 주세요.",
+			estimate: (food) =>
+				`${food} 1인분의 열량과 단백질, 탄수화물, 지방의 그램 수를 추정해 주세요. 가정한 1인분의 양은 "serving"에 적어 주세요.`,
+		},
+		reason: (label, failure) => `${label}: ${failure}`,
 	},
 	themes: {
 		changed: (name) => `테마를 ${name}(으)로 설정했습니다.`,

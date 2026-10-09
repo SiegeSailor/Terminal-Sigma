@@ -116,6 +116,7 @@ test("starts empty and round-trips through the file", (t) => {
 		steps: [],
 		notes: [],
 		events: [],
+		plans: [],
 	});
 	saveProgress(file, sample);
 	t.deepEqual(loadProgress(file), sample);
@@ -434,4 +435,23 @@ test("saves an appearance and rejects a style it does not know", (t) => {
 		JSON.stringify({ ...sample, profile: { ...profile, hairStyle: "mohawk" } }),
 	);
 	t.throws(() => loadProgress(file), { message: /unreadable/v });
+});
+
+test("keeps a saved workout plan", (t) => {
+	const file = temporaryFile();
+	const plan = {
+		at: "2026-10-07T09:00:00.000Z",
+		title: "Base building",
+		days: [
+			{
+				weekday: 1,
+				activity: "running" as const,
+				minutes: 30,
+				intensity: "light" as const,
+			},
+		],
+	};
+
+	saveProgress(file, { ...sample, plans: [plan] });
+	t.deepEqual(loadProgress(file).plans, [plan]);
 });

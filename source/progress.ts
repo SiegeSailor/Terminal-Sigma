@@ -19,6 +19,7 @@ import {
 	type Intensity,
 	languages,
 	skinTones,
+	workoutActivities,
 	workStyles,
 } from "./i18n.js";
 import {
@@ -135,6 +136,12 @@ export const eventActions = [
 	"logDeleted",
 	"logEdited",
 	"appearanceSaved",
+	"accountAdded",
+	"accountMoved",
+	"accountRemoved",
+	"coachAsked",
+	"conversationStarted",
+	"planSaved",
 ] as const;
 export type EventAction = (typeof eventActions)[number];
 
@@ -174,6 +181,22 @@ const profileShape = {
 const profileSchema = zod.looseObject(profileShape);
 const strictProfileSchema = zod.object(profileShape);
 
+// A week of workouts the Coach suggested and the user kept.
+export const planSchema = zod.object({
+	at: timestamp,
+	title: zod.string().min(1).max(60),
+	days: zod.array(
+		zod.object({
+			weekday: zod.number().int().min(0).max(6),
+			activity: zod.enum(workoutActivities),
+			minutes: zod.number().int().min(5).max(240),
+			intensity: zod.enum(intensities),
+			note: zod.string().max(80).optional(),
+		}),
+	),
+});
+export type Plan = zod.infer<typeof planSchema>;
+
 const progressShape = {
 	language: zod.enum(languages).optional(),
 	theme: zod.enum(themeNames).optional(),
@@ -191,6 +214,7 @@ const progressShape = {
 	steps: zod.array(stepsSchema).default([]),
 	notes: zod.array(noteSchema).default([]),
 	events: zod.array(eventSchema).default([]),
+	plans: zod.array(planSchema).default([]),
 };
 
 export const progressSchema = zod.looseObject({
