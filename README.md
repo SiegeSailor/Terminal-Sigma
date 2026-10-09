@@ -6,11 +6,12 @@
 [![main: Release](https://github.com/SiegeSailor/Terminal-Sigma/actions/workflows/main-release.yml/badge.svg)](https://github.com/SiegeSailor/Terminal-Sigma/actions/workflows/main-release.yml)
 [![release: Desktop](https://github.com/SiegeSailor/Terminal-Sigma/actions/workflows/release-desktop.yml/badge.svg)](https://github.com/SiegeSailor/Terminal-Sigma/actions/workflows/release-desktop.yml)
 
-Terminal-Sigma is a terminal-based application that gives game-style feedback on your self-development journey. Though it is a CLI, it is meant to stay open: it fills the terminal, updates in real time, and is operated through menus rather than commands. It speaks English, Traditional Chinese, and Korean, and it features 5 main components:
+Terminal-Sigma is a terminal-based application that gives game-style feedback on your self-development journey. Though it is a CLI, it is meant to stay open: it fills the terminal, updates in real time, and is operated through menus rather than commands. It speaks English, Traditional Chinese, and Korean, and it features 6 main components:
 
 | Component             | What It Does                                                                                                                                                                |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Character Progression | A pixel-art you, shaped by your profile, dressed by your level, and woken up by what you log today                                                                          |
+| Coach                 | Optional feedback on your logs, workout plans, and meal estimates from your own AI accounts, falling back across them                                                       |
 | Everyday Quotes       | An inspiring quote that refreshes on your schedule, filtered by category, author, or work                                                                                   |
 | History               | Every log and action, newest first, filtered by kind, where you edit, delete, or repeat a log, plus a Week tab of trends, streaks, habits, and what goes with a better mood |
 | Log                   | 1 line that logs meals, workouts, water, sleep, weight, mood, habits, steps, and notes, suggesting what you usually log at this hour                                        |
@@ -150,6 +151,39 @@ Your character is a pixel-art you, standing on its own oval shadow and animating
 The stage follows the clock and the calendar: a sun in the corner at dawn, by day, and at dusk, a moon and stars at night, and petals, leaves, snowflakes, or, on summer evenings and nights, fireflies by the season. In the room, a plant grows once you log water and wilts after 2 days without, a dumbbell appears after 10 strength workouts, and a shelf of books after 25 hours of focus. Logging water makes it drink, logging weight or steps makes it step on a scale, and writing a mood, habit, or note makes it write. Your streak shows beside the level from 2 days in a row, and the bars in **Today** glide to each new value over half a second, naming what earned the experience, as in `Drinking water… +1 XP`. The signals refresh once a minute. With `TERMINAL_SIGMA_MOTION=reduced`, nothing falls and the bars jump, while the character and the stars keep their life.
 
 Your work style dresses it: a hoodie and jeans at a desk, a shirt and an apron when standing, a tee and cargo pants when active, and a tank top and shorts as an athlete.
+
+### Coach
+
+The Coach is optional and off until you give it an account. It reviews your day or your week, plans your workouts for the next 7 days, estimates a meal you type that the food list does not know, and answers anything else about your training, food, sleep, and habits, in your language:
+
+| Provider          | Account Needs                                                 |
+| ----------------- | ------------------------------------------------------------- |
+| Anthropic         | An API key, or `ANTHROPIC_API_KEY` in your shell              |
+| Google            | An API key, or `GOOGLE_GENERATIVE_AI_API_KEY` in your shell   |
+| OpenAI            | An API key, or `OPENAI_API_KEY` in your shell                 |
+| OpenAI-compatible | A base URL and a model; a key only if the server asks for one |
+| xAI               | An API key, or `XAI_API_KEY` in your shell                    |
+
+Add accounts under **Coach** → **Accounts**, where you also move them up or down and remove them, and where their order is the order they are tried; a key is masked once typed, and a local server needs none. When an account fails or hits a limit, the next one answers with the same conversation, and the footer tells you which. After your saved accounts, it tries 1 account for each provider key in your shell. A rejected key (401 or 403) is skipped for the rest of the run, a rate limit waits out its retry-after, and a quota or credit failure rests for 1 hour; when every account is resting, it tries them anyway, soonest-ready first. Esc cancels a request, and an answer that arrives late never shows. An OpenAI-compatible account covers [Ollama](https://ollama.com/) at `http://localhost:11434/v1`, LM Studio, OpenRouter, and gateways such as [OmniRoute](https://github.com/diegosouzapw/OmniRoute); a local model through Ollama is free, unlimited, and works offline.
+
+> [!warning]
+> Fallback is for when an account fails, not for avoiding limits. Rotating several free accounts of 1 provider to get around its limits breaks OpenAI's terms, which forbid circumventing rate limits, and the similar terms of other providers, and can get those accounts banned.
+
+When you ask, the Coach sends the provider your profile's numbers, your targets, your logging streak, a day-by-day summary of the last 7 days (calories, protein, exercise, water, sleep, steps, and mood), and today's meals. It never sends your name, your notes, your keys, or any file path. Your keys live only in `config.json`, readable only by you, or in your shell; none goes into `progress.json`, `coach.json`, or an event. Your questions and its answers are kept in `coach.json` beside `progress.json`, also readable only by you; Terminal-Sigma refuses to start over an unreadable one rather than overwrite it, and deleting it forgets the conversations without touching your journey. A saved workout plan goes into `progress.json`, and **Log** then suggests that day's workout. Nothing reaches a provider until you add an account or set a key and ask.
+
+The Coach gives general guidance, not medical advice. For pain, illness, pregnancy, eating disorders, or medication, see a professional.
+
+#### Tracing with Langfuse
+
+Tracing is your own choice, and it is off unless both `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set. Then every Coach request is traced to [Langfuse](https://langfuse.com/) as 1 trace, with 1 generation per account it tried. A trace records the prompt and the answer, and the prompt includes the summary of your logs above, so your health data reaches your Langfuse project; use only a project you trust. An unreachable Langfuse never delays an answer, and the CLI exits within about 2 seconds of quitting. To keep the traces on your own machine, run Langfuse yourself and point `LANGFUSE_BASE_URL` at it:
+
+```shell
+git clone https://github.com/langfuse/langfuse.git
+cd langfuse
+docker compose up
+```
+
+Then create a project at `http://localhost:3000`, and set its keys and `LANGFUSE_BASE_URL=http://localhost:3000` under **Environment**.
 
 ### Software Update
 

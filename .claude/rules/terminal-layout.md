@@ -9,39 +9,39 @@ The dashboard fills the whole terminal in the alternate screen buffer, like htop
 
 ```text
 ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Terminal Sigma                                                                                                              11:13:51 │
-│ “No man is free who is not master of himself.” — Epictetus                                                                             │
+│ ✻ Terminal Sigma                                                                                                              10:24:28 │
+│ “Lost time is never found again.” — Benjamin Franklin                                                                                  │
 ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭──────────────────────────────────╮╭──────────────────────────────────────╮╭────────────────────────╮╭──────────────────────────────────╮
 │ Ken                         Lv 1 ││                                      ││ Today                  ││ 2 logged today                   │
 │                                  ││  Today                               ││ ❯ 1. Log               ││                                  │
 │                                  ││                                      ││   2. Tomato Timer      ││ Log anything in 1 line, e.g. 2   │
-│                                  ││  Character        25 XP to Lv 2 75%  ││ Journal                ││ eggs, toast · w 500 · wo run 30m │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   3. History           ││  · sl 23:30-7:10. While the line │
-│                                  ││  Focus          1 of 4 sessions 25%  ││ Settings               ││  is empty, it suggests what you  │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   4. Everyday Quotes   ││ usually log now.                 │
-│                                  ││                                      ││   5. Profile           ││                                  │
-│                                  ││  Health · Build muscle               ││   6. Theme             ││ Health · Build muscle            │
-│                                  ││  Protein             12 of 140 g 9%  ││   7. Language          ││ Daily targets: 2,280 kcal, 140 g │
-│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   8. Environment       ││  protein, 45 minutes of          │
-│              ▄▀▀▀▀▀▄             ││  Calories 350 of 2,280 kcal · … 15%  ││ System                 ││ exercise.                        │
-│             ▄▀▀▀▀▀▀▀▄            ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   9. Software Update   ││ ⏺ 15 more minutes of exercise    │
-│             ▀▀▀▀▀▀▀▀▀            ││  Workout       30 of 45 minutes 67%  ││                        ││ today: a strength session.       │
-│              ▄▀▀▀▀▀▄             ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││ ⏺ 128 g of protein to go today,  │
-│        ▄▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄▄       ││  Water             0 of 3,000 ml 0%  ││                        ││ e.g. a chicken breast has about  │
-│        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀       ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││ 30 g.                            │
-│        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀       ││  Sleep                  0m of 7h 0%  ││                        ││ ⏺ 1,930 kcal left in today's     │
-│        ▀▀▀  ▀▀▀▀▀▀▀▀▀  ▀▀▀       ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││ budget.                          │
-│         ▀▀  ▀▀▀▀▀▀▀▀▀  ▀▀        ││  ⏺ 15 more minutes of exercise tod…  ││                        ││ ⏺ 3,000 ml of water to go today, │
-│         ▀▀   ▀▀▀▀▀▀▀   ▀▀        ││                                      ││                        ││  about 12 glasses.               │
-│         ▀▀   ▀▀▀ ▀▀▀   ▀▀        ││                                      ││                        ││ ⏺ Log last night's sleep, e.g.   │
+│                                  ││  Character        25 XP to Lv 2 75%  ││   3. Coach             ││ eggs, toast · w 500 · wo run 30m │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││ Journal                ││  · sl 23:30-7:10. While the line │
+│                                  ││  Focus          1 of 4 sessions 25%  ││   4. History           ││  is empty, it suggests what you  │
+│                                  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││ Settings               ││ usually log now.                 │
+│ ▄▀▀▀▄                            ││                                      ││   5. Everyday Quotes   ││                                  │
+│ ▀▀▀▀▀                            ││  Health · Build muscle               ││   6. Profile           ││ Health · Build muscle            │
+│  ▀▀▀                             ││  Protein             12 of 140 g 9%  ││   7. Theme             ││ Daily targets: 2,280 kcal, 140 g │
+│              ▄▀▀▀▀▀▄             ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││   8. Language          ││  protein, 45 minutes of          │
+│             ▄▀▀▀▀▀▀▀▄            ││  Calories 350 of 2,280 kcal · … 15%  ││   9. Environment       ││ exercise.                        │
+│             ▀▀▀▀▀▀▀▀▀            ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││ System                 ││ ⏺ 15 more minutes of exercise    │
+│         ▄    ▄▀▀▀▀▀▄             ││  Workout       30 of 45 minutes 67%  ││   0. Software Update   ││ today: a strength session.       │
+│         ▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄        ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││ ⏺ 128 g of protein to go today,  │
+│         ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀        ││  Water             0 of 3,000 ml 0%  ││                        ││ e.g. a chicken breast has about  │
+│         ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀        ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││ 30 g.                            │
+│         ▀▀ ▀▀▀▀▀▀▀▀▀▀▀ ▀▀    ▄   ││  Sleep                  0m of 7h 0%  ││                        ││ ⏺ 1,930 kcal left in today's     │
+│         ▀▀ ▀▀▀▀▀▀▀▀▀▀▀ ▀▀     ▀  ││  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀  ││                        ││ budget.                          │
+│         ▀▀ ▀▀▀▀▀▀▀▀▀▀▀ ▀▀        ││  ⏺ 15 more minutes of exercise tod…  ││                        ││ ⏺ 3,000 ml of water to go today, │
+│      ▄  ▀▀   ▀▀▀▀▀▀▀   ▀▀        ││                                      ││                        ││  about 12 glasses.               │
+│     ▀        ▀▀▀ ▀▀▀             ││                                      ││                        ││ ⏺ Log last night's sleep, e.g.   │
 │              ▀▀▀ ▀▀▀             ││                                      │╰────────────────────────╯╰──────────────────────────────────╯
 │               ▀▀ ▀▀              ││                                      │╭────────────────────────────────────────────────────────────╮
-│               ▀▀ ▀▀              ││                                      ││ Recent                                                     │
-│        ▄▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄▄       ││                                      ││ 10/08, 11:13 Action   Opened Terminal Sigma                │
-│         ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀        ││                                      ││ 10/08, 11:13 Focus    25-minute focus               +25 XP │
-│                                  ││                                      ││ 10/08, 11:13 Diet     Oatmeal · 350 kcal · 12 g …    +5 XP │
-│ ✳ Wandering…                     ││                                      ││ 10/08, 11:13 Workout  Running · 30 min · Moderate   +45 XP │
+│               ▀▀ ▀▀      ▄       ││                                      ││ Recent                                                     │
+│        ▄▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄       ││                                      ││ 10/09, 10:24 Action   Opened Terminal Sigma                │
+│         ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀        ││                                      ││ 10/09, 10:24 Focus    25-minute focus               +25 XP │
+│                                  ││                                      ││ 10/09, 10:24 Diet     Oatmeal · 350 kcal · 12 g …    +5 XP │
+│ ✳ Wandering…                     ││                                      ││ 10/09, 10:24 Workout  Running · 30 min · Moderate   +45 XP │
 ╰──────────────────────────────────╯╰──────────────────────────────────────╯╰────────────────────────────────────────────────────────────╯
  ⏺ Progress is saved to ~/.terminal-sigma/progress.json                                                     ↑↓ move · enter open · q quit
 ```
