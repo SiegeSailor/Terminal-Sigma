@@ -97,12 +97,8 @@ export default function Character({
 				<Text bold wrap="truncate-end">
 					{name}
 				</Text>
-				{streak ? (
-					<Box flexShrink={0}>
-						<Text color={palette.soft}>{streak}</Text>
-					</Box>
-				) : null}
-				<Box flexShrink={0}>
+				<Box flexShrink={0} gap={1}>
+					{streak ? <Text color={palette.soft}>{streak}</Text> : null}
 					<Text color={palette.accent}>{level}</Text>
 				</Box>
 			</Box>

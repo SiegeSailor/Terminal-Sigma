@@ -8,7 +8,7 @@ import type {
 	SkinTone,
 	WorkStyle,
 } from "./i18n.js";
-import { quietSignals, type Season, type Signals } from "./signals.js";
+import { quietSignals, type Signals } from "./signals.js";
 import type { Palette } from "./theme.js";
 
 // The character stands on a stage as wide as its panel and 40 pixels tall.
@@ -2263,72 +2263,85 @@ export type SceneInput = Readonly<{
 	reach?: number;
 }>;
 
-// The pixel keys of 1 frame, row by row, "." where nothing is drawn.
-const particleKeys: Record<Season, readonly string[]> = {
-	spring: ["r"],
-	summer: ["y"],
-	autumn: ["g", "F"],
-	winter: ["w"],
+// Paints a sprite's rows with its top-left at (x, top), "." leaving a pixel be.
+const stamp = (put: Put, x: number, top: number, sprite: readonly string[]) => {
+	for (const [row, line] of sprite.entries()) {
+		for (const [column, key] of [...line].entries()) {
+			if (key !== ".") {
+				put(x + column, top - row, key);
+			}
+		}
+	}
 };
+
+// Puts a pixel on the stage by its x from the left and y up from the bottom.
+const stagePutter =
+	(canvas: string[][]): Put =>
+	(x, y, key) => {
+		const row = canvas[stageHeight - 1 - y];
+
+		if (row && x >= 0 && x < (canvas[0]?.length ?? 0)) {
+			row[x] = key;
+		}
+	};
+
+const sunDisc = (rim: string, lower: string, spot: string) => [
+	`.${rim}${rim}${rim}.`,
+	`${rim}${spot}${rim}${rim}${rim}`,
+	`${rim}${rim}${rim}${rim}${rim}`,
+	`${lower.repeat(5)}`,
+	`.${lower.repeat(3)}.`,
+];
+
+const suns = {
+	day: [".ggg.", "g3ggg", "ggggg", "ggggg", ".ggg."],
+	dawn: sunDisc("g", "r", "3"),
+	dusk: [".555.", "55555", "55555", "FFFFF", ".FFF."],
+} as const;
+
+// Lanes clear of the head's columns, each with its own phase.
+const lanes = [
+	[1, 0],
+	[5, 23],
+	[8, 9],
+	[-7, 31],
+	[-3, 17],
+] as const;
 
 // The sun or the moon by the clock, and the season's particles falling, all
 // behind the character.
 function paintScenery(canvas: string[][], signals: Signals, counter: number) {
 	const width = canvas[0]?.length ?? 0;
-	const dot = (x: number, y: number, key: string) => {
-		const row = canvas[stageHeight - 1 - y];
-
-		if (row && x >= 0 && x < width) {
-			row[x] = key;
-		}
-	};
+	const put = stagePutter(canvas);
 
 	switch (signals.daylight) {
 		case "night": {
-			for (const [x, y] of [
-				[width - 3, 38],
-				[width - 2, 38],
-				[width - 4, 37],
-				[width - 4, 36],
-				[width - 3, 35],
-				[width - 2, 35],
-			] as const) {
-				dot(x, y, "Q");
-			}
+			stamp(put, width - 4, 38, [".QQ", "Q..", "Q..", ".QQ"]);
 
 			for (const [index, [x, y]] of (
 				[
-					[2, 37],
+					[2, 36],
 					[8, 39],
+					[13, 39],
 					[width - 10, 38],
-					[width - 16, 36],
 				] as const
 			).entries()) {
 				if ((counter + index * 5) % 20 < 14) {
-					dot(x, y, "y");
+					put(x, y, "y");
 				}
 			}
 
 			break;
 		}
 
-		case "dawn": {
-			span(dot, 0, 4, 30, "g");
-			span(dot, 1, 3, 31, "g");
-			break;
-		}
-
+		case "dawn":
 		case "day": {
-			for (let y = 36; y <= 38; y++) {
-				span(dot, 1, 3, y, "g");
-			}
-
+			stamp(put, 0, 39, suns[signals.daylight]);
 			break;
 		}
 
 		case "dusk": {
-			span(dot, width - 5, width - 1, 30, "F");
-			span(dot, width - 4, width - 2, 31, "F");
+			stamp(put, width - 5, 39, suns.dusk);
 			break;
 		}
 
@@ -2339,65 +2352,112 @@ function paintScenery(canvas: string[][], signals: Signals, counter: number) {
 
 	const isGlowing = signals.daylight === "night" || signals.daylight === "dusk";
 
-	if (signals.season && (signals.season !== "summer" || isGlowing)) {
-		const keys = particleKeys[signals.season];
+	for (const [index, [lane, phase]] of lanes.entries()) {
+		const x = lane < 0 ? width + lane : lane;
+		const tick = counter + phase;
+		const y = 39 - (tick % 37);
 
-		for (let index = 0; index < 5; index++) {
-			const fall = (counter + index * 9) % stageHeight;
-			const drift = signals.season === "winter" ? 0 : Math.floor(fall / 4) % 2;
-			dot(
-				(index * 7 + 3 + drift) % width,
-				stageHeight - 1 - fall,
-				keys[index % keys.length] ?? "w",
-			);
+		switch (signals.season) {
+			case "spring": {
+				const drift = Math.floor(tick / 3) % 2;
+				put(x + drift, y, "r");
+				put(x + 1 - drift, y - 1 + drift, "r");
+				break;
+			}
+
+			case "autumn": {
+				const isRed = index % 2 === 1;
+				const sway = Math.floor(tick / 4) % 2 === 1 ? 1 : -1;
+				put(x, y, isRed ? "F" : "g");
+				put(x + sway, y - 1, isRed ? "m" : "2");
+				break;
+			}
+
+			case "winter": {
+				const flakeY = 39 - (Math.floor((counter + phase * 2) / 2) % 37);
+
+				if (index === 0 || index === 4) {
+					stamp(put, x - 1, flakeY + 1, [".w.", "www", ".w."]);
+				} else {
+					put(x, flakeY, "w");
+				}
+
+				break;
+			}
+
+			case "summer":
+			case undefined: {
+				break;
+			}
+		}
+	}
+
+	if (signals.season === "summer" && isGlowing) {
+		for (const [index, [lane, y]] of (
+			[
+				[3, 8],
+				[8, 15],
+				[-8, 12],
+				[-3, 6],
+				[-6, 19],
+			] as const
+		).entries()) {
+			if ((counter + index * 7) % 16 < 9) {
+				put(
+					(lane < 0 ? width + lane : lane) +
+						(Math.floor((counter + index * 3) / 6) % 2),
+					y + (Math.floor((counter + index * 5) / 8) % 2),
+					"3",
+				);
+			}
 		}
 	}
 }
 
-// What the logs have earned, standing on the floor at the stage's edges.
+const plants = {
+	growing: [
+		"..G.",
+		".GGO",
+		"GOG.",
+		".GGG",
+		"G.G.",
+		"..G.",
+		"5555",
+		"4444",
+		"4444",
+	],
+	wilting: [
+		"....",
+		".nn.",
+		"n.On",
+		"..O.",
+		"..O.",
+		"..O.",
+		"5555",
+		"4444",
+		"4444",
+	],
+} as const;
+
+// What the logs have earned, on the floor and the wall at the stage's edges.
 function paintRoom(canvas: string[][], room: Signals["room"]) {
 	const width = canvas[0]?.length ?? 0;
-	const dot = (x: number, y: number, key: string) => {
-		const row = canvas[stageHeight - 1 - y];
-
-		if (row && x >= 0 && x < width) {
-			row[x] = key;
-		}
-	};
+	const put = stagePutter(canvas);
 
 	if (room.plant !== "none") {
-		span(dot, 0, 2, ground, "o");
-		span(dot, 0, 2, ground + 1, "o");
-		dot(1, ground + 2, "G");
-		dot(1, ground + 3, "G");
-
-		if (room.plant === "growing") {
-			dot(0, ground + 4, "G");
-			dot(2, ground + 5, "G");
-			dot(1, ground + 6, "G");
-		} else {
-			dot(0, ground + 3, "n");
-			dot(2, ground + 2, "n");
-		}
-	}
-
-	if (room.dumbbells) {
-		dot(width - 5, ground, "D");
-		span(dot, width - 4, width - 2, ground, "d");
-		dot(width - 1, ground, "D");
-		dot(width - 5, ground + 1, "D");
-		dot(width - 1, ground + 1, "D");
+		stamp(put, 0, 10, plants[room.plant]);
 	}
 
 	if (room.books) {
-		dot(width - 8, ground, "F");
-		dot(width - 8, ground + 1, "P");
-		dot(width - 8, ground + 2, "g");
-		dot(width - 7, ground, "F");
-		dot(width - 7, ground + 1, "P");
+		stamp(put, width - 5, 19, ["F....", "FWg..", "FWg..", "FWg..", "bbbbb"]);
+	}
+
+	if (room.dumbbells) {
+		stamp(put, width - 6, 4, [".D..D.", "DDddDD", ".D..D."]);
 	}
 }
 
+// The pixel keys of 1 frame, row by row, "." where nothing is drawn.
 export const composeScene = (input: SceneInput): string[] =>
 	drawScene(input, input.reach ?? reachOf(input.look), true).rows;
 
@@ -2510,8 +2570,8 @@ function drawScene(
 	};
 
 	paintScenery(canvas, signals, counter);
-	paintRoom(canvas, signals.room);
 	paintShadow(plant(0), b, scene.lift);
+	paintRoom(canvas, signals.room);
 
 	for (const draw of withProps ? (scene.ground ?? []) : []) {
 		draw(plant(0), plant(0), b);

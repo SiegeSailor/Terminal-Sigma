@@ -987,7 +987,7 @@ test("paints the sky, the season, and the room behind the character", (t) => {
 			room: { plant: "growing", dumbbells: true, books: true },
 		},
 	});
-	t.true(count(room, "o") > 0, "a pot");
+	t.true(count(room, "4") > count(plain, "4"), "a pot");
 	t.true(count(room, "D") > 0, "a dumbbell");
 	t.not(
 		scene({
@@ -1003,4 +1003,36 @@ test("paints the sky, the season, and the room behind the character", (t) => {
 			},
 		}).join(""),
 	);
+});
+
+test("keeps every room pixel, and draws each sun only in its corner", (t) => {
+	const look = looks[2] ?? defaultLook;
+	const count = (frame: string[], key: string) =>
+		[...frame.join("")].filter((pixel) => pixel === key).length;
+	const plain = scene({ look });
+	const room = scene({
+		look,
+		signals: {
+			...quietSignals,
+			room: { plant: "growing", dumbbells: true, books: true },
+		},
+	});
+
+	t.is(count(room, "4") - count(plain, "4"), 8, "the whole pot");
+	t.is(count(room, "D") - count(plain, "D"), 8, "the whole dumbbell");
+	t.is(count(room, "b") - count(plain, "b"), 5, "the whole shelf");
+
+	for (const [daylight, from, to] of [
+		["dawn", 0, 4],
+		["day", 0, 4],
+		["dusk", width - 5, width - 1],
+	] as const) {
+		const sky = scene({ look, signals: { ...quietSignals, daylight } });
+		const outside = sky.flatMap((row, y) =>
+			[...row].flatMap((key, x) =>
+				key !== plain[y]?.[x] && (x < from || x > to || y > 4) ? [[x, y]] : [],
+			),
+		);
+		t.deepEqual(outside, [], `${daylight} stays in its corner`);
+	}
 });
