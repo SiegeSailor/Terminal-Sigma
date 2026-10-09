@@ -19,6 +19,7 @@ import {
 	restoreLog,
 	summaryOf,
 	suggestionsOf,
+	withEstimate,
 	undoAdded,
 } from "../quick-log.js";
 
@@ -862,4 +863,63 @@ test("edits only an entry whose line parses back to itself", (t) => {
 	t.false(editable((log) => log.at === local(9)));
 	t.false(editable((log) => log.at === local(10)));
 	t.true(editable((log) => log.at === local(11)));
+});
+
+test("suggests the workout today's plan names, until one is logged", (t) => {
+	const nine = Date.parse(local(9));
+	const progress = progressSchema.parse({
+		language: "en",
+		plans: [
+			{
+				at: local(8, 0, 1),
+				title: "Base building",
+				days: [
+					{
+						weekday: new Date(nine).getDay(),
+						activity: "running",
+						minutes: 30,
+						intensity: "light",
+					},
+				],
+			},
+		],
+	});
+	const planned = (value: typeof progress) =>
+		suggestionsOf(value, nine).find(({ label }) => label === "on today's plan");
+
+	t.deepEqual(planned(progress), {
+		line: "wo Running 30m Light",
+		label: "on today's plan",
+	});
+	t.is(
+		planned(
+			progressSchema.parse({
+				...progress,
+				workouts: [{ at: local(8), activity: "walking", minutes: 20 }],
+			}),
+		),
+		undefined,
+	);
+});
+
+test("puts an estimate into the line as totals for every serving", (t) => {
+	const line = "2 mystery stew, toast";
+	const result = parseQuickLog(line, { progress: empty, now, language: "en" });
+	const [stew] = result.ok ? result.drafts : [];
+	const estimate = { calories: 300, protein: 10, carbs: 30, fat: 12 };
+
+	t.is(
+		stew?.kind === "meal" ? withEstimate(line, stew, estimate) : "",
+		"2 mystery stew 600kcal 20p 60c 24f, toast",
+	);
+
+	const spaced = "2 mystery  stew";
+	const loose = parseQuickLog(spaced, { progress: empty, now, language: "en" });
+	const [draft] = loose.ok ? loose.drafts : [];
+
+	t.is(
+		draft?.kind === "meal" ? withEstimate(spaced, draft, estimate) : "x",
+		undefined,
+		"a food the line does not spell the same way is not estimated",
+	);
 });

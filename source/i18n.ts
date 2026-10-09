@@ -564,6 +564,10 @@ const en = {
 			"wo workout · goal · @y yesterday · @7:30 a time · . repeat · copy y · u undo",
 		more: (count: number) => `+${count} more`,
 		undoHint: "Enter undoes the last line logged here.",
+		estimateHint: "Tab estimates it with the Coach",
+		estimated: (label: string) => `${label} estimated it; Enter logs it.`,
+		estimateFailed: "The Coach could not estimate that; add its kcal yourself.",
+		estimateNeedsAccount: "Add a Coach account to estimate foods.",
 		// Only a line that added entries can be undone; a goal is typed back.
 		logged: (summary: string, xp: number, canUndo: boolean) =>
 			`Logged ${summary}${xp > 0 ? ` · +${xp} XP` : ""}${canUndo ? " · u to undo" : ""}`,
@@ -601,6 +605,7 @@ const en = {
 			water: "behind on water today",
 			workout: "same day last week",
 			habit: (days: number) => `${days} of the last 7 days`,
+			plan: "on today's plan",
 		},
 	},
 	logs: {
@@ -1174,6 +1179,10 @@ const traditionalChinese: Messages = {
 			"wo 運動 · goal 目標 · @y 昨天 · @7:30 時間 · . 重複 · copy y 複製昨天 · u 復原",
 		more: (count) => `還有 ${count} 項`,
 		undoHint: "按 Enter 復原剛才在這裡記錄的上一行。",
+		estimateHint: "按 Tab 請教練估算",
+		estimated: (label) => `${label} 已估算，按 Enter 記錄。`,
+		estimateFailed: "教練無法估算，請自行加上熱量。",
+		estimateNeedsAccount: "請先新增教練帳號才能估算食物。",
 		logged: (summary, xp, canUndo) =>
 			`已記錄 ${summary}${xp > 0 ? ` · +${xp} XP` : ""}${canUndo ? " · 輸入 u 復原" : ""}`,
 		edited: (summary) => `已更新 ${summary}。`,
@@ -1210,6 +1219,7 @@ const traditionalChinese: Messages = {
 			water: "今天喝水進度落後",
 			workout: "上週的今天",
 			habit: (days) => `過去 7 天有 ${days} 天`,
+			plan: "今天的計畫",
 		},
 	},
 	logs: {
@@ -1776,6 +1786,10 @@ const korean: Messages = {
 			"wo 운동 · goal 목표 · @y 어제 · @7:30 시각 · . 반복 · copy y 어제 복사 · u 되돌리기",
 		more: (count) => `외 ${count}개`,
 		undoHint: "Enter를 누르면 여기서 방금 기록한 줄을 되돌립니다.",
+		estimateHint: "Tab을 누르면 코치가 추정합니다",
+		estimated: (label) => `${label}이(가) 추정했습니다. Enter로 기록하세요.`,
+		estimateFailed: "코치가 추정하지 못했습니다. 열량을 직접 입력하세요.",
+		estimateNeedsAccount: "음식을 추정하려면 코치 계정을 추가하세요.",
 		logged: (summary, xp, canUndo) =>
 			`${summary} 기록함${xp > 0 ? ` · +${xp} XP` : ""}${canUndo ? " · u로 되돌리기" : ""}`,
 		edited: (summary) => `${summary} 수정함.`,
@@ -1812,6 +1826,7 @@ const korean: Messages = {
 			water: "오늘 물이 부족함",
 			workout: "지난주 오늘",
 			habit: (days) => `지난 7일 중 ${days}일`,
+			plan: "오늘의 계획",
 		},
 	},
 	logs: {

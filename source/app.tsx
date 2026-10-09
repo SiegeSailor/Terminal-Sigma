@@ -20,6 +20,7 @@ import {
 	instructionsOf,
 	loadCoach,
 	type PlanReply,
+	estimateSchema,
 	planReplySchema,
 	planTextOf,
 	promptOf,
@@ -118,9 +119,11 @@ import {
 	draftOf,
 	isEditable,
 	lineOf,
+	type MealDraft,
 	restoreLog,
 	summaryOf,
 	undoAdded,
+	withEstimate,
 } from "./quick-log.js";
 import {
 	bundledQuotes,
@@ -312,6 +315,9 @@ export default function App({
 	const [flash, setFlash] = React.useState<Flash>();
 	// What each line logged in the open Log view added, newest last, for undo.
 	const [undoStack, setUndoStack] = React.useState<Added[][]>([]);
+	// A line the Log view starts from, with a counter that remounts it.
+	const [draftLine, setDraftLine] =
+		React.useState<Readonly<{ line: string; count: number }>>();
 	// The log being edited in the Log view, and what History deleted, newest
 	// last, for its undo.
 	const [editing, setEditing] = React.useState<Log>();
@@ -566,6 +572,9 @@ export default function App({
 		setChosenAccount(undefined);
 		setDraftProvider(undefined);
 		setPendingPlan(undefined);
+		setDraftLine(undefined);
+		controller.current?.abort();
+		setAsking(undefined);
 
 		if (text) {
 			say(text);
@@ -1091,6 +1100,73 @@ export default function App({
 				}
 			},
 		);
+	};
+
+	// Asks for 1 serving of a food nobody knows, and puts the totals into the
+	// line for the user to check and log; nothing is logged on a guess.
+	const estimateFood = (line: string, draft: MealDraft) => {
+		const [first] = accounts;
+
+		if (!first) {
+			say(messages.log.estimateNeedsAccount);
+			return;
+		}
+
+		// A newer Tab replaces an estimate still in flight.
+		controller.current?.abort();
+		const aborter = new AbortController();
+		controller.current = aborter;
+		setAsking(first.label);
+		commit(
+			withEvent(progress, "coachAsked", "estimate"),
+			messages.coach.asking(first.label),
+		);
+
+		void asker({
+			accounts,
+			kind: "estimate",
+			env,
+			schema: estimateSchema,
+			sessionId: "estimate",
+			signal: aborter.signal,
+			instructions: instructionsOf(
+				language,
+				contextOf(latest.current, Date.now()),
+			),
+			turns: [
+				{ role: "user", content: promptOf("estimate", messages, draft.food) },
+			],
+			onAttempt(account) {
+				if (!aborter.signal.aborted) {
+					setAsking(account.label);
+				}
+			},
+		}).then((reply) => {
+			if (aborter.signal.aborted) {
+				return;
+			}
+
+			setAsking(undefined);
+			const words = messagesOf(latest.current.language ?? "en");
+			const estimate = reply.ok
+				? estimateSchema.safeParse(reply.result)
+				: undefined;
+			const filled =
+				reply.ok && estimate?.success
+					? withEstimate(line, draft, estimate.data)
+					: undefined;
+
+			if (!reply.ok || filled === undefined) {
+				say(words.log.estimateFailed, "error");
+				return;
+			}
+
+			setDraftLine((current) => ({
+				line: filled,
+				count: (current?.count ?? 0) + 1,
+			}));
+			say(words.log.estimated(reply.account.label), "success");
+		});
 	};
 
 	const savePlan = () => {
@@ -1739,12 +1815,19 @@ export default function App({
 		),
 		log: (
 			<LogView
-				key={editing ? `edit-${editing.kind}-${editing.index}` : "log"}
+				key={
+					editing
+						? `edit-${editing.kind}-${editing.index}`
+						: `log-${draftLine?.count ?? 0}`
+				}
+				canEstimate={accounts.length > 0}
+				draftLine={editing ? undefined : draftLine?.line}
 				initialLine={editing ? lineOf(editing, language) : undefined}
 				language={language}
 				messages={messages}
 				now={editing ? Date.parse(editing.at) : now}
 				progress={progress}
+				onEstimate={editing ? undefined : estimateFood}
 				onLog={editing ? replaceLog : logLine}
 				onUndo={undoLine}
 			/>

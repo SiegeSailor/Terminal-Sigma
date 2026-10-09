@@ -1079,3 +1079,40 @@ test("scrolls a long answer row by row in Read", async (t) => {
 	await type(stdin, [up]);
 	t.notDeepEqual(rowsShown(), bottom);
 });
+
+test("estimates an unknown food with the Coach, and logs it on Enter", async (t) => {
+	const { asker, requests } = asking((request) =>
+		request.accounts[0]
+			? {
+					ok: true,
+					result: { calories: 450, protein: 20, carbs: 50, fat: 15 },
+					account: request.accounts[0],
+					attempts: [{ account: request.accounts[0] }],
+				}
+			: { ok: false, attempts: [] },
+	);
+	const { file, stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asker,
+	);
+
+	await type(stdin, ["1", "\r", "mystery stew"]);
+	t.true((lastFrame() ?? "").includes("Tab estimates it with the Coach"));
+
+	await type(stdin, ["\t"]);
+	t.true(await shows(lastFrame, "mystery stew 450kcal 20p 50c 15f"));
+	t.is(requests[0]?.kind, "estimate");
+	t.deepEqual(loadProgress(file).meals, [], "nothing logged on a guess");
+
+	await type(stdin, ["\r"]);
+	t.like(loadProgress(file).meals[0], {
+		food: "mystery stew",
+		calories: 450,
+		protein: 20,
+	});
+
+	unmount();
+});

@@ -1248,6 +1248,10 @@ export function suggestionsOf(
 	const { water } = targetsOf(profileNow(progress), progress.goals);
 	const pace =
 		water * Math.min(Math.max((minuteOfDay(now) - 7 * 60) / (15 * 60), 0), 1);
+	// The workout the latest plan names for this weekday.
+	const planned = progress.plans
+		.at(-1)
+		?.days.find((day) => day.weekday === new Date(now).getDay());
 	const lastWeek = progress.workouts.findLast((workout) =>
 		isOn(workout.at, daysBefore(now, 7)),
 	);
@@ -1285,6 +1289,22 @@ export function suggestionsOf(
 	return [
 		...foods.slice(0, 2),
 		...(today.water < pace ? [{ line: "w", label: log.reasons.water }] : []),
+		...(planned && !workedOut
+			? [
+					{
+						line: lineOf(
+							{
+								kind: "workout",
+								at: new Date(now).toISOString(),
+								index: 0,
+								entry: { at: new Date(now).toISOString(), ...planned },
+							},
+							language,
+						),
+						label: log.reasons.plan,
+					},
+				]
+			: []),
 		...(lastWeek && !workedOut
 			? [
 					{
@@ -1332,6 +1352,34 @@ export function completionOf(
 }
 
 // The prefix of a line picks its parser; a line without 1 is a meal.
+// The line with an estimate for 1 serving of a food it named, written as
+// totals for every serving, so Enter logs it as typed amounts. Undefined when
+// the line does not spell the food the way the parser read it (double spaces).
+export function withEstimate(
+	line: string,
+	draft: MealDraft,
+	estimate: Readonly<{
+		calories: number;
+		protein: number;
+		carbs: number;
+		fat: number;
+	}>,
+): string | undefined {
+	const text = line.normalize("NFKC");
+	const at = text.lastIndexOf(draft.food);
+	const total = (value: number) => plain(value * draft.servings);
+
+	if (at === -1) {
+		return undefined;
+	}
+
+	return [
+		text.slice(0, at),
+		`${draft.food} ${Math.round(estimate.calories * draft.servings)}kcal ${total(estimate.protein)}p ${total(estimate.carbs)}c ${total(estimate.fat)}f`,
+		text.slice(at + draft.food.length),
+	].join("");
+}
+
 const parsers: Partial<Record<string, Parser>> = {
 	w: water,
 	water,

@@ -7,6 +7,7 @@ import {
 	completionOf,
 	describeDraft,
 	type Draft,
+	type MealDraft,
 	type ParseContext,
 	parseQuickLog,
 	suggestionsOf,
@@ -21,6 +22,13 @@ type LogViewProps = Readonly<{
 	now: number;
 	// The line of an entry being edited, logged again in its place on Enter.
 	initialLine?: string;
+	// A line to start from, such as one with an estimate filled in; unlike
+	// initialLine, it edits nothing.
+	draftLine?: string;
+	// Whether a Coach account exists, so the hint can offer an estimate.
+	canEstimate?: boolean;
+	// Asks the Coach about a food nobody knows, or says an account is needed.
+	onEstimate?: (line: string, draft: MealDraft) => void;
 	// Whether the line was saved; a line that was not stays to try again.
 	onLog: (line: string, drafts: Draft[]) => boolean;
 	onUndo: () => void;
@@ -78,11 +86,14 @@ export default function LogView({
 	messages,
 	now,
 	initialLine,
+	draftLine,
+	canEstimate,
+	onEstimate,
 	onLog,
 	onUndo,
 }: LogViewProps) {
 	const palette = usePalette();
-	const [text, setText] = React.useState(initialLine ?? "");
+	const [text, setText] = React.useState(initialLine ?? draftLine ?? "");
 	const [picked, setPicked] = React.useState(-1);
 	const { log } = messages;
 	const isEditing = initialLine !== undefined;
@@ -99,6 +110,11 @@ export default function LogView({
 	const highlighted = options[picked];
 	const line = highlighted?.line ?? text;
 	const result = line.trim() ? parseQuickLog(line, context) : undefined;
+	const unknown = result?.ok
+		? result.drafts.find(
+				(draft): draft is MealDraft => draft.kind === "meal" && !draft.isKnown,
+			)
+		: undefined;
 	const type = (typed: string) => {
 		setText((current) => current + typed);
 		setPicked(-1);
@@ -123,6 +139,8 @@ export default function LogView({
 			if (choice) {
 				setText(choice.line);
 				setPicked(-1);
+			} else if (unknown && onEstimate) {
+				onEstimate(line, unknown);
 			}
 		} else if (key.backspace || key.delete) {
 			setText((current) => [...current].slice(0, -1).join(""));
@@ -195,6 +213,9 @@ export default function LogView({
 			</Box>
 			<Box flexDirection="column" flexShrink={0} paddingLeft={2}>
 				{preview}
+				{unknown && onEstimate && canEstimate ? (
+					<Text dimColor>{log.estimateHint}</Text>
+				) : null}
 			</Box>
 			{options.length > 0 ? (
 				<Box flexDirection="column" flexShrink={0} marginTop={1}>
