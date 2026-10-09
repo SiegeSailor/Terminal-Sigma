@@ -320,11 +320,11 @@ const hanging = (b: Body, side: number, swing = 0): Point => [
 
 const breathing = (t: number, every = 6) => Math.floor(t / every) % 2;
 
-// The stage edges the character walks between, wide enough for the widest body.
-const marginOf = (width: number) => {
-	const minimum = 11;
-	return { minimum, maximum: Math.max(width - 12, minimum + 1) };
-};
+// The stage edges the character walks between, `reach` pixels in from each side.
+const marginOf = (width: number, reach: number) => ({
+	minimum: reach,
+	maximum: Math.max(width - 1 - reach, reach + 1),
+});
 
 export const homeOf = (width: number) => Math.floor(width / 2);
 
@@ -364,8 +364,8 @@ const pathTicks = (stops: readonly number[], speed: number) =>
 const pause = 24;
 
 // Idle: pause, walk to 1 edge, pause, walk to the other, pause, walk home.
-function wanderAt(t: number, width: number, anchor: number) {
-	const { minimum, maximum } = marginOf(width);
+function wanderAt(t: number, width: number, anchor: number, reach: number) {
+	const { minimum, maximum } = marginOf(width, reach);
 	const legs = [
 		[anchor, maximum],
 		[maximum, minimum],
@@ -391,8 +391,8 @@ function wanderAt(t: number, width: number, anchor: number) {
 	return { x: anchor, facing: 1 as const, resting: 0 };
 }
 
-const runStops = (width: number, anchor: number) => {
-	const { minimum, maximum } = marginOf(width);
+const runStops = (width: number, anchor: number, reach: number) => {
+	const { minimum, maximum } = marginOf(width, reach);
 	return [anchor, maximum, minimum, anchor];
 };
 
@@ -405,24 +405,33 @@ const cycles: Record<Exclude<Activity, "idle" | "run">, number> = {
 	levelUp: 16,
 };
 
-// How many ticks one loop of an activity takes.
-export function cycleOf(
+function cycleWith(
 	activity: Activity,
 	width: number,
-	anchor = homeOf(width),
-	mood: Mood = "content",
+	anchor: number,
+	mood: Mood,
+	reach: number,
 ): number {
 	if (activity === "idle") {
-		const { minimum, maximum } = marginOf(width);
+		const { minimum, maximum } = marginOf(width, reach);
 		return mood === "sleepy" ? 48 : 3 * pause + 2 * (maximum - minimum);
 	}
 
 	if (activity === "run") {
-		return pathTicks(runStops(width, anchor), 2);
+		return pathTicks(runStops(width, anchor, reach), 2);
 	}
 
 	return cycles[activity];
 }
+
+// How many ticks one loop of an activity takes.
+export const cycleOf = (
+	activity: Activity,
+	width: number,
+	anchor = homeOf(width),
+	mood: Mood = "content",
+	look: Look = defaultLook,
+) => cycleWith(activity, width, anchor, mood, reachOf(look));
 
 const smileOf = (mood: Mood) => (mood === "happy" ? "smile" : undefined);
 
@@ -575,8 +584,9 @@ function sceneOf(
 	width: number,
 	mood: Mood,
 	anchor: number,
+	reach: number,
 ): Scene {
-	const cycle = cycleOf(activity, width, anchor, mood);
+	const cycle = cycleWith(activity, width, anchor, mood, reach);
 	const at = t % cycle;
 	const mouth = smileOf(mood);
 	const still = (pose: Scene["pose"], props?: Draw[], lift = 0): Scene => ({
@@ -606,7 +616,7 @@ function sceneOf(
 
 	switch (activity) {
 		case "idle": {
-			const place = wanderAt(at, width, anchor);
+			const place = wanderAt(at, width, anchor, reach);
 
 			if ("walking" in place) {
 				return {
@@ -632,7 +642,7 @@ function sceneOf(
 
 		case "run": {
 			// A lap out to 1 edge, across to the other, and back home.
-			const place = along(runStops(width, anchor), 2, at) ?? {
+			const place = along(runStops(width, anchor, reach), 2, at) ?? {
 				x: anchor,
 				facing: 1 as const,
 			};
@@ -767,13 +777,15 @@ function sceneOf(
 		case "stretch": {
 			// Reach up, rise on the toes, open the arms wide, shake them out.
 			const phase = Math.floor(at / 10);
+			// Arms flung wide stop at the edge of the stage rather than clip.
+			const room = Math.min(anchor, width - 1 - anchor);
 
 			return still(
 				(b) => {
 					const reaches: Point[] = [
 						[1, b.top + 3],
 						[1, b.top + 4],
-						[b.chest + 8, b.shoulder + 1],
+						[Math.min(b.chest + 8, room), b.shoulder + 1],
 						[b.side, b.shoulder - b.reach + 1 + (at % 2)],
 					];
 					const [x, y] = reaches[phase] ?? [1, b.top + 3];
@@ -822,8 +834,9 @@ export function placeOf(
 	width: number,
 	mood: Mood,
 	anchor: number,
+	look: Look = defaultLook,
 ): Readonly<{ x: number; lift: number }> {
-	const scene = sceneOf(activity, t, width, mood, anchor);
+	const scene = sceneOf(activity, t, width, mood, anchor, reachOf(look));
 	return { x: scene.x, lift: scene.lift };
 }
 
@@ -848,6 +861,7 @@ export function advance(
 	motion: Motion,
 	wanted: Readonly<{ activity: Activity; mood: Mood }>,
 	width: number,
+	look: Look = defaultLook,
 ): Motion {
 	const isSame =
 		wanted.activity === motion.activity && wanted.mood === motion.mood;
@@ -859,6 +873,7 @@ export function advance(
 			width,
 			motion.mood,
 			motion.anchor,
+			look,
 		);
 
 		if (motion.activity === "idle" || (x === motion.anchor && lift === 0)) {
@@ -1156,7 +1171,13 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 		case "athlete": {
 			// A racerback tank with a stripe; abs show on a lean, muscular body.
 			span(upper, -1, 1, b.shoulder, "s");
-			span(upper, -b.chest, b.chest, b.shoulder - 3, top.shade);
+			span(
+				upper,
+				-halfAt(b.shoulder - 3),
+				halfAt(b.shoulder - 3),
+				b.shoulder - 3,
+				top.shade,
+			);
 
 			if (look.fat <= 3 && look.muscle >= 2) {
 				for (let y = b.hip + 2; y < b.shoulder - 4; y += 2) {
@@ -1172,7 +1193,7 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 	if (gear.wear === 2) {
 		// An open jacket over whatever is underneath.
 		for (let y = b.hip; y <= b.shoulder; y++) {
-			const half = y === b.shoulder ? b.chest + 1 : halfAt(y);
+			const half = y === b.shoulder ? b.chest + 1 + b.shoulderCap : halfAt(y);
 			span(upper, -half, -half + 1, y, "M");
 			span(upper, half - 1, half, y, "X");
 		}
@@ -1225,10 +1246,13 @@ function paintArm(
 		? { main: "X", shade: "X", light: "M" }
 		: topOf[look.style];
 	const sleeve = isJacket ? 1 : sleeveOf[look.style];
-	const joint: Point = [side * (b.chest + 1), b.shoulder - 1];
-	const points = pointsOf(joint, hand);
+	// Both arms are drawn as the right one and mirrored, so rounding the
+	// half-pixel steps of a diagonal arm never makes the left differ.
+	const joint: Point = [b.chest + 1, b.shoulder - 1];
+	const reach: Point = [side * hand[0], hand[1]];
+	const points = pointsOf(joint, reach).map(([x, y]): Point => [side * x, y]);
 	const covered = Math.round((points.length - 1) * sleeve);
-	const isLevel = Math.abs(hand[0] - joint[0]) > Math.abs(hand[1] - joint[1]);
+	const isLevel = Math.abs(reach[0] - joint[0]) > Math.abs(reach[1] - joint[1]);
 	const [dx, dy] = isLevel ? [0, -1] : [side, 0];
 	const edgeTone = side < 0 ? tones.light : tones.shade;
 
@@ -1241,6 +1265,11 @@ function paintArm(
 			width = 2;
 		} else if (step < points.length / 2) {
 			width = b.arm;
+		}
+
+		// The deltoid: the top of the arm bulges outward.
+		if (step < 3 && !isHand) {
+			width += b.shoulderCap;
 		}
 
 		let key = isSleeve ? tones.main : "s";
@@ -1529,7 +1558,9 @@ function paintSide(paint: Paint, pose: Side) {
 		let behind = back;
 
 		if (!isChest) {
-			forward += b.belly;
+			// The belly rounds off at the hips and under the chest.
+			const isEdge = y === b.hip || y === b.shoulder - chestRows;
+			forward += b.belly - (isEdge && b.belly >= 2 ? 1 : 0);
 		}
 
 		if (y - b.hip < 2 && look.gender === "female") {
@@ -1675,19 +1706,89 @@ export type SceneInput = Readonly<{
 }>;
 
 // The pixel keys of 1 frame, row by row, "." where nothing is drawn.
-export function composeScene({
-	activity,
-	counter,
-	level,
-	look,
-	mood,
-	width,
-	anchor = homeOf(width),
-}: SceneInput): string[] {
+export const composeScene = (input: SceneInput): string[] =>
+	drawScene(input, reachOf(input.look), true).rows;
+
+// The columns a body covers on either side of its center, in any pose, with
+// the props left out. Measured once per look on a stage wide enough that
+// nothing clips, and never less than 9, so a slim body keeps walking wide.
+const reaches = new Map<string, number>();
+
+function reachOf(look: Look): number {
+	const key = [
+		look.gender,
+		look.height,
+		look.fat,
+		look.muscle,
+		look.style,
+		look.hair,
+	].join(",");
+	let reach = reaches.get(key);
+
+	if (reach === undefined) {
+		const width = 64;
+		const anchor = homeOf(width);
+		reach = 9;
+
+		const measure = (activity: Activity, mood: Mood, counters: number) => {
+			for (let counter = 0; counter < counters; counter += 2) {
+				const { rows, x } = drawScene(
+					{ activity, counter, level: 10, look, mood, width, anchor },
+					11,
+					false,
+				);
+
+				for (const row of rows) {
+					for (const [column, pixel] of [...row].entries()) {
+						if (pixel !== "." && pixel !== "A") {
+							reach = Math.max(reach ?? 9, Math.abs(column - x));
+						}
+					}
+				}
+			}
+		};
+
+		measure("idle", "happy", 32);
+		measure("run", "content", 8);
+
+		// A stretch holds back its arms at an edge, so it sets no reach.
+		for (const activity of [
+			"focus",
+			"break",
+			"eat",
+			"lift",
+			"levelUp",
+		] as const) {
+			measure(
+				activity,
+				"happy",
+				cycleWith(activity, width, anchor, "happy", 11),
+			);
+		}
+
+		reaches.set(key, reach);
+	}
+
+	return reach;
+}
+
+function drawScene(
+	{
+		activity,
+		counter,
+		level,
+		look,
+		mood,
+		width,
+		anchor = homeOf(width),
+	}: SceneInput,
+	reach: number,
+	withProps: boolean,
+) {
 	const canvas = Array.from({ length: stageHeight }, () =>
 		Array.from({ length: width }, () => "."),
 	);
-	const scene = sceneOf(activity, counter, width, mood, anchor);
+	const scene = sceneOf(activity, counter, width, mood, anchor, reach);
 	const b = bodyOf(look);
 	const pose = scene.pose(b);
 	// The character's x = 0 is its center column, mirrored when facing left.
@@ -1721,11 +1822,11 @@ export function composeScene({
 		paintFront(paint, pose);
 	}
 
-	for (const draw of scene.props ?? []) {
+	for (const draw of withProps ? (scene.props ?? []) : []) {
 		draw(put, paint.upper, b);
 	}
 
-	return canvas.map((row) => row.join(""));
+	return { rows: canvas.map((row) => row.join("")), x: scene.x };
 }
 
 export type Segment = Readonly<{

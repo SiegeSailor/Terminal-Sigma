@@ -12,6 +12,7 @@ import {
 	cycleOf,
 	defaultLook,
 	fatStages,
+	muscleStages,
 	paletteOf,
 	type SceneInput,
 	stageHeight,
@@ -129,6 +130,27 @@ export const sheets: Record<string, SceneInput[]> = {
 			look: { ...defaultLook, gender, fat: Math.round((fatStages * step) / 7) },
 		})),
 	),
+	// The widest bodies in profile, waving, and with the arms flung wide.
+	widest: (["female", "male", "other"] as const).flatMap((gender) => {
+		const look = {
+			...defaultLook,
+			gender,
+			height: 35,
+			fat: fatStages,
+			muscle: muscleStages,
+		};
+		const frames = [
+			{ counter: 26 },
+			{ counter: 28 },
+			{ counter: 30 },
+			{ counter: 32 },
+			{ counter: 4, mood: "happy" as const },
+			{ counter: 9, mood: "happy" as const },
+			{ activity: "stretch" as const, counter: 25 },
+			{ activity: "lift" as const, counter: 12 },
+		];
+		return frames.map((frame) => ({ ...base, look, ...frame }));
+	}),
 	levels: Array.from({ length: 10 }, (_, index) => ({
 		...base,
 		level: index + 1,

@@ -10,6 +10,7 @@ import {
 	fatStages,
 	fatStep,
 	gearOf,
+	homeOf,
 	type Look,
 	lookOf,
 	type Motion,
@@ -64,6 +65,8 @@ const looks: Look[] = [
 
 type Scene = Partial<{
 	activity: Activity;
+	anchor: number;
+	width: number;
 	counter: number;
 	level: number;
 	look: Look;
@@ -233,13 +236,26 @@ test("draws a different body for every 2 points of body fat", (t) => {
 	t.is(fatStep, 2);
 
 	for (const gender of ["female", "male", "other"] as const) {
-		const frames = Array.from({ length: fatStages + 1 }, (_, fat) => {
-			const look = { ...defaultLook, gender, fat };
-			// The front at rest and the side mid-stride, since a belly shows in profile.
-			return [...scene({ look }), ...scene({ look, counter: 24 })].join("\n");
-		});
+		for (const [height, style] of [
+			[22, "athlete"],
+			[22, "desk"],
+			[29, "desk"],
+			[35, "athlete"],
+		] as const) {
+			const frames = Array.from({ length: fatStages + 1 }, (_, fat) => {
+				const look = { ...defaultLook, gender, height, style, fat };
+				// The front at rest and the side mid-stride, since a belly shows in profile.
+				return [...scene({ look }), ...scene({ look, counter: 24 })].join("\n");
+			});
 
-		t.is(new Set(frames).size, fatStages + 1, `for ${gender}`);
+			for (const [fat, frame] of frames.entries()) {
+				t.not(
+					frame,
+					frames[fat - 1],
+					`${gender} ${height} ${style}: stage ${fat} is stage ${fat - 1}`,
+				);
+			}
+		}
 	}
 
 	t.is(lookFor({ gender: "male", bodyFat: 6 }).fat, 0);
@@ -271,6 +287,51 @@ test("grows muscle with strength work, up to a limit", (t) => {
 		scene({ look: { ...defaultLook, muscle } }).join(""),
 	);
 	t.is(new Set(frames).size, muscleStages + 1);
+
+	// Every stage shows, not by a pixel: at least 6 pixels in the front view.
+	for (const gender of ["female", "male", "other"] as const) {
+		for (let muscle = 1; muscle <= muscleStages; muscle++) {
+			const draw = (stage: number) =>
+				scene({ look: { ...defaultLook, gender, muscle: stage } });
+			const differing = draw(muscle).reduce(
+				(total, row, y) =>
+					total +
+					[...row].filter((key, x) => key !== draw(muscle - 1)[y]?.[x]).length,
+				0,
+			);
+			t.true(
+				differing >= 6,
+				`${gender}: muscle ${muscle} differs by ${differing}`,
+			);
+		}
+	}
+});
+
+test("draws both arms and both sides of the body alike", (t) => {
+	const middle = homeOf(width);
+
+	for (const gender of ["female", "male", "other"] as const) {
+		for (let fat = 0; fat <= fatStages; fat++) {
+			for (let muscle = 0; muscle <= muscleStages; muscle++) {
+				const look = { ...defaultLook, gender, fat, muscle };
+				const frame = scene({ look });
+
+				// Below the shoulders, where the hair and the ears are not.
+				for (let y = 2; y < look.height - 7; y++) {
+					const row = frame[stageHeight - 1 - y] ?? "";
+					const covered = (x: number) => (row[x] ?? ".") !== ".";
+
+					for (let offset = 1; offset <= middle; offset++) {
+						t.is(
+							covered(middle + offset),
+							covered(middle - offset),
+							`${gender} fat ${fat} muscle ${muscle} row ${y} offset ${offset}`,
+						);
+					}
+				}
+			}
+		}
+	}
 });
 
 test("stands 1 pixel taller for every 5 cm", (t) => {
@@ -281,28 +342,93 @@ test("stands 1 pixel taller for every 5 cm", (t) => {
 	t.is(new Set(heights).size, heights.length);
 });
 
-test("keeps the widest body within 11 pixels of its center", (t) => {
-	const widest = {
-		...defaultLook,
-		gender: "male" as const,
-		height: 35,
-		fat: fatStages,
-		muscle: muscleStages,
-	};
+test("keeps every body on the stage at both walking edges", (t) => {
+	// The shadow, the barbell, the cup, the sparkles, the Zs, and the swaying hair are not
+	// the body.
+	const bodyOf = (frame: string[]) =>
+		frame.join("").replaceAll(/[.AdDyZhiHIQ]/gv, "").length;
+	const looks: Look[] = [];
 
-	for (const counter of [0, 24]) {
-		// At home, the middle of the 32-pixel stage, the body may reach 11 each way.
-		t.true(extentOf(scene({ look: widest, counter })).columns <= 23);
+	for (const gender of ["female", "male"] as const) {
+		for (const fat of [0, fatStages]) {
+			for (const muscle of [0, muscleStages]) {
+				for (const height of [22, 35]) {
+					for (const style of ["desk", "athlete"] as const) {
+						looks.push({ ...defaultLook, gender, fat, muscle, height, style });
+					}
+				}
+			}
+		}
 	}
 
-	// The idle walk rests at its right edge from tick 28 and at its left from 61;
-	// nothing is clipped there, so the body keeps the width it has at home.
-	const home = extentOf(scene({ look: widest })).columns;
+	// The same pose on a stage wide enough that nothing clips; arms flung wide
+	// hold back by the room at the edge, so they are drawn with that room.
+	const wide = 96;
 
-	for (const counter of [30, 62]) {
-		const { columns, left } = extentOf(scene({ look: widest, counter }));
-		t.is(columns, home, `at tick ${counter}`);
-		t.true(left >= 0 && left + columns <= width);
+	for (const look of looks) {
+		const home = homeOf(width);
+		const cycle = cycleOf("idle", width, undefined, "happy", look);
+		const xs = Array.from(
+			{ length: cycle },
+			(_, counter) => placeOf("idle", counter, width, "happy", home, look).x,
+		);
+		const [minimum, maximum] = [Math.min(...xs), Math.max(...xs)] as const;
+		// The idle rests 24 ticks at home, then at the right edge, then the left.
+		const restAt = new Map([
+			[maximum, 24 + maximum - home],
+			[minimum, 48 + 2 * maximum - home - minimum],
+		]);
+		const name = `${look.gender} ${look.height} fat ${look.fat} muscle ${look.muscle} ${look.style}`;
+
+		for (const [anchor, start] of restAt) {
+			// The idle pauses at an edge, in every mood, as it does at home.
+			for (const mood of ["content", "happy"] as const) {
+				for (let rest = 0; rest < 24; rest++) {
+					const edge = scene({ look, mood, counter: start + rest });
+					const free = scene({
+						look,
+						mood,
+						counter: rest,
+						width: wide,
+						anchor: homeOf(wide),
+					});
+					t.is(bodyOf(edge), bodyOf(free), `${name} ${mood} idle at ${anchor}`);
+				}
+			}
+
+			for (const activity of activities) {
+				if (activity === "idle" || activity === "run") {
+					continue;
+				}
+
+				for (
+					let counter = 0;
+					counter < cycleOf(activity, width, anchor, "happy", look);
+					counter++
+				) {
+					const edge = scene({
+						look,
+						activity,
+						counter,
+						anchor,
+						mood: "happy",
+					});
+					const free = scene({
+						look,
+						activity,
+						counter,
+						anchor: Math.min(anchor, width - 1 - anchor),
+						width: wide,
+						mood: "happy",
+					});
+					t.is(
+						bodyOf(edge),
+						bodyOf(free),
+						`${name} ${activity} ${counter} at ${anchor}`,
+					);
+				}
+			}
+		}
 	}
 });
 

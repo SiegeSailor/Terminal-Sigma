@@ -41,7 +41,7 @@ export default function Character({
 	const stage = width - 4;
 	const [motion, step] = React.useReducer(
 		(state: ReturnType<typeof startMotion>, wanted: Wanted) =>
-			advance(state, wanted, stage),
+			advance(state, wanted, stage, look),
 		undefined,
 		() => startMotion(activity, mood, stage),
 	);
