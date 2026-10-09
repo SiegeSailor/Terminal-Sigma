@@ -87,7 +87,10 @@ const instance = render(
 
 await instance.waitUntilExit();
 // Langfuse batches its traces; send the last ones before leaving.
-await stopTracing();
+if (await stopTracing()) {
+	// The exporter's pending request would keep the process alive.
+	process.exit(process.exitCode ?? 0);
+}
 
 // After an update, the same command starts the version just installed.
 if (isRestarting) {

@@ -122,7 +122,7 @@ async function start() {
 
 		void instance
 			.waitUntilExit()
-			.then(stopTracing)
+			.then(async () => stopTracing())
 			.finally(() => {
 				app.quit();
 			});
@@ -136,7 +136,9 @@ async function start() {
 	});
 
 	window.on("closed", () => {
-		app.quit();
+		void stopTracing().finally(() => {
+			app.quit();
+		});
 	});
 
 	await window.loadFile(path.join(directory, "..", "index.html"));

@@ -294,18 +294,39 @@ test("calls onAttempt per tried account and skips a 401'd one next time", async 
 	t.deepEqual(seen, ["good"]);
 });
 
-test("traces nothing and loads nothing without both Langfuse keys", async (t) => {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	const tracer = await tracerOf({ LANGFUSE_PUBLIC_KEY: "pk-lf-1" });
+test.serial(
+	"traces nothing and loads nothing without both Langfuse keys",
+	async (t) => {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const tracer = await tracerOf({ LANGFUSE_PUBLIC_KEY: "pk-lf-1" });
 
-	t.false(tracer.isOn);
-	t.is(
-		await tracer.trace(
-			"coach-chat",
-			{ sessionId: "s1", tags: [] },
-			async () => 42,
-		),
-		42,
+		t.false(tracer.isOn);
+		t.is(
+			await tracer.trace(
+				"coach-chat",
+				{ sessionId: "s1", tags: [] },
+				async () => 42,
+			),
+			42,
+		);
+		t.false(await stopTracing());
+	},
+);
+
+test.serial("reports a flush that outlasts its timer", async (t) => {
+	const env = {
+		/* eslint-disable @typescript-eslint/naming-convention */
+		LANGFUSE_PUBLIC_KEY: "pk-lf-1",
+		LANGFUSE_SECRET_KEY: "sk-lf-1",
+		LANGFUSE_BASE_URL: "http://127.0.0.1:9",
+		/* eslint-enable @typescript-eslint/naming-convention */
+	};
+	const tracer = await tracerOf(env);
+	await tracer.trace(
+		"coach-chat",
+		{ sessionId: "s1", tags: [] },
+		async () => 1,
 	);
-	await t.notThrowsAsync(stopTracing());
+
+	t.true(await stopTracing(0));
 });

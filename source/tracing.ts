@@ -91,11 +91,14 @@ export async function tracerOf(env: Environment): Promise<Tracer> {
 }
 
 // Sends what is still buffered before the process exits; never throws and
-// never waits longer than 2 seconds, so an unreachable Langfuse cannot hang it.
-export async function stopTracing() {
+// never waits longer than the timeout, so an unreachable Langfuse cannot hang
+// it. Resolves to whether it timed out, so the caller can exit anyway.
+export async function stopTracing(timeout = 2000): Promise<boolean> {
 	if (!started) {
-		return;
+		return false;
 	}
+
+	let timedOut = false;
 
 	let timer: NodeJS.Timeout | undefined;
 	try {
@@ -103,7 +106,10 @@ export async function stopTracing() {
 		await Promise.race([
 			stop(),
 			new Promise((resolve) => {
-				timer = setTimeout(resolve, 2000);
+				timer = setTimeout(() => {
+					timedOut = true;
+					resolve(undefined);
+				}, timeout);
 			}),
 		]);
 	} catch {
@@ -111,4 +117,6 @@ export async function stopTracing() {
 	} finally {
 		clearTimeout(timer);
 	}
+
+	return timedOut;
 }
