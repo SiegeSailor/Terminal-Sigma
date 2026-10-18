@@ -406,10 +406,6 @@ export const bundledQuotes: readonly Quote[] = bundled.map(
 	}),
 );
 
-export const hasQuoteApi = (
-	env: Record<string, string | undefined> = process.env,
-) => Boolean(env.API_NINJAS_KEY);
-
 export const localizedQuote = (quote: Quote, language: Language): Text =>
 	quote.translations?.[language] ?? quote;
 

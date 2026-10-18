@@ -130,7 +130,6 @@ import {
 	bundledQuotes,
 	defaultQuoteSettings,
 	fetchQuote,
-	hasQuoteApi,
 	localizedQuote,
 	pickBundled,
 	type Quote,
@@ -537,12 +536,15 @@ export default function App({
 		);
 	}, [now, timer, durations, record, commit, progress, stdout, language]);
 
+	// Env changes in place, so the key itself tells the effect to rerun.
+	const quoteKey = env.API_NINJAS_KEY;
+
 	React.useEffect(() => {
 		let isMounted = true;
 		const refresh = async () => {
 			const next = await fetchQuote(
 				quoteSettings,
-				env.API_NINJAS_KEY,
+				quoteKey,
 				quoteOnScreen.current,
 			);
 
@@ -552,7 +554,7 @@ export default function App({
 		};
 
 		// The bundled quote shown first is already fresh; only the API is worth a call.
-		if (hasQuoteApi(env)) {
+		if (quoteKey) {
 			void refresh();
 		}
 
@@ -570,7 +572,7 @@ export default function App({
 			isMounted = false;
 			clearInterval(interval);
 		};
-	}, [quoteSettings, env]);
+	}, [quoteSettings, quoteKey]);
 
 	const backToMenu = (text?: string) => {
 		setView("menu");

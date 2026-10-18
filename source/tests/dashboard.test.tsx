@@ -536,7 +536,8 @@ test("saves an environment variable, leaving the shell's alone", async (t) => {
 test("masks a saved secret and clears it with an empty value", async (t) => {
 	const { configFile, env, file, stdin, lastFrame, unmount } = start();
 
-	// Data, Focus, Break, Motion, then API Ninjas key.
+	// Data, Focus, Break, Motion, API Ninjas, then OpenAI; a quote key
+	// would fetch a quote at once.
 	await type(stdin, [
 		"9",
 		"\r",
@@ -544,18 +545,19 @@ test("masks a saved secret and clears it with an empty value", async (t) => {
 		down,
 		down,
 		down,
+		down,
 		"\r",
-		"ninja-key-123456",
+		"openai-key-123456",
 		"\r",
 	]);
-	t.is(loadConfig(configFile).env.API_NINJAS_KEY, "ninja-key-123456");
+	t.is(loadConfig(configFile).env.OPENAI_API_KEY, "openai-key-123456");
 	t.true((lastFrame() ?? "").includes("••••3456"));
-	t.false((lastFrame() ?? "").includes("ninja-key"));
-	t.false(readFileSync(file, "utf8").includes("ninja-key"));
+	t.false((lastFrame() ?? "").includes("openai-key"));
+	t.false(readFileSync(file, "utf8").includes("openai-key"));
 
 	await type(stdin, ["\r", "\r"]);
 	t.deepEqual(loadConfig(configFile).env, {});
-	t.is(env.API_NINJAS_KEY, undefined);
+	t.is(env.OPENAI_API_KEY, undefined);
 
 	unmount();
 });
