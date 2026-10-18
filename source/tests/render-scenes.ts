@@ -165,6 +165,19 @@ export const sheets: Record<string, SceneInput[]> = {
 		];
 		return frames.map((frame) => ({ ...base, look, ...frame }));
 	}),
+	// Each gender in profile from lean to heavy, walking, then running.
+	profiles: (["female", "male", "other"] as const).flatMap((gender) =>
+		[
+			{ activity: "idle" as const, counter: 28 },
+			{ activity: "run" as const, counter: 24 },
+		].flatMap((pose) =>
+			Array.from({ length: 8 }, (_, step) => ({
+				...base,
+				...pose,
+				look: { ...defaultLook, gender, fat: step * 3 },
+			})),
+		),
+	),
 	// Tall characters leveling up: the hop stays under the stage's top.
 	tall: [33, 35].flatMap((height) =>
 		[1, 5, 10].flatMap((level) =>
