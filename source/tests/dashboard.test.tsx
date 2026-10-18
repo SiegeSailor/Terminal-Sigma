@@ -3,10 +3,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "ava";
 import React from "react";
+import { Box } from "ink";
 import { render } from "ink-testing-library";
 import App from "../app.js";
 import type { Asker, AskReply, AskRequest } from "../asker.js";
 import { loadCoach, saveCoach } from "../coach.js";
+import CoachView from "../components/coach-view.js";
 import { loadConfig, saveConfig } from "../config.js";
 import { messagesOf } from "../i18n.js";
 import { loadProgress, type Progress, progressSchema } from "../progress.js";
@@ -1311,4 +1313,23 @@ test("Tab on an unknown food without an account asks nothing and logs no event",
 	await type(stdin, ["1", "\r", "mystery stew", "\t"]);
 	t.is(requests.length, 0);
 	t.false(actionsIn(file).includes("coachAsked"));
+});
+
+test("keeps the Coach prompt's cursor apart from the text in a narrow panel", (t) => {
+	const { lastFrame, unmount } = render(
+		<Box width={40}>
+			<CoachView
+				isSetUp
+				height={10}
+				messages={messagesOf("en")}
+				mode="ask"
+				options={[]}
+				onAsk={() => undefined}
+				onSelect={() => undefined}
+			/>
+		</Box>,
+	);
+	t.teardown(unmount);
+
+	t.regex(lastFrame() ?? "", /❯ \S/v);
 });

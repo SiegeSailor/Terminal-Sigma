@@ -111,8 +111,10 @@ export default function CoachView({
 		);
 	} else if (mode === "ask") {
 		controls = (
-			<Box>
-				<Text color={palette.accent}>❯ </Text>
+			<Box gap={1}>
+				<Box flexShrink={0}>
+					<Text color={palette.accent}>❯</Text>
+				</Box>
 				<TextInput
 					placeholder={coach.placeholder}
 					onSubmit={(text) => {
