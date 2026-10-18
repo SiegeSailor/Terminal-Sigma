@@ -165,7 +165,7 @@ Every view shows its keys at the bottom right:
 | Tab                       | Copy the picked suggestion into the field, or complete the food name in Log; in History, cycle the filter                                                     |
 | `u`                       | In Log, as the whole line: undo the last line logged                                                                                                          |
 
-When a focus or break ends, the terminal rings its bell.
+When a focus or break ends, the terminal rings its bell, and the desktop app sends a notification.
 
 ## Log
 
