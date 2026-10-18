@@ -18,7 +18,7 @@ Each of these protects the user's keys, data, or start-up time:
 - **Keep Fallback for Resilience**: Never add round-robin or load spreading across accounts of 1 provider; OpenAI's terms forbid circumventing rate limits, and others forbid bypassing protective measures
 - **Keep Keys Out of Everything but `config.json`**: Not in `progress.json`, `coach.json`, an event, the footer, a prompt, or a trace's metadata; the shell's keys stay in the shell, and a saved account without a key is dropped unless it is `compatible`, so a shell key never goes to a custom `baseUrl`
 - **Keep Notes Out of the Context**: `contextOf` sends the profile's numbers, the targets, the streak, the last 7 days, and today's meals, never the name, the notes, the keys, or the paths
-- **Trace Only on Purpose**: A traced request records the prompt and the answer, which include that summary, so Langfuse starts only when the user set both keys, and README says so
+- **Trace Only on Purpose**: A traced request records the prompt and the answer, which include that summary, so Langfuse starts only when the user set both keys, and [the Guide](../../docs/GUIDE.md#tracing-with-langfuse) says so
 - **Never Block on Tracing**: An unreachable Langfuse must not delay an answer; `stopTracing` gives up after 2 seconds and the CLI then exits anyway
 - **Honor Esc**: An aborted request stops the loop, sets no cooldown, and a late answer never shows
 - **Refuse an Unreadable `coach.json`**: `loadCoach` throws and `saveCoach` validates before writing with mode 600, like `progress.json`

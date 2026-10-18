@@ -4,6 +4,7 @@ paths:
   - "**/CONTRIBUTING.md"
   - "**/CLAUDE.md"
   - ".claude/**/*.md"
+  - "docs/**/*.md"
 ---
 
 # Writing Documents
@@ -19,6 +20,7 @@ Every document in this repository follows these rules, according to its audience
 | `**/README.md`           | Human    | What is the scope about?            |
 | `CLAUDE.md`              | Agent    | What must I follow?                 |
 | `CONTRIBUTING.md`        | Human    | How do I contribute?                |
+| `docs/GUIDE.md`          | Human    | How does every feature work?        |
 | `README.md`              | Human    | What is this?                       |
 
 > [!important]
