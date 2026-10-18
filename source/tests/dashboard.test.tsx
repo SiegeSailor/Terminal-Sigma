@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "ava";
@@ -7,7 +7,7 @@ import { render } from "ink-testing-library";
 import App from "../app.js";
 import type { Asker, AskReply, AskRequest } from "../asker.js";
 import { loadCoach, saveCoach } from "../coach.js";
-import { loadConfig } from "../config.js";
+import { loadConfig, saveConfig } from "../config.js";
 import { messagesOf } from "../i18n.js";
 import { loadProgress, type Progress, progressSchema } from "../progress.js";
 import type { Updater } from "../update.js";
@@ -1228,6 +1228,68 @@ test("aborts a request in flight when the dashboard closes", async (t) => {
 		loadCoach(path.join(path.dirname(file), "coach.json")).sessions,
 		[],
 	);
+});
+
+test("moving the first account up writes and logs nothing", async (t) => {
+	const file = temporaryFile();
+	const configFile = path.join(path.dirname(file), "config.json");
+	const account = (id: string) => ({
+		id,
+		provider: "compatible" as const,
+		label: id,
+		model: "m",
+		baseUrl: "http://127.0.0.1:9",
+	});
+	saveConfig(configFile, { env: {}, accounts: [account("a"), account("b")] });
+	const { stdin, lastFrame, unmount } = start(
+		empty,
+		file,
+		fakeUpdater(),
+		{},
+		asking(() => ({ ok: false, attempts: [] })).asker,
+	);
+	t.teardown(unmount);
+
+	// Coach, then Accounts, the first account, and its Move up.
+	await type(stdin, ["3", "\r", ...Array.from({ length: 5 }, () => down)]);
+	await type(stdin, ["\r", "\r", "\r"]);
+	t.false(actionsIn(file).includes("accountMoved"));
+	t.false((lastFrame() ?? "").includes(messagesOf("en").accounts.moved));
+	t.deepEqual(
+		loadConfig(configFile).accounts.map((known) => known.id),
+		["a", "b"],
+	);
+});
+
+test("starting a conversation twice leaves 1 empty session", async (t) => {
+	const { file, stdin, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asking(() => ({ ok: false, attempts: [] })).asker,
+	);
+	t.teardown(unmount);
+
+	// Coach, then New conversation, twice.
+	await type(stdin, ["3", "\r", ...Array.from({ length: 4 }, () => down)]);
+	await type(stdin, ["\r", "\r"]);
+	const { sessions } = loadCoach(path.join(path.dirname(file), "coach.json"));
+	t.is(sessions.length, 1);
+	t.deepEqual(sessions[0]?.turns, []);
+});
+
+test("never overwrites an unreadable coach.json, even after asking", async (t) => {
+	const file = temporaryFile();
+	const coachFile = path.join(path.dirname(file), "coach.json");
+	writeFileSync(coachFile, "{ not json");
+	const { asker, requests } = asking(() => ({ ok: false, attempts: [] }));
+	const { stdin, unmount } = start(empty, file, fakeUpdater(), keys, asker);
+	t.teardown(unmount);
+
+	await type(stdin, ["3", "\r", down, "\r", down, "\r", "\r"]);
+	t.is(requests.length, 0);
+	t.is(readFileSync(coachFile, "utf8"), "{ not json");
 });
 
 test("Tab on an unknown food without an account asks nothing and logs no event", async (t) => {

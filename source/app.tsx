@@ -1237,6 +1237,12 @@ export default function App({
 			return;
 		}
 
+		// Shortcut: coach.json keeps every session; cap it at the last N once the file passes a few MB.
+		if (coach.sessions.at(-1)?.turns.length === 0) {
+			say(messages.coach.started);
+			return;
+		}
+
 		const fresh = {
 			id: randomUUID(),
 			startedAt: new Date().toISOString(),
@@ -1351,8 +1357,19 @@ export default function App({
 				messages.accounts.removed(account.label),
 			);
 		} else {
+			const moved = movedAccounts(
+				config.accounts,
+				account.id,
+				action === "up" ? -1 : 1,
+			);
+
+			// The first account has nowhere to go up, nor the last down.
+			if (moved.every((known, index) => known === config.accounts[index])) {
+				return;
+			}
+
 			changeAccounts(
-				movedAccounts(config.accounts, account.id, action === "up" ? -1 : 1),
+				moved,
 				"accountMoved",
 				account.provider,
 				messages.accounts.moved,
