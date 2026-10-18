@@ -256,14 +256,22 @@ test("draws a different body for every 2 points of body fat", (t) => {
 	const reach = 9;
 
 	for (const gender of ["female", "male", "other"] as const) {
-		for (const [height, style] of [
-			[22, "athlete"],
-			[22, "desk"],
-			[29, "desk"],
-			[35, "athlete"],
+		for (const [height, top, pants, shoes] of [
+			[22, "tank", "shorts", "runners"],
+			[22, "hoodie", "jeans", "sneakers"],
+			[29, "hoodie", "jeans", "sneakers"],
+			[35, "tank", "shorts", "runners"],
 		] as const) {
 			const frames = Array.from({ length: fatStages + 1 }, (_, fat) => {
-				const look = { ...defaultLook, gender, height, style, fat };
+				const look = {
+					...defaultLook,
+					gender,
+					height,
+					top,
+					pants,
+					shoes,
+					fat,
+				};
 				// The front at rest and the side mid-stride, since a belly shows in profile.
 				return [
 					...scene({ look, reach }),
@@ -275,7 +283,7 @@ test("draws a different body for every 2 points of body fat", (t) => {
 				t.not(
 					frame,
 					frames[fat - 1],
-					`${gender} ${height} ${style}: stage ${fat} is stage ${fat - 1}`,
+					`${gender} ${height} ${top}: stage ${fat} is stage ${fat - 1}`,
 				);
 			}
 		}
