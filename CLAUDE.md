@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Terminal-Sigma is a long-running terminal dashboard, published to NPM as `@siegesailor/terminal-sigma` and wrapped as a desktop app on every GitHub release. This file is the map; [`README.md`](./README.md) says what the project is and [`CONTRIBUTING.md`](./.github/CONTRIBUTING.md) how to work in it.
+Terminal-Sigma is a long-running terminal dashboard, published to NPM as `@siegesailor/terminal-sigma` and wrapped as a desktop app on every GitHub release. This file is the map; [`README.md`](./README.md) says what the project is, [`docs/GUIDE.md`](./docs/GUIDE.md) how every feature works, and [`CONTRIBUTING.md`](./.github/CONTRIBUTING.md) how to work in it.
 
 Path-scoped rules live in [`.claude/rules/`](./.claude/rules/); read the ones whose `paths:` match the files being edited.
 
@@ -76,4 +76,4 @@ These hold everywhere, and none may be broken on the way to finishing something 
 
 Commit messages follow the `conventional-commit` skill from [`SiegeSailor/Claude-Plugins`](https://github.com/SiegeSailor/Claude-Plugins), enabled for this repository in [`.claude/settings.json`](./.claude/settings.json).
 
-The options, keys, environment variables, and the format of `progress.json` are user-facing and live in [`README.md`](./README.md#usage); update it in the same commit as a change to any of them.
+The options, keys, environment variables, and the format of `progress.json` are user-facing and live in [`docs/GUIDE.md`](./docs/GUIDE.md); update it in the same commit as a change to any of them. [`README.md`](./README.md) only introduces the main features with screenshots in `docs/images/`; touch it when a main feature changes how it looks or what it is.
