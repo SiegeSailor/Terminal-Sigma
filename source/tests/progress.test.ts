@@ -420,14 +420,27 @@ test("saves an appearance and rejects a style it does not know", (t) => {
 		goal: "maintain",
 	} as const;
 
+	const outfit = {
+		top: "shirt",
+		pants: "cargo",
+		shoes: "boots",
+		hat: "beanie",
+	} as const;
 	saveProgress(file, {
 		...sample,
-		profile: { ...profile, skinTone: 4, hairStyle: "bun", glasses: true },
+		profile: {
+			...profile,
+			skinTone: 4,
+			hairStyle: "bun",
+			glasses: true,
+			...outfit,
+		},
 	});
 	t.like(loadProgress(file).profile, {
 		skinTone: 4,
 		hairStyle: "bun",
 		glasses: true,
+		...outfit,
 	});
 
 	writeFileSync(

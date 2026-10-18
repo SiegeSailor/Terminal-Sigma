@@ -14,11 +14,15 @@ import {
 	genders,
 	hairColors,
 	hairStyles,
+	hatStyles,
 	healthGoals,
 	intensities,
 	type Intensity,
 	languages,
+	pantsStyles,
+	shoeStyles,
 	skinTones,
+	topStyles,
 	workoutActivities,
 	workStyles,
 } from "./i18n.js";
@@ -176,6 +180,11 @@ const profileShape = {
 	hairColor: zod.enum(hairColors).optional(),
 	glasses: zod.boolean().optional(),
 	facialHair: zod.enum(facialHairs).optional(),
+	// The outfit, added after 1.7.0; left out, the work style dresses it.
+	top: zod.enum(topStyles).optional(),
+	pants: zod.enum(pantsStyles).optional(),
+	shoes: zod.enum(shoeStyles).optional(),
+	hat: zod.enum(hatStyles).optional(),
 };
 // Parsing keeps the fields a newer version wrote; the types stay strict.
 const profileSchema = zod.looseObject(profileShape);

@@ -62,6 +62,20 @@ export type HairColor = (typeof hairColors)[number];
 export const facialHairs = ["none", "stubble", "beard"] as const;
 export type FacialHair = (typeof facialHairs)[number];
 
+// What the character wears; left out, the work style picks the outfit, and
+// "level" lets the level hand out a cap.
+export const topStyles = ["hoodie", "shirt", "apron", "tee", "tank"] as const;
+export type TopStyle = (typeof topStyles)[number];
+
+export const pantsStyles = ["jeans", "chinos", "cargo", "shorts"] as const;
+export type PantsStyle = (typeof pantsStyles)[number];
+
+export const shoeStyles = ["sneakers", "loafers", "boots", "runners"] as const;
+export type ShoeStyle = (typeof shoeStyles)[number];
+
+export const hatStyles = ["level", "none", "cap", "beanie"] as const;
+export type HatStyle = (typeof hatStyles)[number];
+
 export type Mood = "sleepy" | "content" | "happy";
 
 // "15 seconds", "1 分鐘", "1시간": the quote intervals in words.
@@ -220,6 +234,10 @@ const en = {
 		hairColor: "Hair color",
 		facialHair: "Facial hair",
 		glasses: "Glasses",
+		top: "Top",
+		pants: "Pants",
+		shoes: "Shoes",
+		hat: "Hat",
 		/* eslint-disable @typescript-eslint/naming-convention */
 		skinTones: {
 			"1": "Lightest",
@@ -248,6 +266,31 @@ const en = {
 			stubble: "Stubble",
 			beard: "Beard",
 		} satisfies Record<FacialHair, string>,
+		tops: {
+			hoodie: "Hoodie",
+			shirt: "Shirt",
+			apron: "Shirt and apron",
+			tee: "T-shirt",
+			tank: "Tank top",
+		} satisfies Record<TopStyle, string>,
+		pantsStyles: {
+			jeans: "Jeans",
+			chinos: "Chinos",
+			cargo: "Cargo pants",
+			shorts: "Shorts",
+		} satisfies Record<PantsStyle, string>,
+		shoeStyles: {
+			sneakers: "Sneakers",
+			loafers: "Loafers",
+			boots: "Boots",
+			runners: "Running shoes",
+		} satisfies Record<ShoeStyle, string>,
+		hats: {
+			level: "Earned by level",
+			none: "None",
+			cap: "Cap",
+			beanie: "Beanie",
+		} satisfies Record<HatStyle, string>,
 		yes: "Yes",
 		no: "No",
 		saved: "Appearance saved. Your character changed to match.",
@@ -865,6 +908,10 @@ const traditionalChinese: Messages = {
 		hairColor: "髮色",
 		facialHair: "鬍子",
 		glasses: "眼鏡",
+		top: "上衣",
+		pants: "褲子",
+		shoes: "鞋子",
+		hat: "帽子",
 		/* eslint-disable @typescript-eslint/naming-convention */
 		skinTones: {
 			"1": "最淺",
@@ -884,6 +931,26 @@ const traditionalChinese: Messages = {
 		},
 		hairColors: { black: "黑色", brown: "棕色", blonde: "金色", red: "紅色" },
 		facialHairs: { none: "無", stubble: "鬍渣", beard: "落腮鬍" },
+		tops: {
+			hoodie: "連帽衫",
+			shirt: "襯衫",
+			apron: "襯衫加圍裙",
+			tee: "T 恤",
+			tank: "背心",
+		},
+		pantsStyles: {
+			jeans: "牛仔褲",
+			chinos: "卡其褲",
+			cargo: "工作褲",
+			shorts: "短褲",
+		},
+		shoeStyles: {
+			sneakers: "球鞋",
+			loafers: "樂福鞋",
+			boots: "靴子",
+			runners: "跑鞋",
+		},
+		hats: { level: "依等級獲得", none: "無", cap: "棒球帽", beanie: "毛帽" },
 		yes: "是",
 		no: "否",
 		saved: "外觀已儲存，角色也跟著改變了。",
@@ -1469,6 +1536,10 @@ const korean: Messages = {
 		hairColor: "머리 색",
 		facialHair: "수염",
 		glasses: "안경",
+		top: "상의",
+		pants: "하의",
+		shoes: "신발",
+		hat: "모자",
 		/* eslint-disable @typescript-eslint/naming-convention */
 		skinTones: {
 			"1": "가장 밝음",
@@ -1488,6 +1559,31 @@ const korean: Messages = {
 		},
 		hairColors: { black: "검정", brown: "갈색", blonde: "금발", red: "빨강" },
 		facialHairs: { none: "없음", stubble: "짧은 수염", beard: "턱수염" },
+		tops: {
+			hoodie: "후드티",
+			shirt: "셔츠",
+			apron: "셔츠와 앞치마",
+			tee: "티셔츠",
+			tank: "민소매",
+		},
+		pantsStyles: {
+			jeans: "청바지",
+			chinos: "치노 바지",
+			cargo: "카고 바지",
+			shorts: "반바지",
+		},
+		shoeStyles: {
+			sneakers: "운동화",
+			loafers: "로퍼",
+			boots: "부츠",
+			runners: "러닝화",
+		},
+		hats: {
+			level: "레벨로 획득",
+			none: "없음",
+			cap: "야구모자",
+			beanie: "비니",
+		},
 		yes: "예",
 		no: "아니요",
 		saved: "외모를 저장했습니다. 캐릭터도 바뀌었어요.",

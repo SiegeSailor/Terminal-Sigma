@@ -19,12 +19,16 @@ import {
 	healthGoals,
 	hairColors,
 	hairStyles,
+	hatStyles,
 	type Language,
 	languages,
 	type Messages,
 	messagesOf,
 	type Mood,
+	pantsStyles,
+	shoeStyles,
 	skinTones,
+	topStyles,
 	type WorkoutActivity,
 	workoutActivities,
 	workStyles,
@@ -1004,6 +1008,22 @@ export function appearanceFieldsOf(
 			{ yes: appearance.yes, no: appearance.no },
 			look.glasses ? "yes" : "no",
 		),
+		select("top", appearance.top, topStyles, appearance.tops, look.top),
+		select(
+			"pants",
+			appearance.pants,
+			pantsStyles,
+			appearance.pantsStyles,
+			look.pants,
+		),
+		select(
+			"shoes",
+			appearance.shoes,
+			shoeStyles,
+			appearance.shoeStyles,
+			look.shoes,
+		),
+		select("hat", appearance.hat, hatStyles, appearance.hats, look.hat),
 	];
 }
 
@@ -1013,12 +1033,20 @@ export function appearanceOf(values: Readonly<Record<string, string>>) {
 	const hairStyle = hairStyles.find((style) => style === values.hairStyle);
 	const hairColor = hairColors.find((color) => color === values.hairColor);
 	const facialHair = facialHairs.find((hair) => hair === values.facialHair);
+	const top = topStyles.find((style) => style === values.top);
+	const pants = pantsStyles.find((style) => style === values.pants);
+	const shoes = shoeStyles.find((style) => style === values.shoes);
+	const hat = hatStyles.find((style) => style === values.hat);
 
 	return {
 		...(skinTone === undefined ? {} : { skinTone }),
 		...(hairStyle === undefined ? {} : { hairStyle }),
 		...(hairColor === undefined ? {} : { hairColor }),
 		...(facialHair === undefined ? {} : { facialHair }),
+		...(top === undefined ? {} : { top }),
+		...(pants === undefined ? {} : { pants }),
+		...(shoes === undefined ? {} : { shoes }),
+		...(hat === undefined ? {} : { hat }),
 		...(values.glasses === undefined
 			? {}
 			: { glasses: values.glasses === "yes" }),

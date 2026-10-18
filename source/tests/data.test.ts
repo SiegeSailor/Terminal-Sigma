@@ -303,11 +303,14 @@ test("shows water and last night's sleep against their targets in Today", (t) =>
 });
 
 test("reads an appearance from the form's values, ignoring what is missing", (t) => {
-	t.deepEqual(appearanceOf({ skinTone: "4", glasses: "yes" }), {
-		skinTone: 4,
-		glasses: true,
-	});
-	t.deepEqual(appearanceOf({ hairStyle: "mohawk", skinTone: "9" }), {});
+	t.deepEqual(
+		appearanceOf({ skinTone: "4", glasses: "yes", top: "tee", hat: "beanie" }),
+		{ skinTone: 4, glasses: true, top: "tee", hat: "beanie" },
+	);
+	t.deepEqual(
+		appearanceOf({ hairStyle: "mohawk", skinTone: "9", shoes: "heels" }),
+		{},
+	);
 	t.deepEqual(appearanceOf({}), {});
 });
 

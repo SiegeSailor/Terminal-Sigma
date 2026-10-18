@@ -804,12 +804,19 @@ test("chooses an appearance, previewing it before saving", async (t) => {
 	await type(stdin, ["6", "\r", down, "\r"]);
 	t.true((lastFrame() ?? "").includes("Skin tone"));
 
-	// Tan, then the defaults for style, color, and facial hair, then glasses.
+	// Tan, the defaults for style, color, and facial hair, glasses, the
+	// default top, pants, and shoes, then a beanie.
 	await type(stdin, [down, "\r", "\r", "\r", "\r", up, "\r"]);
+	t.true((lastFrame() ?? "").includes("Top"));
+	await type(stdin, ["\r", "\r", "\r", down, down, down, "\r"]);
 	t.like(loadProgress(file).profile, {
 		skinTone: 4,
 		hairStyle: "bob",
 		glasses: true,
+		top: "hoodie",
+		pants: "jeans",
+		shoes: "sneakers",
+		hat: "beanie",
 	});
 	t.true(actionsIn(file).includes("appearanceSaved"));
 	t.true((lastFrame() ?? "").includes("Appearance saved"));

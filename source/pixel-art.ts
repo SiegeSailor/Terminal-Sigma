@@ -3,9 +3,13 @@ import type {
 	Gender,
 	HairColor,
 	HairStyle,
+	HatStyle,
 	HealthGoal,
 	Mood,
+	PantsStyle,
+	ShoeStyle,
 	SkinTone,
+	TopStyle,
 	WorkStyle,
 } from "./i18n.js";
 import { quietSignals, type Signals } from "./signals.js";
@@ -33,14 +37,16 @@ export type Activity =
 	| "write";
 
 // What the profile decides: the height in pixels, how much fat and muscle the
-// body carries as stages, the clothes for the work style, and the age and
-// appearance.
+// body carries as stages, the outfit, and the age and appearance.
 export type Look = Readonly<{
 	height: number;
 	fat: number;
 	muscle: number;
 	gender: Gender;
-	style: WorkStyle;
+	top: TopStyle;
+	pants: PantsStyle;
+	shoes: ShoeStyle;
+	hat: HatStyle;
 	age: number;
 	skinTone: SkinTone;
 	hairStyle: HairStyle;
@@ -54,7 +60,10 @@ export const defaultLook: Look = {
 	fat: 5,
 	muscle: 0,
 	gender: "other",
-	style: "desk",
+	top: "hoodie",
+	pants: "jeans",
+	shoes: "sneakers",
+	hat: "level",
 	age: 30,
 	skinTone: 3,
 	hairStyle: "bob",
@@ -76,7 +85,22 @@ type Profile = Readonly<{
 	hairColor?: HairColor;
 	glasses?: boolean;
 	facialHair?: FacialHair;
+	top?: TopStyle;
+	pants?: PantsStyle;
+	shoes?: ShoeStyle;
+	hat?: HatStyle;
 }>;
+
+// Before the outfit could be chosen, the work style dressed the character.
+const outfitOf: Record<
+	WorkStyle,
+	Readonly<{ top: TopStyle; pants: PantsStyle; shoes: ShoeStyle }>
+> = {
+	desk: { top: "hoodie", pants: "jeans", shoes: "sneakers" },
+	standing: { top: "apron", pants: "chinos", shoes: "loafers" },
+	active: { top: "tee", pants: "cargo", shoes: "boots" },
+	athlete: { top: "tank", pants: "shorts", shoes: "runners" },
+};
 
 // Before appearance existed, gender and work style chose the hair.
 const hairStyleOf = (profile: Profile): HairStyle => {
@@ -186,12 +210,16 @@ export function lookOf(profile: Profile | undefined, strengthLoad = 0): Look {
 		0,
 		muscleStages,
 	);
+	const outfit = outfitOf[profile.workStyle];
 	return {
 		height: clamp(Math.round(26 + (profile.height - 145) / 5), 22, 35),
 		fat,
 		muscle,
 		gender: profile.gender,
-		style: profile.workStyle,
+		top: profile.top ?? outfit.top,
+		pants: profile.pants ?? outfit.pants,
+		shoes: profile.shoes ?? outfit.shoes,
+		hat: profile.hat ?? "level",
 		age: profile.age,
 		skinTone: profile.skinTone ?? 3,
 		hairStyle: profile.hairStyle ?? hairStyleOf(profile),
@@ -213,6 +241,15 @@ export const gearOf = (level: number) => {
 type Gear = ReturnType<typeof gearOf>;
 type Point = readonly [number, number];
 type Put = (x: number, y: number, key: string) => void;
+
+// The hat chosen, or the level's cap until sunglasses take its place.
+const hatOf = (look: Look, gear: Gear) => {
+	if (look.hat !== "level") {
+		return look.hat;
+	}
+
+	return gear.headwear === 1 ? "cap" : "none";
+};
 
 // Rows from the ground up, and half widths around the center column x = 0.
 type Body = Readonly<{
@@ -1101,60 +1138,41 @@ type Paint = Readonly<{
 
 type Tones = Readonly<{ main: string; shade: string; light: string }>;
 
-// The tops by work style: a hoodie, a shirt under an apron, a tee, a tank.
-const topOf: Record<WorkStyle, Tones> = {
-	desk: { main: "C", shade: "c", light: "E" },
-	standing: { main: "Q", shade: "U", light: "w" },
-	active: { main: "C", shade: "c", light: "E" },
-	athlete: { main: "S", shade: "z", light: "T" },
+// The colors of each top; the theme's tones recolor all but the shirt under
+// an apron.
+const topOf: Record<TopStyle, Tones> = {
+	hoodie: { main: "C", shade: "c", light: "E" },
+	shirt: { main: "C", shade: "c", light: "E" },
+	apron: { main: "Q", shade: "U", light: "w" },
+	tee: { main: "C", shade: "c", light: "E" },
+	tank: { main: "S", shade: "z", light: "T" },
 };
 
 // How much of the arm the sleeve covers, from the shoulder down.
-const sleeveOf: Record<WorkStyle, number> = {
-	desk: 1,
-	standing: 0.5,
-	active: 0.35,
-	athlete: 0,
+const sleeveOf: Record<TopStyle, number> = {
+	hoodie: 1,
+	shirt: 1,
+	apron: 0.5,
+	tee: 0.35,
+	tank: 0,
 };
 
-// Jeans and sneakers, chinos and shoes, cargo pants and boots, or shorts
-// and running shoes.
-const bottomOf: Record<
-	WorkStyle,
-	Tones & Readonly<{ shoe: string; sole: string; shoeRows: number }>
+const pantsOf: Record<PantsStyle, Tones> = {
+	jeans: { main: "P", shade: "p", light: "R" },
+	chinos: { main: "N", shade: "n", light: "N" },
+	cargo: { main: "O", shade: "V", light: "O" },
+	shorts: { main: "x", shade: "x", light: "x" },
+};
+
+// The upper and the sole, and how many rows the shoe rises from the ground.
+const shoeOf: Record<
+	ShoeStyle,
+	Readonly<{ shoe: string; sole: string; rows: number }>
 > = {
-	desk: {
-		main: "P",
-		shade: "p",
-		light: "R",
-		shoe: "w",
-		sole: "Y",
-		shoeRows: 2,
-	},
-	standing: {
-		main: "N",
-		shade: "n",
-		light: "N",
-		shoe: "b",
-		sole: "o",
-		shoeRows: 2,
-	},
-	active: {
-		main: "O",
-		shade: "V",
-		light: "O",
-		shoe: "B",
-		sole: "e",
-		shoeRows: 3,
-	},
-	athlete: {
-		main: "x",
-		shade: "x",
-		light: "x",
-		shoe: "S",
-		sole: "w",
-		shoeRows: 2,
-	},
+	sneakers: { shoe: "w", sole: "Y", rows: 2 },
+	loafers: { shoe: "b", sole: "o", rows: 2 },
+	boots: { shoe: "B", sole: "e", rows: 3 },
+	runners: { shoe: "S", sole: "w", rows: 2 },
 };
 
 // An oval on the ground with the feet in its middle, shrinking in the air.
@@ -1221,26 +1239,27 @@ function legKeyOf(
 	at: Readonly<{ x: number; y: number; sole: number; width: number }>,
 	side: number,
 ) {
-	const bottom = bottomOf[look.style];
+	const pants = pantsOf[look.pants];
+	const shoe = shoeOf[look.shoes];
 	const shorts = ground + Math.round(b.legs * 0.55);
 
-	if (at.y < at.sole + bottom.shoeRows) {
-		return at.y === at.sole ? bottom.sole : bottom.shoe;
+	if (at.y < at.sole + shoe.rows) {
+		return at.y === at.sole ? shoe.sole : shoe.shoe;
 	}
 
-	if (look.style === "athlete" && at.y < shorts) {
+	if (look.pants === "shorts" && at.y < shorts) {
 		return at.y === b.knee - 1 && at.x === 2 ? "q" : "s";
 	}
 
 	if (at.x === at.width) {
-		return side < 0 ? bottom.light : bottom.shade;
+		return side < 0 ? pants.light : pants.shade;
 	}
 
-	return at.y === at.sole + bottom.shoeRows ? bottom.shade : bottom.main;
+	return at.y === at.sole + shoe.rows ? pants.shade : pants.main;
 }
 
 function paintLegsFront({ put, b, look }: Paint, pose: Front) {
-	const bottom = bottomOf[look.style];
+	const shoeRows = shoeOf[look.shoes].rows;
 	const shorts = ground + Math.round(b.legs * 0.55);
 
 	for (const side of [-1, 1]) {
@@ -1251,7 +1270,7 @@ function paintLegsFront({ put, b, look }: Paint, pose: Front) {
 		for (let y = sole; y < b.hip; y++) {
 			let width = b.ankle;
 
-			if (y < sole + bottom.shoeRows) {
+			if (y < sole + shoeRows) {
 				width = b.ankle + 1;
 			} else if (y >= b.knee) {
 				width = b.thigh;
@@ -1264,13 +1283,13 @@ function paintLegsFront({ put, b, look }: Paint, pose: Front) {
 			}
 		}
 
-		if (look.style === "active") {
+		if (look.pants === "cargo") {
 			put(side * b.thigh, b.knee + 1, "V");
 			put(side * b.thigh, b.knee + 2, "V");
 			put(side * (b.thigh - 1), b.knee + 2, "V");
 		}
 
-		if (look.style === "athlete") {
+		if (look.pants === "shorts") {
 			put(side * b.thigh, shorts + 1, "S");
 		}
 	}
@@ -1279,16 +1298,16 @@ function paintLegsFront({ put, b, look }: Paint, pose: Front) {
 	let crotch = b.hip - 2;
 
 	if (look.fat >= 14) {
-		crotch = look.style === "athlete" ? shorts : b.knee;
+		crotch = look.pants === "shorts" ? shorts : b.knee;
 	}
 
 	for (let y = crotch; y < b.hip; y++) {
-		put(0, y, bottom.main);
+		put(0, y, pantsOf[look.pants].main);
 	}
 }
 
 function paintTorsoFront({ upper, b, look, gear }: Paint) {
-	const top = topOf[look.style];
+	const top = topOf[look.top];
 	const torso = b.shoulder - b.hip + 1;
 	const chestRows = Math.ceil(torso * 0.45);
 	const halfAt = (y: number) => {
@@ -1307,7 +1326,7 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 	}
 
 	// The shoulder line runs out over the tops of the arms.
-	const shoulderKey = look.style === "athlete" ? "s" : top.main;
+	const shoulderKey = look.top === "tank" ? "s" : top.main;
 	span(
 		upper,
 		-(b.chest + 1 + b.shoulderCap),
@@ -1326,8 +1345,8 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 	span(upper, -1, 1, b.shoulder + 1, "s");
 	upper(1, b.shoulder + 1, "q");
 
-	switch (look.style) {
-		case "desk": {
+	switch (look.top) {
+		case "hoodie": {
 			// A hoodie: the hood around the neck, drawstrings, a front pocket.
 			span(upper, -3, -2, b.shoulder + 1, top.shade);
 			span(upper, 2, 3, b.shoulder + 1, top.shade);
@@ -1346,10 +1365,20 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 			break;
 		}
 
-		case "standing": {
-			// A collared shirt under an apron that hangs over the thighs.
+		case "shirt":
+		case "apron": {
+			// A collared shirt, buttoned down the front or under an apron that
+			// hangs over the thighs.
 			span(upper, -2, 2, b.shoulder, "w");
 			upper(0, b.shoulder, "s");
+
+			if (look.top === "shirt") {
+				for (let y = b.hip + 1; y < b.shoulder - 1; y += 2) {
+					upper(0, y, top.shade);
+				}
+
+				break;
+			}
 
 			for (const x of [-2, 2]) {
 				upper(x, b.shoulder - 1, "S");
@@ -1369,7 +1398,7 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 			break;
 		}
 
-		case "active": {
+		case "tee": {
 			// A crew-neck tee with a chest pocket.
 			span(upper, -1, 1, b.shoulder, top.shade);
 			upper(-2, b.shoulder - 2, top.shade);
@@ -1377,7 +1406,7 @@ function paintTorsoFront({ upper, b, look, gear }: Paint) {
 			break;
 		}
 
-		case "athlete": {
+		case "tank": {
 			// A racerback tank with a stripe; abs show on a lean, muscular body.
 			span(upper, -1, 1, b.shoulder, "s");
 			span(
@@ -1455,8 +1484,8 @@ function paintArm(
 	const isJacket = gear.wear === 2;
 	const tones: Tones = isJacket
 		? { main: "X", shade: "X", light: "M" }
-		: topOf[look.style];
-	const sleeve = isJacket ? 1 : sleeveOf[look.style];
+		: topOf[look.top];
+	const sleeve = isJacket ? 1 : sleeveOf[look.top];
 	// Both arms are drawn as the right one and mirrored, so rounding the
 	// half-pixel steps of a diagonal arm never makes the left differ.
 	const joint: Point = [b.chest + 1, b.shoulder - 1];
@@ -1530,7 +1559,7 @@ function paintFacialHair(head: Put, look: Look, b: Body) {
 }
 
 // The fringe or sideburns of each style, and the knot of a bun.
-function paintFringe(head: Put, look: Look, chin: number, isCapped: boolean) {
+function paintFringe(head: Put, look: Look, chin: number, hasHat: boolean) {
 	switch (look.hairStyle) {
 		case "short": {
 			head(-3, chin + 4, "h");
@@ -1559,8 +1588,8 @@ function paintFringe(head: Put, look: Look, chin: number, isCapped: boolean) {
 		}
 	}
 
-	if (look.hairStyle === "bun" && !isCapped) {
-		// A knot on top of the head, unless a cap sits there.
+	if (look.hairStyle === "bun" && !hasHat) {
+		// A knot on top of the head, unless a hat sits there.
 		span(head, -1, 1, chin + 7, "h");
 		span(head, -1, 1, chin + 8, "h");
 		head(0, chin + 8, "i");
@@ -1663,7 +1692,8 @@ function paintHeadFront({ upper, b, look, gear, signals }: Paint, pose: Front) {
 		span(head, turn - 1, turn, chin + 1, "q");
 	}
 
-	paintFringe(head, look, chin, gear.headwear === 1);
+	const hat = hatOf(look, gear);
+	paintFringe(head, look, chin, hat !== "none");
 
 	// Ears show beside short hair, unless headphones cover them.
 	if (
@@ -1696,40 +1726,48 @@ function paintHeadFront({ upper, b, look, gear, signals }: Paint, pose: Front) {
 		}
 	}
 
-	if (gear.headwear === 1) {
+	if (gear.headwear === 2) {
+		// Sunglasses with a glint.
+		span(head, -3, -1, chin + 3, "e");
+		span(head, 1, 3, chin + 3, "e");
+		head(0, chin + 3, "e");
+		head(-2, chin + 3, "w");
+	}
+
+	if (hat === "cap") {
 		// A cap with its brim over the forehead.
 		span(head, -2, 2, chin + 7, "S");
 		span(head, -3, 3, chin + 6, "S");
 		head(-2, chin + 6, "T");
 		span(head, -4 + turn, 4 + turn, chin + 5, "z");
-	} else {
-		if (gear.headwear === 2) {
-			// Sunglasses with a glint.
-			span(head, -3, -1, chin + 3, "e");
-			span(head, 1, 3, chin + 3, "e");
-			head(0, chin + 3, "e");
-			head(-2, chin + 3, "w");
+	} else if (hat === "beanie") {
+		// A knit beanie: a ribbed cuff, a round crown, and a white pom-pom.
+		for (let x = -3; x <= 3; x++) {
+			head(x, chin + 5, x % 2 === 0 ? "c" : "C");
 		}
 
+		span(head, -3, 3, chin + 6, "C");
+		span(head, -2, 2, chin + 7, "C");
+		head(-2, chin + 6, "E");
+		head(0, chin + 8, "w");
+	} else if (signals.isBedHead) {
 		// Strands stand up from the crown, above the band when there is one;
-		// a cap covers them.
-		if (signals.isBedHead) {
-			if (gear.gadget >= 1) {
-				// Above the band, and poking out beside it.
-				for (const x of [-2, 0, 2]) {
-					head(x, chin + 8, "i");
-				}
-
-				head(-3, chin + 7, "i");
-				head(3, chin + 7, "i");
-			} else {
-				for (const x of [-2, 0, 2]) {
-					head(x, chin + 7, "i");
-				}
-
-				head(-2, chin + 8, "i");
-				head(0, chin + 8, "i");
+		// a hat covers them.
+		if (gear.gadget >= 1) {
+			// Above the band, and poking out beside it.
+			for (const x of [-2, 0, 2]) {
+				head(x, chin + 8, "i");
 			}
+
+			head(-3, chin + 7, "i");
+			head(3, chin + 7, "i");
+		} else {
+			for (const x of [-2, 0, 2]) {
+				head(x, chin + 7, "i");
+			}
+
+			head(-2, chin + 8, "i");
+			head(0, chin + 8, "i");
 		}
 	}
 }
@@ -1754,7 +1792,7 @@ function paintSideLeg(
 	index: number,
 	isFar: boolean,
 ) {
-	const bottom = bottomOf[look.style];
+	const shoe = shoeOf[look.shoes];
 	const footX = gait.feet[index] ?? 0;
 	const lift = gait.lift[index] ?? 0;
 	const sole = ground + lift;
@@ -1763,8 +1801,8 @@ function paintSideLeg(
 		Math.round(footX / 2) + 1 + Math.min(lift, 2),
 		Math.round((b.hip + sole) / 2) + Math.floor(lift / 2),
 	];
-	const ankle: Point = [footX, sole + bottom.shoeRows];
-	const pants = isFar ? bottom.shade : bottom.main;
+	const ankle: Point = [footX, sole + shoe.rows];
+	const pants = isFar ? pantsOf[look.pants].shade : pantsOf[look.pants].main;
 	const skin = isFar ? "q" : "s";
 	const shorts = ground + Math.round(b.legs * 0.55);
 
@@ -1773,14 +1811,14 @@ function paintSideLeg(
 		[knee, ankle, b.calf - 1],
 	] as const) {
 		for (const [x, y] of pointsOf(from, to)) {
-			const key = look.style === "athlete" && y < shorts ? skin : pants;
+			const key = look.pants === "shorts" && y < shorts ? skin : pants;
 			span(put, x - Math.floor(width / 2), x + Math.ceil(width / 2), y, key);
 		}
 	}
 
 	// The shoe points the way it walks, toe first.
-	for (let row = 0; row < bottom.shoeRows; row++) {
-		const key = row === 0 ? bottom.sole : bottom.shoe;
+	for (let row = 0; row < shoe.rows; row++) {
+		const key = row === 0 ? shoe.sole : shoe.shoe;
 		span(put, footX - 1, footX + (row === 0 ? 3 : 2), sole + row, key);
 	}
 }
@@ -1896,25 +1934,33 @@ function paintSideHead(
 		}
 	}
 
-	if (gear.headwear === 1) {
+	if (gear.headwear === 2) {
+		span(upper, 1, 3, chin + 3, "e");
+		upper(0, chin + 4, "e");
+	}
+
+	const hat = hatOf(look, gear);
+
+	if (hat === "cap") {
 		span(upper, -3, 2, chin + 6, "S");
 		span(upper, -2, 1, chin + 7, "S");
 		span(upper, 2, 5, chin + 5, "z");
-	} else {
-		if (gear.headwear === 2) {
-			span(upper, 1, 3, chin + 3, "e");
-			upper(0, chin + 4, "e");
+	} else if (hat === "beanie") {
+		for (let x = -3; x <= 3; x++) {
+			upper(x, chin + 5, x % 2 === 0 ? "c" : "C");
 		}
 
+		span(upper, -3, 2, chin + 6, "C");
+		span(upper, -2, 1, chin + 7, "C");
+		upper(-1, chin + 8, "w");
+	} else if (signals.isBedHead) {
 		// Strands stand up from the crown, above the band when there is one.
-		if (signals.isBedHead) {
-			upper(-2, chin + 7, "i");
-			upper(2, chin + 7, "i");
-			upper(0, chin + 8, "i");
+		upper(-2, chin + 7, "i");
+		upper(2, chin + 7, "i");
+		upper(0, chin + 8, "i");
 
-			if (gear.gadget === 0) {
-				upper(0, chin + 7, "i");
-			}
+		if (gear.gadget === 0) {
+			upper(0, chin + 7, "i");
 		}
 	}
 }
@@ -1932,7 +1978,7 @@ function paintSide(paint: Paint, pose: Side) {
 	};
 
 	const sideways: Paint = { ...paint, upper };
-	const top = topOf[look.style];
+	const top = topOf[look.top];
 	const back = Math.max(b.chest - 2, 2);
 	const front = b.chest - 1;
 
@@ -1980,14 +2026,32 @@ function paintSide(paint: Paint, pose: Side) {
 		upper(forward, y, top.light);
 	}
 
-	if (look.style === "standing") {
-		for (let y = b.hip - 3; y <= b.shoulder - 2; y++) {
-			upper(front, y, "S");
-			upper(front - 1, y, "S");
+	switch (look.top) {
+		case "apron": {
+			for (let y = b.hip - 3; y <= b.shoulder - 2; y++) {
+				upper(front, y, "S");
+				upper(front - 1, y, "S");
+			}
+
+			break;
 		}
-	} else if (look.style === "desk") {
-		span(upper, -2, -1, b.shoulder + 1, top.shade);
-		span(upper, 0, front, b.hip + 2, top.shade);
+
+		case "shirt": {
+			// The collar at the front of the neck.
+			span(upper, 0, 1, b.shoulder, "w");
+			break;
+		}
+
+		case "hoodie": {
+			span(upper, -2, -1, b.shoulder + 1, top.shade);
+			span(upper, 0, front, b.hip + 2, top.shade);
+			break;
+		}
+
+		case "tee":
+		case "tank": {
+			break;
+		}
 	}
 
 	if (gear.wear === 2) {

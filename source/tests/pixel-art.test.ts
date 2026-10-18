@@ -4,7 +4,10 @@ import {
 	hairColors,
 	hairStyles,
 	type Mood,
+	pantsStyles,
+	shoeStyles,
 	skinTones,
+	topStyles,
 } from "../i18n.js";
 import {
 	type Activity,
@@ -72,6 +75,7 @@ const looks: Look[] = [
 		goal: "buildMuscle",
 	}),
 	lookFor({ gender: "female", workStyle: "standing", age: 72 }),
+	{ ...defaultLook, top: "shirt", shoes: "boots", hat: "beanie" },
 ];
 
 type Scene = Partial<{
@@ -372,8 +376,8 @@ test("keeps every body on the stage at both walking edges", (t) => {
 		for (const fat of [0, fatStages]) {
 			for (const muscle of [0, muscleStages]) {
 				for (const height of [22, 35]) {
-					for (const style of ["desk", "athlete"] as const) {
-						looks.push({ ...defaultLook, gender, fat, muscle, height, style });
+					for (const top of ["hoodie", "tank"] as const) {
+						looks.push({ ...defaultLook, gender, fat, muscle, height, top });
 					}
 				}
 			}
@@ -397,7 +401,7 @@ test("keeps every body on the stage at both walking edges", (t) => {
 			[maximum, 24 + maximum - home],
 			[minimum, 48 + 2 * maximum - home - minimum],
 		]);
-		const name = `${look.gender} ${look.height} fat ${look.fat} muscle ${look.muscle} ${look.style}`;
+		const name = `${look.gender} ${look.height} fat ${look.fat} muscle ${look.muscle} ${look.top}`;
 
 		for (const [anchor, start] of restAt) {
 			// The idle pauses at an edge, in every mood, as it does at home.
@@ -676,6 +680,36 @@ test("draws every skin tone, hair style, hair color, and beard", (t) => {
 	);
 });
 
+test("dresses in the outfit chosen, piece by piece", (t) => {
+	const kinds = (looks: ReadonlyArray<Partial<Look>>, level = 1) =>
+		new Set(
+			looks.map((look) =>
+				[0, 24]
+					.map((counter) =>
+						scene({ counter, level, look: { ...defaultLook, ...look } }).join(
+							"",
+						),
+					)
+					.join(""),
+			),
+		).size;
+
+	t.is(kinds(topStyles.map((top) => ({ top }))), 5);
+	t.is(kinds(pantsStyles.map((pants) => ({ pants }))), 4);
+	t.is(kinds(shoeStyles.map((shoes) => ({ shoes }))), 4);
+	t.is(kinds([{ hat: "none" }, { hat: "cap" }, { hat: "beanie" }]), 3);
+	t.is(
+		kinds([{ hat: "level" }, { hat: "none" }], 5),
+		2,
+		"the level's cap only when the hat is left to the level",
+	);
+	t.is(
+		kinds([{ hat: "level" }, { hat: "none" }], 1),
+		1,
+		"no cap before it is earned",
+	);
+});
+
 test("keeps each gender's old hair when the profile has no appearance", (t) => {
 	t.is(lookFor({ gender: "male" }).hairStyle, "short");
 	t.is(lookFor({ gender: "female" }).hairStyle, "long");
@@ -684,6 +718,17 @@ test("keeps each gender's old hair when the profile has no appearance", (t) => {
 		"ponytail",
 	);
 	t.is(lookFor({ gender: "other" }).hairStyle, "bob");
+	t.like(lookFor({ workStyle: "athlete" }), {
+		top: "tank",
+		pants: "shorts",
+		shoes: "runners",
+		hat: "level",
+	});
+	t.like(lookFor({ workStyle: "athlete", top: "hoodie", hat: "beanie" }), {
+		top: "hoodie",
+		pants: "shorts",
+		hat: "beanie",
+	});
 	t.like(lookFor({ hairStyle: "bun", skinTone: 5, glasses: true }), {
 		hairStyle: "bun",
 		skinTone: 5,

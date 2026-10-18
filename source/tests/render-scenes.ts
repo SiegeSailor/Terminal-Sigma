@@ -18,7 +18,16 @@ import {
 	stageHeight,
 } from "../pixel-art.js";
 import { quietSignals } from "../signals.js";
-import { facialHairs, hairColors, hairStyles, skinTones } from "../i18n.js";
+import {
+	facialHairs,
+	hairColors,
+	hairStyles,
+	hatStyles,
+	pantsStyles,
+	shoeStyles,
+	skinTones,
+	topStyles,
+} from "../i18n.js";
 import { themes } from "../theme.js";
 
 export type Rgb = readonly [number, number, number];
@@ -186,6 +195,24 @@ export const sheets: Record<string, SceneInput[]> = {
 				})),
 			),
 		),
+	),
+	// Each top, then pants with other shoes, then each hat at level 5, in
+	// front (even columns) and profile.
+	outfits: [
+		...topStyles.map((top) => ({ top })),
+		...pantsStyles.map((pants, index) => ({
+			pants,
+			shoes: shoeStyles[(index + 1) % shoeStyles.length] ?? "sneakers",
+		})),
+		...hatStyles.map((hat) => ({ hat })),
+	].flatMap((outfit) =>
+		[0, 24].map((counter) => ({
+			...base,
+			activity: counter === 0 ? ("focus" as const) : ("run" as const),
+			counter,
+			level: "hat" in outfit ? 5 : 1,
+			look: { ...defaultLook, ...outfit },
+		})),
 	),
 	ages: Array.from({ length: 12 }, (_, index) => ({
 		...base,
