@@ -74,7 +74,8 @@ const start = (
 	file = temporaryFile(),
 	{ updater } = fakeUpdater(),
 	env: Record<string, string | undefined> = {},
-	asker?: Asker,
+	// Never the real aiAsker, so no test can reach a provider by accident.
+	asker: Asker = async () => ({ ok: false, attempts: [] }),
 ) => {
 	const configFile = path.join(path.dirname(file), "config.json");
 
