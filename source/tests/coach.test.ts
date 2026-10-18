@@ -8,6 +8,7 @@ import {
 	instructionsOf,
 	loadCoach,
 	planReplySchema,
+	plainTextOf,
 	planTextOf,
 	promptOf,
 	recentTurnsOf,
@@ -246,5 +247,22 @@ test("writes a plan as 1 line per day, in the user's language", (t) => {
 	t.is(
 		text,
 		"Base building\nMon · Running · 30 min · Light\nWed · Strength · 45 min · Vigorous · Legs",
+	);
+});
+
+test("reduces model text to words and newlines", (t) => {
+	t.is(
+		plainTextOf(
+			"see \u001B]8;;https://evil.example\u0007here\u001B]8;;\u0007 now",
+		),
+		"see here now",
+		"an OSC 8 link keeps its label, not its URL",
+	);
+	t.is(plainTextOf("a\u001B]0;title\u001B\\b"), "ab", "ST ends an OSC too");
+	t.is(plainTextOf("a\r\nb\tc\u0007\bd\re"), "a\nb  cde");
+	t.is(plainTextOf("\u001B[31mred\u001B[0m"), "red");
+	t.is(plainTextOf(" \u0007\r\n "), "", "nothing left is empty");
+	t.true(
+		instructionsOf("en", "x").includes("Write plain text without Markdown."),
 	);
 });

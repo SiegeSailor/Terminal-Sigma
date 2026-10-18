@@ -994,6 +994,34 @@ test("says it could not read a plan that does not fit, and saves nothing", async
 	);
 });
 
+test("treats an answer that cleans to nothing as no answer, and saves nothing", async (t) => {
+	const { asker } = asking((request) =>
+		request.accounts[0]
+			? {
+					ok: true,
+					result: "\u001B]8;;https://x.example\u0007\u001B]8;;\u0007\r\n",
+					account: request.accounts[0],
+					attempts: [{ account: request.accounts[0] }],
+				}
+			: { ok: false, attempts: [] },
+	);
+	const { file, stdin, lastFrame, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asker,
+	);
+	t.teardown(unmount);
+
+	await type(stdin, ["3", "\r", down, down, "\r"]);
+	t.true(await shows(lastFrame, "No account could answer"));
+	t.deepEqual(
+		loadCoach(path.join(path.dirname(file), "coach.json")).sessions,
+		[],
+	);
+});
+
 test("cancels a request with Esc, and a late answer never shows", async (t) => {
 	const asker: Asker = async (request) =>
 		new Promise((resolve) => {

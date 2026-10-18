@@ -23,6 +23,7 @@ import {
 	estimateSchema,
 	planReplySchema,
 	planTextOf,
+	plainTextOf,
 	promptOf,
 	recentTurnsOf,
 	saveCoach,
@@ -1024,6 +1025,15 @@ export default function App({
 
 			setPendingPlan(plan.data);
 			content = planTextOf(plan.data, latest.current.language ?? "en", words);
+		}
+
+		content = plainTextOf(content);
+
+		// An answer with nothing left to show is no answer.
+		if (content === "") {
+			setPendingPlan(undefined);
+			say(words.coach.allFailed(reply.account.label), "error");
+			return;
 		}
 
 		const base = latestCoach.current;

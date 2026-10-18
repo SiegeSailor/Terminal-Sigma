@@ -100,6 +100,7 @@ export function instructionsOf(language: Language, context: string): string {
 	return [
 		"You are the coach inside Terminal Sigma, a self-development dashboard. You see the user's own logs below.",
 		"Be specific to their numbers, warm, and brief: at most 150 words unless they ask for more. Use metric units.",
+		"Write plain text without Markdown.",
 		"Give general fitness and nutrition guidance only. This is not medical advice: for pain, illness, pregnancy, eating disorders, or medication, tell them to see a professional.",
 		`Always answer in ${languageNames[language]}.`,
 		"",
@@ -107,6 +108,20 @@ export function instructionsOf(language: Language, context: string): string {
 		context,
 	].join("\n");
 }
+
+// Ink passes \r, \b, BEL, and OSC 8 links through, which garble the borders
+// and can hide a URL, so a model's text is reduced to words and newlines.
+export const plainTextOf = (text: string) =>
+	text
+		.replaceAll("\r\n", "\n")
+		.replaceAll("\t", "  ")
+		// eslint-disable-next-line no-control-regex
+		.replaceAll(/\u001B\][^\u0007\u001B]*(?:\u0007|\u001B\\)/gv, "")
+		// eslint-disable-next-line no-control-regex
+		.replaceAll(/\u001B(?:\[[0-?]*[ -\/]*[@-~]|[@-_])?/gv, "")
+		// eslint-disable-next-line no-control-regex
+		.replaceAll(/[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/gv, "")
+		.trim();
 
 export const promptOf = (
 	kind: Exclude<CoachKind, "chat">,
