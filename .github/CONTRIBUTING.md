@@ -77,6 +77,58 @@ Husky runs 2 hooks, and a failure means fixing the code, never skipping the hook
 | `commit-msg` | commitlint against Conventional Commits                                   |
 | `pre-commit` | lint-staged: Prettier on every staged file, and xo on staged source files |
 
+## Tuning the Character
+
+Every appearance setting is a list of values in [`i18n.ts`](../source/i18n.ts), drawn by [`pixel-art.ts`](../source/pixel-art.ts). The schema in [`progress.ts`](../source/progress.ts) and the form under **Profile** → **Appearance** in [`content.ts`](../source/content.ts) read the same lists, so a new value shows up in both. Render the scenes before and after any change, and look at the PNG sheets it writes to `scenes/`:
+
+```shell
+npm run build && node build/tests/render-scenes.js scenes
+```
+
+Each setting, its list, and where it is drawn:
+
+| Setting     | List          | Drawn In `pixel-art.ts`                                                         |
+| ----------- | ------------- | ------------------------------------------------------------------------------- |
+| Facial hair | `facialHairs` | `paintFacialHair` in front, `paintSideHead` in profile                          |
+| Glasses     | Yes or no     | `paintHeadFront` and `paintSideHead`                                            |
+| Hair color  | `hairColors`  | The colors in `hairKeys`                                                        |
+| Hair style  | `hairStyles`  | `paintHairBehind`, `paintFringe`, and `paintSideHead`                           |
+| Hat         | `hatStyles`   | `paintHeadFront` and `paintSideHead`; `hatOf` gives the level's cap             |
+| Pants       | `pantsStyles` | The colors in `pantsOf`, and `paintLegsFront` and `paintSideLeg`                |
+| Shoes       | `shoeStyles`  | The colors and height in `shoeOf`                                               |
+| Skin tone   | `skinTones`   | The colors in `skinKeys`                                                        |
+| Top         | `topStyles`   | The colors in `topOf`, sleeves in `sleeveOf`, `paintTorsoFront` and `paintSide` |
+
+Without a choice, `outfitOf` dresses the character by work style, and the hat `level` wears the cap that the level hands out.
+
+### Changing How a Value Looks
+
+Each painter draws in pixels around the body: x = 0 is the center column, y grows up from the ground, and the head's rows count up from `b.chin`. A pixel is a 1-character color key from `paletteOf`:
+
+| Keys          | Color                                                 |
+| ------------- | ----------------------------------------------------- |
+| `C`, `c`, `E` | The theme's main tone, its shade, and its light       |
+| `h`, `i`      | Hair, recolored by hair color and greyed by age       |
+| `S`, `z`, `T` | The theme's accent tone, its shade, and its light     |
+| `s`, `q`      | Skin and its shadow, recolored by skin tone           |
+| Any other key | A fixed color, such as `w` for white or `e` for black |
+
+Draw both views: the front for standing still, and the profile for walking and running.
+
+### Adding a Value
+
+A new top, pants, shoe, or hat takes 4 steps:
+
+1. Add the value to its list in `i18n.ts`, and its name under `appearance` in all 3 languages; TypeScript fails until every language has it
+2. Draw it in `pixel-art.ts`: a new entry in its color record, or a new `case` in its painters, in front and in profile
+3. Raise the count for its setting in the `dresses in the outfit chosen` test in [`pixel-art.test.ts`](../source/tests/pixel-art.test.ts), then run `npm test`
+4. Add the value to its `profile.*` row under **Progress File** in [`docs/GUIDE.md`](../docs/GUIDE.md)
+
+A whole new setting, such as gloves, also needs an optional field in `profileShape` in `progress.ts`, a field on `Look` with its default in `defaultLook` and `lookOf`, a `select` in `appearanceFieldsOf` and a line in `appearanceOf` in `content.ts`, and a sheet in [`render-scenes.ts`](../source/tests/render-scenes.ts).
+
+> [!important]
+> Never rename or remove a value once released. A `progress.json` that saved it no longer loads, and Terminal-Sigma refuses to start rather than overwrite it.
+
 ## Workflows
 
 GitHub Actions workflows for testing and releasing:
