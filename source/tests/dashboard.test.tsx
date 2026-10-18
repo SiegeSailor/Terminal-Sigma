@@ -99,9 +99,9 @@ const start = (
 };
 
 // Waits for async work, like an install, to reach the screen.
-const shows = async (lastFrame: () => string | undefined, text: string) => {
+const eventually = async (check: () => boolean) => {
 	for (let attempt = 0; attempt < 20; attempt++) {
-		if ((lastFrame() ?? "").includes(text)) {
+		if (check()) {
 			return true;
 		}
 
@@ -111,6 +111,9 @@ const shows = async (lastFrame: () => string | undefined, text: string) => {
 
 	return false;
 };
+
+const shows = async (lastFrame: () => string | undefined, text: string) =>
+	eventually(() => (lastFrame() ?? "").includes(text));
 
 const actionsIn = (file: string) =>
 	loadProgress(file).events.map((event) => event.action);
@@ -1053,7 +1056,8 @@ test("cancels a request with Esc, and a late answer never shows", async (t) => {
 	t.true((lastFrame() ?? "").includes("Asking OPENAI_API_KEY"));
 
 	await type(stdin, [escape]);
-	t.true((lastFrame() ?? "").includes("Cancelled"));
+	// Ink holds a lone Esc briefly in case an escape sequence follows.
+	t.true(await shows(lastFrame, "Cancelled"));
 	t.false((lastFrame() ?? "").includes("Asking"));
 	t.false((lastFrame() ?? "").includes("Late answer"));
 	t.deepEqual(
@@ -1206,7 +1210,7 @@ test("a second Tab aborts the first estimate, and Esc aborts the second", async 
 	t.false(requests[1]?.signal?.aborted);
 
 	await type(stdin, [escape]);
-	t.true(requests[1]?.signal?.aborted);
+	t.true(await eventually(() => requests[1]?.signal?.aborted ?? false));
 });
 
 test("aborts a request in flight when the dashboard closes", async (t) => {
