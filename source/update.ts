@@ -14,6 +14,8 @@ export type Updater = Readonly<{
 	install: (version: string) => Promise<void>;
 	// Prepares the relaunch; quitting the dashboard then starts the new one.
 	restart: () => void;
+	// Prepares a relaunch of the same version, to apply settings read on start.
+	reload: () => void;
 }>;
 
 // Compares major, minor, then patch: "1.10.0" is newer than "1.9.2".
@@ -96,5 +98,6 @@ export function npmUpdater(onRestart: () => void): Updater {
 				);
 			}),
 		restart: onRestart,
+		reload: onRestart,
 	};
 }

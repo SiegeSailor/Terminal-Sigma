@@ -133,5 +133,9 @@ export function desktopUpdater(): Updater {
 				app.relaunch({ execPath: process.env.APPIMAGE });
 			}
 		},
+		// Not restart(): without a staged update, its macOS swap would delete the app.
+		reload() {
+			app.relaunch({ execPath: process.env.APPIMAGE });
+		},
 	};
 }

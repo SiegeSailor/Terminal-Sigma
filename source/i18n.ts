@@ -722,7 +722,8 @@ const en = {
 		invalid: "That value is not allowed; see the line above.",
 		shellWins: "Your shell sets this variable, so it wins over a saved value.",
 		saved: "Saved.",
-		savedRestart: "Saved. Restart Terminal Sigma to apply it.",
+		savedReload:
+			"Saved. Going back to the menu reloads Terminal Sigma to apply it.",
 		cleared: "Cleared.",
 	},
 	/* eslint-enable @typescript-eslint/naming-convention */
@@ -1326,7 +1327,7 @@ const traditionalChinese: Messages = {
 		invalid: "不接受這個值，請見上一行說明。",
 		shellWins: "終端機已設定這個變數，因此優先於儲存的值。",
 		saved: "已儲存。",
-		savedRestart: "已儲存。重新啟動 Terminal Sigma 後生效。",
+		savedReload: "已儲存。回到主選單時，Terminal Sigma 會重新載入以套用設定。",
 		cleared: "已清除。",
 	},
 	/* eslint-enable @typescript-eslint/naming-convention */
@@ -1941,7 +1942,8 @@ const korean: Messages = {
 		invalid: "허용되지 않는 값입니다. 위 설명을 확인하세요.",
 		shellWins: "셸에서 이 변수를 설정했으므로 저장된 값보다 우선합니다.",
 		saved: "저장했습니다.",
-		savedRestart: "저장했습니다. 적용하려면 Terminal Sigma를 다시 시작하세요.",
+		savedReload:
+			"저장했습니다. 메뉴로 돌아가면 Terminal Sigma가 다시 불러와 적용합니다.",
 		cleared: "지웠습니다.",
 	},
 	/* eslint-enable @typescript-eslint/naming-convention */

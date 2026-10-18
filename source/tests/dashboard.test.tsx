@@ -66,6 +66,9 @@ const fakeUpdater = () => {
 		restart() {
 			calls.push("restart");
 		},
+		reload() {
+			calls.push("reload");
+		},
 	};
 
 	return { calls, updater };
@@ -526,11 +529,32 @@ test("saves an environment variable, leaving the shell's alone", async (t) => {
 	});
 	t.is(env.TERMINAL_SIGMA_FOCUS, "50");
 	t.is(env.TERMINAL_SIGMA_BREAK, "10");
-	t.true((lastFrame() ?? "").includes("Restart Terminal Sigma"));
+	t.true((lastFrame() ?? "").includes("reloads Terminal Sigma"));
 	t.deepEqual(actionsIn(file).slice(1), ["variableSaved"]);
 	t.false(readFileSync(file, "utf8").includes('50"'), "no value in the logs");
 
 	unmount();
+});
+
+test("reloads on leaving Environment only after a change that needs it", async (t) => {
+	const live = fakeUpdater();
+	const { stdin, unmount } = start(empty, temporaryFile(), live);
+
+	// Motion applies at once, so Esc only goes back to the menu.
+	await type(stdin, ["9", "\r", down, down, down, "\r", "reduced", "\r"]);
+	await type(stdin, [escape]);
+	t.deepEqual(live.calls, []);
+	unmount();
+
+	const restarting = fakeUpdater();
+	const another = start(empty, temporaryFile(), restarting);
+
+	// Focus minutes are read on start.
+	await type(another.stdin, ["9", "\r", down, "\r", "50", "\r"]);
+	t.deepEqual(restarting.calls, [], "not while Environment is open");
+	await type(another.stdin, [escape]);
+	t.deepEqual(restarting.calls, ["reload"]);
+	another.unmount();
 });
 
 test("masks a saved secret and clears it with an empty value", async (t) => {

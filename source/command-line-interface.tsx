@@ -87,15 +87,17 @@ const instance = render(
 
 await instance.waitUntilExit();
 // Langfuse batches its traces; send the last ones before leaving.
-if (await stopTracing()) {
-	// The exporter's pending request would keep the process alive.
-	process.exit(process.exitCode ?? 0);
-}
+const isTracingStuck = await stopTracing();
 
-// After an update, the same command starts the version just installed.
+// After an update or a reload, the same command starts the dashboard again.
 if (isRestarting) {
 	const { status } = spawnSync(process.execPath, process.argv.slice(1), {
 		stdio: "inherit",
 	});
 	process.exit(status ?? 0);
+}
+
+if (isTracingStuck) {
+	// The exporter's pending request would keep the process alive.
+	process.exit(process.exitCode ?? 0);
 }

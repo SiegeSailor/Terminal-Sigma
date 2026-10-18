@@ -311,6 +311,8 @@ export default function App({
 	const [variableEditor, setVariableEditor] = React.useState<VariableName>();
 	// The list's cursor comes back to the row just edited.
 	const [lastVariable, setLastVariable] = React.useState<VariableName>();
+	// A variable read only on start changed, so leaving Environment reloads.
+	const [needsReload, setNeedsReload] = React.useState(false);
 	const [quoteOption, setQuoteOption] = React.useState("draw");
 	const [flash, setFlash] = React.useState<Flash>();
 	// What each line logged in the open Log view added, newest last, for undo.
@@ -620,6 +622,9 @@ export default function App({
 				setQuoteEditor(undefined);
 			} else if (view === "environment" && variableEditor && key.escape) {
 				setVariableEditor(undefined);
+			} else if (view === "environment" && needsReload && key.escape) {
+				updater.reload();
+				exit();
 			} else if (view === "log" && editing && key.escape) {
 				setEditing(undefined);
 				setView("logs");
@@ -939,6 +944,8 @@ export default function App({
 	const changeVariable = (name: VariableName, value: string | undefined) => {
 		const next = withVariable(config, name, value);
 		const isShells = sourceOf(name, config, env) === "shell";
+		const reloads =
+			!isShells && variableOf(name)?.needsRestart && env[name] !== value;
 
 		try {
 			saveConfig(configFile, next);
@@ -961,12 +968,11 @@ export default function App({
 		setConfig(next);
 		setVariableEditor(undefined);
 		const { environment } = messages;
-		let text = environment.cleared;
+		let text = value === undefined ? environment.cleared : environment.saved;
 
-		if (value !== undefined) {
-			text = variableOf(name)?.needsRestart
-				? environment.savedRestart
-				: environment.saved;
+		if (reloads) {
+			setNeedsReload(true);
+			text = environment.savedReload;
 		}
 
 		commit(
