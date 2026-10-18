@@ -274,6 +274,10 @@ type Body = Readonly<{
 	jaw: number;
 	doubleChin: boolean;
 	shoulderCap: number;
+	// In profile, how far the chest reaches in front of the neck's center
+	// column, and the upper back behind it.
+	chestDepth: number;
+	backDepth: number;
 }>;
 
 // The feet stand on row 2, in the middle of their shadow.
@@ -325,6 +329,10 @@ function bodyOf(look: Look, isFull = false): Body {
 		jaw: 2 + fat.jaw,
 		doubleChin: fat.chin > 0,
 		shoulderCap: strong.shoulder,
+		// A bust, fat, and muscle push the chest out; muscle broadens the back.
+		chestDepth:
+			2 + (look.gender === "female" ? 1 : 0) + fat.chest + strong.chest,
+		backDepth: 2 + strong.shoulder,
 	};
 }
 
@@ -1979,8 +1987,8 @@ function paintSide(paint: Paint, pose: Side) {
 
 	const sideways: Paint = { ...paint, upper };
 	const top = topOf[look.top];
-	const back = Math.max(b.chest - 2, 2);
-	const front = b.chest - 1;
+	const back = b.backDepth;
+	const front = b.chestDepth;
 
 	// Arms swing against the legs; running bends them at the elbow.
 	const arm = (index: number, isFar: boolean) => {
@@ -2002,25 +2010,39 @@ function paintSide(paint: Paint, pose: Side) {
 	paintSideLeg(paint, gait, other, true);
 	paintSideLeg(paint, gait, frame, false);
 
-	// The torso, deeper at the chest, with a belly or hips where they are.
+	// The torso: the shoulders slope down from the neck to the chest, and
+	// under a crease the stomach, 1 px in front of the neck when flat, rounds
+	// out with the belly, deepest in its middle rows.
 	const torso = b.shoulder - b.hip + 1;
 	const chestRows = Math.ceil(torso * 0.45);
+	const stomach = 1;
+	const isChest = (y: number) => b.shoulder - y < chestRows;
+	const forwardAt = (y: number) => {
+		if (y === b.shoulder) {
+			return front - 1;
+		}
+
+		if (isChest(y)) {
+			return front;
+		}
+
+		const isEdge = y === b.hip || y === b.shoulder - chestRows;
+		return stomach + Math.max(b.belly - (isEdge ? 1 : 0), 0);
+	};
+
+	// A heavy belly thickens the lower back, and a woman's hips round out.
+	const behindAt = (y: number) => {
+		if (isChest(y)) {
+			return back;
+		}
+
+		const hips = y - b.hip < 2 && look.gender === "female" ? 1 : 0;
+		return 2 + (b.belly >= 3 ? 1 : 0) + hips;
+	};
 
 	for (let y = b.hip; y <= b.shoulder; y++) {
-		const isChest = b.shoulder - y < chestRows;
-		let forward = front;
-		let behind = back;
-
-		if (!isChest) {
-			// The belly rounds off at the hips and under the chest.
-			const isEdge = y === b.hip || y === b.shoulder - chestRows;
-			forward += b.belly - (isEdge && b.belly >= 2 ? 1 : 0);
-		}
-
-		if (y - b.hip < 2 && look.gender === "female") {
-			behind += 1;
-		}
-
+		const forward = forwardAt(y);
+		const behind = behindAt(y);
 		span(upper, -behind, forward, y, top.main);
 		upper(-behind, y, top.shade);
 		upper(forward, y, top.light);
@@ -2028,9 +2050,11 @@ function paintSide(paint: Paint, pose: Side) {
 
 	switch (look.top) {
 		case "apron": {
+			// The apron follows the body, then hangs straight over the thighs.
 			for (let y = b.hip - 3; y <= b.shoulder - 2; y++) {
-				upper(front, y, "S");
-				upper(front - 1, y, "S");
+				const edge = y < b.hip ? stomach : forwardAt(y);
+				upper(edge, y, "S");
+				upper(edge - 1, y, "S");
 			}
 
 			break;
@@ -2044,7 +2068,7 @@ function paintSide(paint: Paint, pose: Side) {
 
 		case "hoodie": {
 			span(upper, -2, -1, b.shoulder + 1, top.shade);
-			span(upper, 0, front, b.hip + 2, top.shade);
+			span(upper, 0, stomach, b.hip + 2, top.shade);
 			break;
 		}
 
@@ -2055,8 +2079,9 @@ function paintSide(paint: Paint, pose: Side) {
 	}
 
 	if (gear.wear === 2) {
+		// Open at the front, so the top shows.
 		for (let y = b.hip; y <= b.shoulder; y++) {
-			span(upper, -back, front - 2, y, "X");
+			span(upper, -behindAt(y), forwardAt(y) - 2, y, "X");
 		}
 	}
 

@@ -308,6 +308,47 @@ test("draws a different body for every 2 points of body fat", (t) => {
 	);
 });
 
+test("deepens the chest with muscle and the belly with fat, in profile", (t) => {
+	// The widest row of a tank top in the upper and lower half of the torso,
+	// over 2 frames of a run, so an arm crossing 1 of them does not count.
+	const depthsOf = (look: Partial<Look>) => {
+		const halves = [21, 24].map((counter) => {
+			const spans = scene({
+				activity: "run",
+				counter,
+				look: { ...defaultLook, top: "tank", ...look },
+			})
+				.map((row) => {
+					const xs = [...row].flatMap((key, x) =>
+						"SzT".includes(key) ? [x] : [],
+					);
+					return xs.length > 0 ? Math.max(...xs) - Math.min(...xs) + 1 : 0;
+				})
+				.filter((span) => span > 0);
+			const half = Math.ceil(spans.length / 2);
+
+			return [
+				Math.max(...spans.slice(0, half)),
+				Math.max(...spans.slice(half)),
+			] as const;
+		});
+
+		return {
+			chest: Math.max(...halves.map(([chest]) => chest)),
+			belly: Math.max(...halves.map(([, belly]) => belly)),
+		};
+	};
+
+	const lean = depthsOf({ fat: 0 });
+	const bulky = depthsOf({ gender: "male", fat: 2, muscle: muscleStages });
+	const heavy = depthsOf({ fat: 15 });
+
+	t.true(lean.chest > lean.belly, "a lean chest stands out over the stomach");
+	t.true(bulky.chest > lean.chest, "muscle deepens the chest");
+	t.true(bulky.chest - bulky.belly > lean.chest - lean.belly);
+	t.true(heavy.belly > heavy.chest, "a heavy belly reaches past the chest");
+});
+
 test("grows muscle with strength work, up to a limit", (t) => {
 	t.is(lookFor().muscle, 0);
 	t.is(lookFor({ goal: "buildMuscle" }).muscle, 1);
