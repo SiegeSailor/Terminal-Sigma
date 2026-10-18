@@ -1179,6 +1179,28 @@ test("a second Tab aborts the first estimate, and Esc aborts the second", async 
 	t.true(requests[1]?.signal?.aborted);
 });
 
+test("aborts a request in flight when the dashboard closes", async (t) => {
+	const { asker, requests, releases } = held();
+	const { file, stdin, unmount } = start(
+		empty,
+		temporaryFile(),
+		fakeUpdater(),
+		keys,
+		asker,
+	);
+
+	await type(stdin, ["3", "\r", down, "\r"]);
+	t.is(requests.length, 1);
+	unmount();
+	t.true(requests[0]?.signal?.aborted);
+	releases[0]?.();
+	await settle();
+	t.deepEqual(
+		loadCoach(path.join(path.dirname(file), "coach.json")).sessions,
+		[],
+	);
+});
+
 test("Tab on an unknown food without an account asks nothing and logs no event", async (t) => {
 	const { asker, requests } = asking(() => ({ ok: false, attempts: [] }));
 	const { file, stdin, unmount } = start(

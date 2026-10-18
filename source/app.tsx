@@ -361,6 +361,14 @@ export default function App({
 	// xo's react-hooks/immutability rejects calling abort() on a state value.
 	const [asking, setAsking] = React.useState<string>();
 	const controller = React.useRef<AbortController>(undefined);
+
+	// Ctrl+C unmounts the dashboard; a request still in flight must not outlive it.
+	React.useEffect(
+		() => () => {
+			controller.current?.abort();
+		},
+		[],
+	);
 	const [pendingPlan, setPendingPlan] = React.useState<PlanReply>();
 	// The Coach option the cursor was last on, so it comes back after a request.
 	const [coachOption, setCoachOption] = React.useState("ask");
