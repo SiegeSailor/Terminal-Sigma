@@ -70,7 +70,7 @@ These hold everywhere, and none may be broken on the way to finishing something 
 - **Never Hard-Code a Color in a Component**: Read it from `usePalette()`, so every theme recolors the whole dashboard
 - **Never Hard-Code User-Facing Text**: Add it to all 3 languages in [`i18n.ts`](./source/i18n.ts); the `Messages` type rejects a language that misses a key
 - **Never Overwrite an Unreadable `progress.json`**: `loadProgress` refuses one and `saveProgress` validates before writing. The file holds the user's whole journey
-- **Never Reach the Network Without a Key**: API Ninjas, AI providers, and Langfuse load and connect only when the user set their keys; see [`.claude/rules/ai.md`](./.claude/rules/ai.md)
+- **Never Reach the Network Without a Key**: API Ninjas, AI providers, and Langfuse load and connect only when the user set their keys or added an account; see [`.claude/rules/ai.md`](./.claude/rules/ai.md)
 - **Pick Commit Types Deliberately**: Every `feat` or `fix` that reaches `main` publishes a new version to NPM and a new desktop release
 - **Register Every Environment Variable**: A new variable joins `variables` in [`config.ts`](./source/config.ts) with its strings in all 3 languages, so **Environment** can edit it
 
