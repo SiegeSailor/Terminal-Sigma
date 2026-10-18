@@ -96,16 +96,14 @@ const languageNames: Record<Language, string> = {
 	ko: "Korean",
 };
 
-export function instructionsOf(language: Language, context: string): string {
+export function instructionsOf(language: Language, context = ""): string {
 	return [
 		"You are the coach inside Terminal Sigma, a self-development dashboard. You see the user's own logs below.",
 		"Be specific to their numbers, warm, and brief: at most 150 words unless they ask for more. Use metric units.",
 		"Write plain text without Markdown.",
 		"Give general fitness and nutrition guidance only. This is not medical advice: for pain, illness, pregnancy, eating disorders, or medication, tell them to see a professional.",
 		`Always answer in ${languageNames[language]}.`,
-		"",
-		"The user's data:",
-		context,
+		...(context ? ["", "The user's data:", context] : []),
 	].join("\n");
 }
 

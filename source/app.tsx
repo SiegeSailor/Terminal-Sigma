@@ -1152,10 +1152,8 @@ export default function App({
 			schema: estimateSchema,
 			sessionId: "estimate",
 			signal: aborter.signal,
-			instructions: instructionsOf(
-				language,
-				contextOf(latest.current, Date.now()),
-			),
+			// A food name needs nothing about the user.
+			instructions: instructionsOf(language),
 			turns: [
 				{ role: "user", content: promptOf("estimate", messages, draft.food) },
 			],

@@ -1133,6 +1133,7 @@ test("estimates an unknown food with the Coach, and logs it on Enter", async (t)
 	await type(stdin, ["\t"]);
 	t.true(await shows(lastFrame, "mystery stew 450kcal 20p 50c 15f"));
 	t.is(requests[0]?.kind, "estimate");
+	t.notRegex(requests[0]?.instructions ?? "", /Daily targets|Today so far/v);
 	t.deepEqual(loadProgress(file).meals, [], "nothing logged on a guess");
 
 	await type(stdin, ["\r"]);
